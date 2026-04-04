@@ -9,46 +9,48 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.habitflowai.presentation.viewmodel.OnboardingUiState
 
-data class Option(val text: String, val character: String)
+data class Option(val text: String, val character: String, val color: Color)
 data class Question(val title: String, val options: List<Option>)
 
 val quizQuestions = listOf(
     Question(
         title = "What is your primary motivation?",
         options = listOf(
-            Option("Competition & Rewards", "Achiever"),
-            Option("Self improvement & Growth", "Grower"),
-            Option("Structure & Routine", "Regulator"),
-            Option("Helping & Sharing", "Altruist"),
-            Option("Connecting & Teamwork", "Socializer"),
-            Option("Discovery & Novelty", "Explorer")
+            Option("Competition & Rewards", "Achiever", Color(0xFFFFE082)),
+            Option("Self improvement & Growth", "Grower", Color(0xFFA5D6A7)),
+            Option("Structure & Routine", "Regulator", Color(0xFF90CAF9)),
+            Option("Helping & Sharing", "Altruist", Color(0xFFF48FB1)),
+            Option("Connecting & Teamwork", "Socializer", Color(0xFFCE93D8)),
+            Option("Discovery & Novelty", "Explorer", Color(0xFFFFAB91))
         )
     ),
     Question(
         title = "How do you prefer to track progress?",
         options = listOf(
-            Option("Milestones and achievements", "Achiever"),
-            Option("Reflecting on past habits", "Grower"),
-            Option("Detailed logs and schedules", "Regulator"),
-            Option("Community impact metrics", "Altruist"),
-            Option("Leaderboards with friends", "Socializer"),
-            Option("Unlocking new habit zones", "Explorer")
+            Option("Milestones and achievements", "Achiever", Color(0xFFFFE082)),
+            Option("Reflecting on past habits", "Grower", Color(0xFFA5D6A7)),
+            Option("Detailed logs and schedules", "Regulator", Color(0xFF90CAF9)),
+            Option("Community impact metrics", "Altruist", Color(0xFFF48FB1)),
+            Option("Leaderboards with friends", "Socializer", Color(0xFFCE93D8)),
+            Option("Unlocking new habit zones", "Explorer", Color(0xFFFFAB91))
         )
     ),
     Question(
         title = "When you fail a habit, how do you react?",
         options = listOf(
-            Option("Push harder to win it back", "Achiever"),
-            Option("Analyze what went wrong to learn", "Grower"),
-            Option("Adjust my strict daily schedule", "Regulator"),
-            Option("Focus on how I can support others instead", "Altruist"),
-            Option("Talk about it with my accountability group", "Socializer"),
-            Option("Change to a different, exciting habit", "Explorer")
+            Option("Push harder to win it back", "Achiever", Color(0xFFFFE082)),
+            Option("Analyze what went wrong to learn", "Grower", Color(0xFFA5D6A7)),
+            Option("Adjust my strict daily schedule", "Regulator", Color(0xFF90CAF9)),
+            Option("Focus on how I can support others instead", "Altruist", Color(0xFFF48FB1)),
+            Option("Talk about it with my accountability group", "Socializer", Color(0xFFCE93D8)),
+            Option("Change to a different, exciting habit", "Explorer", Color(0xFFFFAB91))
         )
     )
 )
@@ -75,7 +77,11 @@ fun OnboardingRoute(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFFE0C3FC), Color(0xFF8EC5FC))
+                )
+            )
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -109,9 +115,9 @@ fun OnboardingRoute(
                     Text(
                         text = quizQuestions[step].title,
                         style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = Color(0xFF2C3E50)
                     )
 
                     Spacer(modifier = Modifier.height(32.dp))
@@ -132,9 +138,9 @@ fun OnboardingRoute(
                                         onSubmit()
                                     }
                                 },
-                            shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            shape = RoundedCornerShape(20.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = option.color)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -145,9 +151,9 @@ fun OnboardingRoute(
                                 Text(
                                     text = option.text,
                                     style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium,
+                                    fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = Color(0xFF37474F)
                                 )
                             }
                         }
@@ -159,15 +165,16 @@ fun OnboardingRoute(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(64.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 6.dp
+                        modifier = Modifier.size(80.dp),
+                        color = Color(0xFF6A1B9A),
+                        strokeWidth = 8.dp
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        text = "Analyzing your personality...",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground
+                        text = "Analyzing your vibe...",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color(0xFF4A148C),
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
