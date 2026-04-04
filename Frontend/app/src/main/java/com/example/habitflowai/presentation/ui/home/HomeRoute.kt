@@ -1,24 +1,21 @@
 package com.example.habitflowai.presentation.ui.home
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.DateRange
+import androidx.compose.material.icons.rounded.Face
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.habitflowai.data.model.ClassifyPersonaResponse
 
@@ -36,100 +33,186 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?) {
         return
     }
 
-    when (personaResult.personaType) {
-        "Architect" -> ArchitectHome(personaResult)
-        "Achiever" -> AchieverHome(personaResult)
-        else -> GenericHome(personaResult)
-    }
-}
-
-@Composable
-private fun Header(title: String, message: String) {
-    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun ArchitectHome(personaResult: ClassifyPersonaResponse) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        item { Header("Architect Mode", personaResult.motivationalMessage) }
-        item {
-            Card(shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Structure Progress", style = MaterialTheme.typography.titleMedium)
-                    Text("Weekly Plan: 80%", style = MaterialTheme.typography.bodyMedium)
-                    Text("████████░░", style = MaterialTheme.typography.titleLarge)
-                }
-            }
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Character Badge
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Face,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(40.dp)
+            )
         }
-        item {
-            Card(shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Checklist", style = MaterialTheme.typography.titleMedium)
-                    listOf("Define habit cue", "Pick reminder time", "Track streak daily").forEach {
-                        Text("• $it")
-                    }
-                }
-            }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Welcome, ${personaResult.personaType}!",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Your tailored dashboard is ready.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        when (personaResult.personaType) {
+            "Achiever" -> AchieverHome(personaResult)
+            "Grower" -> GrowerHome(personaResult)
+            "Socializer" -> SocializerHome(personaResult)
+            "Explorer" -> ExplorerHome(personaResult)
+            "Altruist" -> AltruistHome(personaResult)
+            "Regulator" -> RegulatorHome(personaResult)
+            "Architect" -> ArchitectHome(personaResult)
+            else -> RegulatorHome(personaResult) // Default fallback to requested Regulator layout
         }
+    }
+}
+
+@Composable
+private fun RegulatorHome(personaResult: ClassifyPersonaResponse) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "STRUCTURE & ROUTINE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+
+            HorizontalDivider()
+
+            Text(text = "Current Consistency Score", style = MaterialTheme.typography.labelLarge)
+            LinearProgressIndicator(
+                progress = { 0.88f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+                color = Color(0xFF4CAF50),
+                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+            Text(text = "88% Excellent", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(text = "Today's Prescribed Hours", style = MaterialTheme.typography.labelLarge)
+
+            TimeSlotCard("06:00 AM", "Morning Protocol & Hydration")
+            TimeSlotCard("08:00 AM", "Deep Work Block")
+            TimeSlotCard("01:00 PM", "Nutrition & Movement")
+            TimeSlotCard("09:00 PM", "Evening Wind Down")
+        }
+    }
+}
+
+@Composable
+private fun TimeSlotCard(time: String, activity: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = time, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text(text = activity, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
 @Composable
 private fun AchieverHome(personaResult: ClassifyPersonaResponse) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        item { Header("Achiever Mode", personaResult.motivationalMessage) }
-        item {
-            Card(shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Streak Counter", style = MaterialTheme.typography.titleMedium)
-                    Text("21 Days", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-        item {
-            Card(shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Leaderboard", style = MaterialTheme.typography.titleMedium)
-                    listOf("You", "Alex", "Mia").forEachIndexed { index, name ->
-                        Text("${index + 1}. $name")
-                    }
-                }
-            }
-        }
-        item {
-            Card(shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Achievement Badges", style = MaterialTheme.typography.titleMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("7-Day", "Consistency", "Early Bird").forEach {
-                            AssistChip(onClick = {}, label = { Text(it) })
-                        }
-                    }
-                }
-            }
-        }
-    }
+    BaseTemplate(
+        title = "ACHIEVER TEMPLATE",
+        lines = listOf("⭐ Current Rank: Platinum", "🔥 Streak: 14 days", "🏆 Goal Progress: 80%")
+    )
 }
 
 @Composable
-private fun GenericHome(personaResult: ClassifyPersonaResponse) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+private fun GrowerHome(personaResult: ClassifyPersonaResponse) {
+    BaseTemplate(
+        title = "GROWER TEMPLATE",
+        lines = listOf("🌱 Daily Reflection Log", "📚 Skills Acquired", "📈 Effort Graph")
+    )
+}
+
+@Composable
+private fun SocializerHome(personaResult: ClassifyPersonaResponse) {
+    BaseTemplate(
+        title = "SOCIALIZER TEMPLATE",
+        lines = listOf("👥 Team Challenges", "🗣️ Community Feed", "🙌 Supportive Cheers Sent: 12")
+    )
+}
+
+@Composable
+private fun ExplorerHome(personaResult: ClassifyPersonaResponse) {
+    BaseTemplate(
+        title = "EXPLORER TEMPLATE",
+        lines = listOf("🧭 New Habits Discovered", "🗺️ Unknown Territory Unlocked", "🚀 Curiosity Quests")
+    )
+}
+
+@Composable
+private fun AltruistHome(personaResult: ClassifyPersonaResponse) {
+    BaseTemplate(
+        title = "ALTRUIST TEMPLATE",
+        lines = listOf("🤝 Points Donated to Charity", "❤️ Friends Assisted", "🌟 Community Impact Score")
+    )
+}
+
+@Composable
+private fun ArchitectHome(personaResult: ClassifyPersonaResponse) {
+    BaseTemplate(
+        title = "ARCHITECT TEMPLATE",
+        lines = listOf("🏗️ Foundation Habits", "📐 Daily Blueprint", "☑️ Checklists")
+    )
+}
+
+@Composable
+private fun BaseTemplate(title: String, lines: List<String>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Header(personaResult.personaType, personaResult.motivationalMessage)
-        Spacer(Modifier.height(8.dp))
-        Text("Your personalized dashboard will evolve as you log habits.")
+        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            HorizontalDivider()
+            lines.forEach { line ->
+                Text(text = line, style = MaterialTheme.typography.bodyLarge)
+            }
+        }
     }
 }

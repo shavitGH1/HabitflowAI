@@ -1,30 +1,59 @@
 package com.example.habitflowai.presentation.ui.onboarding
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.habitflowai.presentation.viewmodel.OnboardingUiState
 
+data class Option(val text: String, val character: String)
+data class Question(val title: String, val options: List<Option>)
+
+val quizQuestions = listOf(
+    Question(
+        title = "What is your primary motivation?",
+        options = listOf(
+            Option("Competition & Rewards", "Achiever"),
+            Option("Self improvement & Growth", "Grower"),
+            Option("Structure & Routine", "Regulator"),
+            Option("Helping & Sharing", "Altruist"),
+            Option("Connecting & Teamwork", "Socializer"),
+            Option("Discovery & Novelty", "Explorer")
+        )
+    ),
+    Question(
+        title = "How do you prefer to track progress?",
+        options = listOf(
+            Option("Milestones and achievements", "Achiever"),
+            Option("Reflecting on past habits", "Grower"),
+            Option("Detailed logs and schedules", "Regulator"),
+            Option("Community impact metrics", "Altruist"),
+            Option("Leaderboards with friends", "Socializer"),
+            Option("Unlocking new habit zones", "Explorer")
+        )
+    ),
+    Question(
+        title = "When you fail a habit, how do you react?",
+        options = listOf(
+            Option("Push harder to win it back", "Achiever"),
+            Option("Analyze what went wrong to learn", "Grower"),
+            Option("Adjust my strict daily schedule", "Regulator"),
+            Option("Focus on how I can support others instead", "Altruist"),
+            Option("Talk about it with my accountability group", "Socializer"),
+            Option("Change to a different, exciting habit", "Explorer")
+        )
+    )
+)
+
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun OnboardingRoute(
     uiState: OnboardingUiState,
@@ -41,97 +70,105 @@ fun OnboardingRoute(
         }
     }
 
+    var currentStep by remember { mutableIntStateOf(0) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        ElevatedCard(shape = RoundedCornerShape(20.dp)) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "HabitFlow AI",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "Create your adaptive experience in under a minute.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        if (currentStep < quizQuestions.size && !uiState.isLoading) {
+            val progress = (currentStep + 1).toFloat() / quizQuestions.size
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
 
-        ElevatedCard(shape = RoundedCornerShape(16.dp)) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Your Goal", style = MaterialTheme.typography.titleMedium)
-                OutlinedTextField(
-                    value = uiState.goal,
-                    onValueChange = onGoalChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Habit goal") },
-                    singleLine = true
-                )
-            }
-        }
+            Spacer(modifier = Modifier.height(32.dp))
 
-        ElevatedCard(shape = RoundedCornerShape(16.dp)) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Quick Quiz", style = MaterialTheme.typography.titleMedium)
-                OutlinedTextField(
-                    value = uiState.quizAnswers[0],
-                    onValueChange = { onQuizAnswerChange(0, it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("What motivates you most?") }
-                )
-                OutlinedTextField(
-                    value = uiState.quizAnswers[1],
-                    onValueChange = { onQuizAnswerChange(1, it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("How do you plan your week?") }
-                )
-                OutlinedTextField(
-                    value = uiState.quizAnswers[2],
-                    onValueChange = { onQuizAnswerChange(2, it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("What keeps you consistent?") }
-                )
-            }
-        }
+            Text(
+                text = "Question ${currentStep + 1} of ${quizQuestions.size}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
 
-        if (uiState.isLoading) {
-            ElevatedCard(shape = RoundedCornerShape(16.dp)) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(16.dp))
+
+            AnimatedContent(
+                targetState = currentStep,
+                label = "QuizQuestion"
+            ) { step ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Analyzing your persona...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        text = quizQuestions[step].title,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    quizQuestions[step].options.forEach { option ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                                .clickable {
+                                    // Submit character type string to our viewmodel
+                                    onQuizAnswerChange(step, option.character)
+                                    if (currentStep < quizQuestions.size - 1) {
+                                        currentStep++
+                                    } else {
+                                        // Final question answered, trigger backend / local logic calculation
+                                        currentStep++
+                                        onSubmit()
+                                    }
+                                },
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = option.text,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
                 }
             }
-        }
-
-        Button(
-            onClick = onSubmit,
-            enabled = !uiState.isLoading,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 14.dp)
-        ) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator(strokeWidth = 2.dp)
-                Text(text = "  Classifying...")
-            } else {
-                Text("Classify Persona", style = MaterialTheme.typography.titleMedium)
-            }
-        }
-
-        uiState.errorMessage?.let {
-            ElevatedCard(shape = RoundedCornerShape(14.dp)) {
-                Box(modifier = Modifier.padding(14.dp)) {
-                    Text(text = it, color = MaterialTheme.colorScheme.error)
+        } else {
+            // Loading State (Calculating result)
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(64.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 6.dp
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = "Analyzing your personality...",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
                 }
             }
         }

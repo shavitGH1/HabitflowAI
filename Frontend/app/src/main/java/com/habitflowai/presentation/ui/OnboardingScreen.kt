@@ -1,22 +1,62 @@
 package com.habitflowai.presentation.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.habitflowai.data.model.ClassifyPersonaResponse
 import com.habitflowai.presentation.viewmodel.OnboardingUiState
 
+data class Option(val text: String, val character: String)
+data class Question(val title: String, val options: List<Option>)
+
+val quizQuestions = listOf(
+    Question(
+        title = "What is your primary motivation?",
+        options = listOf(
+            Option("Competition & Rewards", "Achiever"),
+            Option("Self improvement & Growth", "Grower"),
+            Option("Structure & Routine", "Regulator"),
+            Option("Helping & Sharing", "Altruist"),
+            Option("Connecting & Teamwork", "Socializer"),
+            Option("Discovery & Novelty", "Explorer")
+        )
+    ),
+    Question(
+        title = "How do you prefer to track progress?",
+        options = listOf(
+            Option("Milestones and achievements", "Achiever"),
+            Option("Reflecting on past habits", "Grower"),
+            Option("Detailed logs and schedules", "Regulator"),
+            Option("Community impact metrics", "Altruist"),
+            Option("Leaderboards with friends", "Socializer"),
+            Option("Unlocking new habit zones", "Explorer")
+        )
+    ),
+    Question(
+        title = "When you fail a habit, how do you react?",
+        options = listOf(
+            Option("Push harder to win it back", "Achiever"),
+            Option("Analyze what went wrong to learn", "Grower"),
+            Option("Adjust my strict daily schedule", "Regulator"),
+            Option("Focus on how I can support others instead", "Altruist"),
+            Option("Talk about it with my accountability group", "Socializer"),
+            Option("Change to a different, exciting habit", "Explorer")
+        )
+    )
+)
+
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun OnboardingScreen(
     uiState: OnboardingUiState,
@@ -25,56 +65,122 @@ fun OnboardingScreen(
     onSubmit: () -> Unit,
     onSuccessNavigate: (ClassifyPersonaResponse) -> Unit
 ) {
-    LaunchedEffect(uiState.personaResponse) {
-        uiState.personaResponse?.let(onSuccessNavigate)
-    }
+    var currentStep by remember { mutableStateOf(0) }
+    var scores by remember { mutableStateOf(mutableMapOf<String, Int>()) }
+    var isCalculating by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "HabitFlow AI Onboarding", style = MaterialTheme.typography.headlineMedium)
+        if (currentStep < quizQuestions.size) {
+            val progress = (currentStep + 1).toFloat() / quizQuestions.size
+            LinearProgressIndicator(
+                progress = progress,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
 
-        OutlinedTextField(
-            value = uiState.goal,
-            onValueChange = onGoalChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Habit goal") }
-        )
+            Spacer(modifier = Modifier.height(32.dp))
 
-        OutlinedTextField(
-            value = uiState.quizAnswers[0],
-            onValueChange = { onQuizAnswerChange(0, it) },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Quiz question 1") }
-        )
-        OutlinedTextField(
-            value = uiState.quizAnswers[1],
-            onValueChange = { onQuizAnswerChange(1, it) },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Quiz question 2") }
-        )
-        OutlinedTextField(
-            value = uiState.quizAnswers[2],
-            onValueChange = { onQuizAnswerChange(2, it) },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Quiz question 3") }
-        )
+            Text(
+                text = "Question ${currentStep + 1} of ${quizQuestions.size}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
 
-        Button(
-            onClick = onSubmit,
-            enabled = !uiState.isLoading,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator()
-            } else {
-                Text("Classify Persona")
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val question = quizQuestions[currentStep]
+
+            AnimatedContent(
+                targetState = currentStep,
+                label = "QuizQuestion"
+            ) { step ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = quizQuestions[step].title,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    quizQuestions[step].options.forEach { option ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                                .clickable {
+                                    val currentScore = scores[option.character] ?: 0
+                                    scores[option.character] = currentScore + 1
+                                    if (currentStep < quizQuestions.size - 1) {
+                                        currentStep++
+                                    } else {
+                                        isCalculating = true
+                                    }
+                                },
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = option.text,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        uiState.errorMessage?.let { Text(text = it, color = MaterialTheme.colorScheme.error) }
+        if (isCalculating) {
+            LaunchedEffect(Unit) {
+                // Find top character
+                val topCharacter = scores.maxByOrNull { it.value }?.key ?: "Regulator"
+                val response = ClassifyPersonaResponse(
+                    id = "local-calc",
+                    personaType = topCharacter,
+                    motivationalMessage = "Welcome, $topCharacter! Your journey begins here.",
+                    success = true
+                )
+                kotlinx.coroutines.delay(1500) // fake calculation delay for smooth UX
+                onSuccessNavigate(response)
+            }
+
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(64.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 6.dp
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = "Analyzing your personality...",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            }
+        }
     }
 }
