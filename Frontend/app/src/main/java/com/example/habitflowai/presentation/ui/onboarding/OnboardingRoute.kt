@@ -140,7 +140,7 @@ fun OnboardingRoute(
                                 },
                             shape = RoundedCornerShape(20.dp),
                             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = option.color)
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF).copy(alpha = 0.9f))
                         ) {
                             Box(
                                 modifier = Modifier
