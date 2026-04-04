@@ -1,0 +1,83 @@
+# =========================
+# Backend (Node.js & TypeScript)
+# =========================
+# Dependencies
+Backend/node_modules/
+
+# Build output
+Backend/dist/
+
+# Environment variables & Secrets (DO NOT COMMIT)
+Backend/.env
+Backend/firebase-service-account.json
+
+# Logs
+Backend/npm-debug.log*
+Backend/yarn-debug.log*
+Backend/yarn-error.log*
+Backend/*.log
+
+# =========================
+# Frontend (Android, Kotlin & Gradle)
+# =========================
+# Gradle files
+Frontend/.gradle/
+Frontend/build/
+Frontend/*/build/
+Frontend/**/build/
+Frontend/gradle.properties
+
+# Local configuration file (sdk path, etc)
+Frontend/local.properties
+
+# Compiled class file
+Frontend/*.class
+
+# Log file
+Frontend/*.log
+
+# Mobile Tools for Java (J2ME)
+Frontend/.mtj.tmp/
+
+# Package Files
+Frontend/*.jar
+Frontend/*.war
+Frontend/*.nar
+Frontend/*.ear
+Frontend/*.zip
+Frontend/*.tar.gz
+Frontend/*.rar
+
+# Android Studio / IntelliJ IDEA
+Frontend/.idea/
+Frontend/*.iml
+Frontend/*.modules.xml
+
+# Android compiled binaries
+Frontend/*.apk
+Frontend/*.ap_
+Frontend/*.aab
+Frontend/*.dex
+
+# NDK
+Frontend/obj/
+
+# Android Studio captures folder
+Frontend/captures/
+
+# Google Services (Client-side Firebase config - DO NOT COMMIT)
+Frontend/google-services.json
+Frontend/app/google-services.json
+
+# Keystore files (DO NOT COMMIT)
+Frontend/*.jks
+Frontend/*.keystore
+
+# =========================
+# OS & IDE Files (Applied Globally)
+# =========================
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*/.idea
