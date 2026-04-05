@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.habitflowai.presentation.viewmodel.OnboardingUiState
 
 data class Option(val text: String, val character: String, val color: Color)
@@ -73,6 +74,7 @@ fun OnboardingRoute(
     }
 
     var currentStep by remember { mutableIntStateOf(0) }
+    val totalSteps = quizQuestions.size + 1
 
     Column(
         modifier = Modifier
@@ -85,8 +87,8 @@ fun OnboardingRoute(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (currentStep < quizQuestions.size && !uiState.isLoading) {
-            val progress = (currentStep + 1).toFloat() / quizQuestions.size
+        if (currentStep < totalSteps && !uiState.isLoading) {
+            val progress = (currentStep + 1).toFloat() / totalSteps
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier
@@ -100,7 +102,7 @@ fun OnboardingRoute(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "Question ${currentStep + 1} of ${quizQuestions.size}",
+                text = "Step ${currentStep + 1} of $totalSteps",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -109,52 +111,89 @@ fun OnboardingRoute(
 
             AnimatedContent(
                 targetState = currentStep,
-                label = "QuizQuestion"
+                label = "QuizStep"
             ) { step ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = quizQuestions[step].title,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        textAlign = TextAlign.Center,
-                        color = Color(0xFF2C3E50)
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    quizQuestions[step].options.forEach { option ->
-                        Card(
+                if (step == 0) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "What is your goal?",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            textAlign = TextAlign.Center,
+                            color = Color(0xFF2C3E50)
+                        )
+                        Spacer(modifier = Modifier.height(32.dp))
+                        OutlinedTextField(
+                            value = uiState.goal,
+                            onValueChange = onGoalChange,
+                            placeholder = { Text("e.g. Run a marathon, study more", color = Color(0xFF37474F).copy(alpha = 0.5f)) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White.copy(alpha = 0.9f),
+                                unfocusedContainerColor = Color.White.copy(alpha = 0.8f),
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Button(
+                            onClick = { currentStep++ },
+                            enabled = uiState.goal.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp)
-                                .clickable {
-                                    // Submit character type string to our viewmodel
-                                    onQuizAnswerChange(step, option.character)
-                                    if (currentStep < quizQuestions.size - 1) {
-                                        currentStep++
-                                    } else {
-                                        // Final question answered, trigger backend / local logic calculation
-                                        currentStep++
-                                        onSubmit()
-                                    }
-                                },
-                            shape = RoundedCornerShape(20.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF).copy(alpha = 0.9f))
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Box(
+                            Text("Next", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    val questionIndex = step - 1
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = quizQuestions[questionIndex].title,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            textAlign = TextAlign.Center,
+                            color = Color(0xFF2C3E50)
+                        )
+
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        quizQuestions[questionIndex].options.forEach { option ->
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(20.dp),
-                                contentAlignment = Alignment.Center
+                                    .padding(vertical = 8.dp)
+                                    .clickable {
+                                        // Submit character type string to our viewmodel
+                                        onQuizAnswerChange(questionIndex, option.character)
+                                        if (currentStep < totalSteps - 1) {
+                                            currentStep++
+                                        } else {
+                                            // Final question answered, trigger backend / local logic calculation
+                                            currentStep++
+                                            onSubmit()
+                                        }
+                                    },
+                                shape = RoundedCornerShape(20.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF).copy(alpha = 0.9f))
                             ) {
-                                Text(
-                                    text = option.text,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    textAlign = TextAlign.Center,
-                                    color = Color(0xFF37474F)
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(20.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = option.text,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center,
+                                        color = Color(0xFF37474F)
+                                    )
+                                }
                             }
                         }
                     }

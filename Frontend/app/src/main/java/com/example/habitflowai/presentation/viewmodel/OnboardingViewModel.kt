@@ -59,10 +59,12 @@ class OnboardingViewModel(
                 "Regulator"
             }
 
+            val goalMessage = if (currentState.goal.isNotBlank()) " to '${currentState.goal}'" else ""
+
             val response = ClassifyPersonaResponse(
                 id = java.util.UUID.randomUUID().toString(),
                 personaType = dominantCharacter,
-                motivationalMessage = "Your adaptive journey begins here, $dominantCharacter!",
+                motivationalMessage = "Your adaptive journey begins here$goalMessage, $dominantCharacter!",
                 success = true
             )
 
