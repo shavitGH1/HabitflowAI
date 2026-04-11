@@ -22,4 +22,9 @@ class GoalsRepositoryImpl(
     suspend fun getHomeData(): HomeResponse {
         return api.getHome()
     }
+
+    suspend fun completeTask(taskId: String): Boolean {
+        val response = api.completeTask(taskId)
+        return response.isSuccessful
+    }
 }

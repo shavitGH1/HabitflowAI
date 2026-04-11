@@ -24,6 +24,39 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    fun completeTask(taskId: String, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                val success = goalsRepository.completeTask(taskId)
+                if (success) {
+                    // Update the local state to reflect the completed task
+                    _uiState.value.homeData?.let { currentData ->
+                        val updatedCoreGoals = currentData.coreGoals.map {
+                            if (it.id == taskId) it.copy(completed = true) else it
+                        }
+                        val updatedDailyVariations = currentData.dailyVariations.map {
+                            if (it.id == taskId) it.copy(completed = true) else it
+                        }
+
+                        _uiState.value = _uiState.value.copy(
+                            homeData = currentData.copy(
+                                coreGoals = updatedCoreGoals,
+                                dailyVariations = updatedDailyVariations
+                            )
+                        )
+                    }
+                    onResult(true)
+                } else {
+                    onResult(false)
+                }
+            } catch (e: Exception) {
+                // If the operation fails, we don't update the UI state so it reverts/doesn't show as completed.
+                // Could also expose an error message here.
+                onResult(false)
+            }
+        }
+    }
+
     fun fetchHomeData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)

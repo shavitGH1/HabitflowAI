@@ -1,102 +1,206 @@
-# HabitFlowAI - POC
+# HabitFlowAI (POC)
 
-HabitFlowAI is a proof-of-concept mobile + backend app that classifies a user into a motivation persona (`Architect` or `Achiever`) using Gemini, then returns a personalized motivational message.
+HabitFlowAI is a mobile + backend proof of concept for personalized habit coaching.
+The backend uses Gemini to classify user motivation persona and generate goal plans, and the Android app consumes the API with Retrofit.
 
-## Project Structure
+## What This Project Includes
 
-```text
-Backend/   -> Node.js + TypeScript + Express API
-Frontend/  -> Android app (Kotlin + Jetpack Compose)
-```
+- Backend: Node.js + TypeScript + Express + Swagger
+- Frontend: Android app (Kotlin + Jetpack Compose)
+- Auth flow: Register, login, JWT access token + refresh token
+- AI flow: Persona classification, motivational message generation, and daily task variations
 
-## How The App Communicates With The Backend
+## Repository Structure
 
-The Android app uses Retrofit to call the backend endpoint:
+		Backend/
+			src/
+				config/
+				controllers/
+				dto/
+				middleware/
+				repository/
+				routes/
+				services/
 
-- `POST /api/v1/personas/classify`
-
-The base URL is currently hardcoded in:
-
-- `Frontend/app/src/main/java/com/habitflowai/data/network/RetrofitProvider.kt`
-
-Current value:
-
-```kotlin
-private const val BASE_URL = "http://10.0.2.2:3000/"
-```
-
-Important notes:
-
-- `10.0.2.2` is a special alias from the Android emulator to your host machine's localhost.
-- If running on a physical Android device, replace `10.0.2.2` with your computer's LAN IP (for example: `http://192.168.1.25:3000/`).
-- Your phone and backend machine must be on the same network.
-- Ensure your firewall allows inbound traffic to port `3000`.
+		Frontend/
+			app/src/main/
 
 ## Backend Setup
 
-### 1. Install dependencies
+### Prerequisites
 
-```bash
-cd Backend
-npm install
-```
+- Node.js 18+
+- npm 9+
 
-### 2. Create `.env` file
+### Install dependencies
 
-Create `Backend/.env` with:
+		cd Backend
+		npm install
 
-```env
-PORT=3000
-GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
-```
+### Required local .env
 
-Notes:
+Start from the template:
 
-- `GEMINI_API_KEY` is required by `Backend/src/services/aiService.ts`.
-- `PORT` is optional (defaults to `3000` if omitted).
+	copy Backend\\.env.example Backend\\.env
 
-### 3. Get a Gemini API key
+Or create a file at Backend/.env with:
 
-1. Open Google AI Studio: https://aistudio.google.com/
-2. Sign in with your Google account.
-3. Go to **Get API key** (or **API keys** in the left menu).
-4. Create a new key.
-5. Copy the key and paste it into `Backend/.env` as `GEMINI_API_KEY`.
+		PORT=3000
+		GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+		JWT_SECRET=YOUR_ACCESS_TOKEN_SECRET
+		JWT_REFRESH_SECRET=YOUR_REFRESH_TOKEN_SECRET
 
-Security recommendation:
+Environment variables used by the backend:
 
-- Never commit `.env` files or API keys.
-- If a key was ever committed, rotate/regenerate it immediately.
+- PORT: Optional. Defaults to 3000.
+- GEMINI_API_KEY: Required. Used by Gemini SDK in AI service.
+- JWT_SECRET: Required. Used to sign/verify access tokens.
+- JWT_REFRESH_SECRET: Required. Used to sign/verify refresh tokens.
 
-### 4. Start backend
+Security note:
 
-```bash
-cd Backend
-npm start
-```
+- Never commit Backend/.env.
+- Rotate secrets immediately if they are ever exposed.
 
-When running, backend is available at:
+### Run backend
 
-- `http://localhost:3000`
-- Swagger docs: `http://localhost:3000/api-docs`
+		cd Backend
+		npm start
+
+Server starts on:
+
+- http://localhost:3000
+- Swagger UI: http://localhost:3000/api-docs
+
+## Swagger Documentation
+
+Swagger is configured with OpenAPI 3.0 and generated from route + DTO annotations.
+
+- Source config: Backend/src/config/swagger.ts
+- Scanned annotations: Backend/src/routes/*.ts and Backend/src/dto/*.ts
+- Global auth scheme: Bearer JWT
+
+How to use Swagger auth:
+
+1. Login using the auth endpoint to get an access token.
+2. Click Authorize in Swagger UI.
+3. Paste: Bearer YOUR_ACCESS_TOKEN
+4. Call protected endpoints.
+
+## API Reference
+
+Base URL:
+
+- http://localhost:3000
+
+### Auth
+
+- POST /api/v1/auth/register
+	- Public
+	- Body: email, password, goal, quizAnswers[]
+	- Response: userId, success
+
+- POST /api/v1/auth/login
+	- Public
+	- Body: email, password
+	- Response: accessToken, refreshToken, success
+
+- POST /api/v1/auth/refresh
+	- Public
+	- Body: refreshToken
+	- Response: accessToken, success
+
+- POST /api/v1/auth/logout
+	- Protected (Bearer token)
+	- Response: success message
+
+### Users
+
+- GET /api/v1/users/me/home
+	- Protected (Bearer token)
+	- Returns: goal, personaType, motivationalMessage, coreGoals, dailyVariations
+	- Daily variations are regenerated automatically once per day.
+
+### Tasks
+
+- PATCH /api/v1/tasks/:taskId/complete
+	- Protected (Bearer token)
+	- Marks task as completed.
+
+### Personas
+
+- POST /api/v1/personas/reclassify
+	- Protected (Bearer token)
+	- Body: goal, quizAnswers[]
+	- Reclassifies persona and regenerates motivational message + tasks.
+
+### Utility
+
+- GET /api/v1/models
+	- Public
+	- Returns available Gemini models that support generateContent.
+
+### Not currently mounted
+
+- Route file exists for POST /api/v1/goals/generate, but the goals router is not mounted in Backend/src/server.ts right now.
+
+## Data Persistence (Important for POC)
+
+User data is currently stored in-memory (Map in repository layer).
+
+Implications:
+
+- Restarting backend clears all users/tasks/tokens.
+- This is expected for the current POC phase.
 
 ## Frontend Setup (Android)
 
-1. Open the `Frontend` folder in Android Studio.
-2. Sync Gradle.
-3. Run the app on an emulator or device.
+### Prerequisites
 
-Requirements:
-
-- Android Studio Hedgehog+
+- Android Studio (recent stable)
 - JDK 17
-- Android SDK 34
+- Android SDK / Gradle setup required by project files
 
-## Quick End-to-End Test
+### Run
 
-1. Start backend (`npm start` in `Backend`).
-2. Confirm `BASE_URL` in `RetrofitProvider.kt` points to your backend:
-	- Emulator: `http://10.0.2.2:3000/`
-	- Physical device: `http://<your-lan-ip>:3000/`
-3. Launch Android app and finish onboarding.
-4. Verify backend receives `POST /api/v1/personas/classify` and returns persona + message.
+1. Open Frontend in Android Studio.
+2. Sync Gradle.
+3. Run app module on emulator/device.
+
+### Backend URL in app
+
+Current Retrofit base URL is defined in:
+
+- Frontend/app/src/main/java/com/habitflowai/data/network/RetrofitProvider.kt
+
+Current value:
+
+		http://10.0.2.2:3000/
+
+Notes:
+
+- 10.0.2.2 is Android emulator alias to host localhost.
+- For a physical device, use your machine LAN IP (for example http://192.168.1.25:3000/).
+- Device and backend machine must be on the same network.
+
+## Quick Local Validation Flow
+
+1. Start backend.
+2. Open Swagger at /api-docs.
+3. Register a user.
+4. Login and copy accessToken.
+5. Authorize Swagger with Bearer token.
+6. Call GET /api/v1/users/me/home.
+7. Complete a task with PATCH /api/v1/tasks/:taskId/complete.
+
+## Build Scripts
+
+Backend package scripts:
+
+- npm start: Run backend with ts-node
+- npm run build: Compile TypeScript
+
+## Current Scope Notes
+
+- This repository contains legacy/parallel Android package paths under both com.habitflowai and com.example.habitflowai.
+- The backend API in this README reflects currently mounted routes in server.ts.

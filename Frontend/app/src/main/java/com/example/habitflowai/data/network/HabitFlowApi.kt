@@ -15,6 +15,9 @@ import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PATCH
+import retrofit2.http.Path
+import retrofit2.Response
 
 interface HabitFlowApi {
     @POST("api/v1/auth/login")
@@ -34,4 +37,7 @@ interface HabitFlowApi {
 
     @POST("api/v1/goals/generate")
     suspend fun generateGoals(@Body request: GenerateGoalsRequest): GenerateGoalsResponse
+
+    @PATCH("api/v1/tasks/{taskId}/complete")
+    suspend fun completeTask(@Path("taskId") taskId: String): Response<Unit>
 }

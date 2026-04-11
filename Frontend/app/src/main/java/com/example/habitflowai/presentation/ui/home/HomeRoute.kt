@@ -192,9 +192,22 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
                 today = today,
                 checkedGoals = checklistState,
                 onGoalToggled = { taskId, isChecked ->
-                    val newState = checklistState.toMutableMap()
-                    newState[taskId] = isChecked
-                    checklistState = newState
+                    if (isChecked) {
+                        // Optimistically update the UI to avoid lag
+                        val newState = checklistState.toMutableMap()
+                        newState[taskId] = true
+                        checklistState = newState
+
+                        // Call backend
+                        viewModel.completeTask(taskId) { success ->
+                            if (!success) {
+                                // Revert optimistic update on failure
+                                val revertedState = checklistState.toMutableMap()
+                                revertedState[taskId] = false
+                                checklistState = revertedState
+                            }
+                        }
+                    }
                 },
                 personaType = actualPersonaType
             )
@@ -422,7 +435,7 @@ private fun InteractiveGoalItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable { onCheckedChange(!isChecked) },
+            .clickable(enabled = !isChecked) { onCheckedChange(true) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isChecked) 0.dp else 4.dp)
@@ -433,7 +446,8 @@ private fun InteractiveGoalItem(
         ) {
             Checkbox(
                 checked = isChecked,
-                onCheckedChange = { onCheckedChange(it) },
+                onCheckedChange = { if (it) onCheckedChange(true) },
+                enabled = !isChecked,
                 colors = CheckboxDefaults.colors(
                     checkedColor = Color(0xFF388E3C),
                     uncheckedColor = Color(0xFFFBC02D),
