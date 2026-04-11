@@ -11,6 +11,6 @@ data class ClassifyPersonaResponse(
     @SerializedName("id") val id: String,
     @SerializedName("personaType") val personaType: String,
     @SerializedName("motivationalMessage") val motivationalMessage: String,
-    @SerializedName("success") val success: Boolean
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("userId") val userId: String? = null
 )
-

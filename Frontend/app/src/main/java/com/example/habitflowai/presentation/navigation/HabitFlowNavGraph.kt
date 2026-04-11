@@ -103,7 +103,10 @@ fun HabitFlowNavGraph(
                 )
             }
             composable(NavRoute.Home.route) {
-                HomeRoute(personaResult = uiState.personaResult)
+                HomeRoute(
+                    personaResult = uiState.personaResult,
+                    userId = uiState.personaResult?.userId ?: uiState.personaResult?.id ?: ""
+                )
             }
             composable(NavRoute.Habits.route) {
                 HabitsRoute()

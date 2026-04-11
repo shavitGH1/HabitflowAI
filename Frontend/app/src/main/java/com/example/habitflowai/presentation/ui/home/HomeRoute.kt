@@ -31,6 +31,14 @@ import androidx.compose.material.icons.rounded.Info
 import java.time.LocalDate
 import java.time.DayOfWeek
 import java.time.format.DateTimeFormatter
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.Box
+import com.example.habitflowai.presentation.viewmodel.HomeViewModel
+import com.example.habitflowai.presentation.viewmodel.HomeViewModelFactory
+import com.example.habitflowai.data.network.NetworkModule
+import com.example.habitflowai.data.repository.GoalsRepositoryImpl
 
 fun getGoalsForPersona(personaType: String, date: LocalDate): List<Pair<String, Int>> {
     val dayOfWeek = date.dayOfWeek.value // 1 (Monday) to 7 (Sunday)
@@ -110,13 +118,13 @@ fun getGoalsForPersona(personaType: String, date: LocalDate): List<Pair<String, 
     return coreGoals + dailyVariations
 }
 
-fun generateMockHistory(today: LocalDate, personaType: String): Map<LocalDate, Map<String, Boolean>> {
+fun generateMockHistory(today: LocalDate, personaType: String, goalsMap: Map<LocalDate, List<Pair<String, Int>>>): Map<LocalDate, Map<String, Boolean>> {
     val map = mutableMapOf<LocalDate, Map<String, Boolean>>()
     // Generate history for the past 5 days
     for (i in 1..5) {
         val pastDate = today.minusDays(i.toLong())
         val dayGoals = mutableMapOf<String, Boolean>()
-        val specificGoals = getGoalsForPersona(personaType, pastDate)
+        val specificGoals = goalsMap[pastDate] ?: emptyList()
 
         specificGoals.forEachIndexed { index, (goal, _) ->
             // Recent days fully complete, older days partially complete
@@ -128,7 +136,7 @@ fun generateMockHistory(today: LocalDate, personaType: String): Map<LocalDate, M
 }
 
 @Composable
-fun HomeRoute(personaResult: ClassifyPersonaResponse?) {
+fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
     if (personaResult == null) {
         Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
             Text(text = "No persona data yet.", style = MaterialTheme.typography.headlineMedium)
@@ -141,17 +149,39 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?) {
         return
     }
 
+    val goalsRepository = remember { GoalsRepositoryImpl(NetworkModule.habitFlowApi) }
+    val viewModel: HomeViewModel = viewModel(
+        factory = HomeViewModelFactory(goalsRepository)
+    )
+    val uiState by viewModel.uiState.collectAsState()
+
     val scrollState = rememberScrollState()
 
     val today = remember { LocalDate.now() }
     var selectedDate by remember { mutableStateOf(today) }
 
-    // Dynamic goals fetch based on selected day!
-    val goalsForSelectedDate = remember(personaResult.personaType, selectedDate) {
-        getGoalsForPersona(personaResult.personaType, selectedDate)
+    val startOfWeek = today.with(DayOfWeek.MONDAY)
+    val weekDates = (0..6).map { startOfWeek.plusDays(it.toLong()) }
+
+    LaunchedEffect(userId) {
+        if (userId.isNotBlank()) {
+            // Fetch goals for today, the selected date (if different), and the past 5 days, plus the rest of the week if necessary
+            val datesToFetch = (weekDates + today + (1..5).map { today.minusDays(it.toLong()) }).distinct()
+            viewModel.fetchGoalsForDateRange(datesToFetch, userId)
+        }
     }
 
-    var checklistState by remember { mutableStateOf(generateMockHistory(today, personaResult.personaType)) }
+    if (uiState.isLoading && uiState.goalsMap.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    // Dynamic goals fetch based on selected day!
+    val goalsForSelectedDate = uiState.goalsMap[selectedDate] ?: emptyList()
+
+    var checklistState by remember(uiState.goalsMap) { mutableStateOf(generateMockHistory(today, personaResult.personaType, uiState.goalsMap)) }
 
     // Determine specific persona colors
     val (startColor, endColor) = when (personaResult.personaType) {
@@ -252,7 +282,8 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?) {
                 selectedDate = selectedDate,
                 onDateSelected = { selectedDate = it },
                 checklistState = checklistState,
-                personaType = personaResult.personaType
+                personaType = personaResult.personaType,
+                goalsMap = uiState.goalsMap
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -308,7 +339,8 @@ private fun HistoryCalendarSection(
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
     checklistState: Map<LocalDate, Map<String, Boolean>>,
-    personaType: String
+    personaType: String,
+    goalsMap: Map<LocalDate, List<Pair<String, Int>>>
 ) {
     val startOfWeek = today.with(DayOfWeek.MONDAY)
     val weekDates = (0..6).map { startOfWeek.plusDays(it.toLong()) }
@@ -331,7 +363,7 @@ private fun HistoryCalendarSection(
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(weekDates) { date ->
                 val dayChecks = checklistState[date]
-                val specificDateGoalsCount = remember(personaType, date) { getGoalsForPersona(personaType, date).size }
+                val specificDateGoalsCount = goalsMap[date]?.size ?: 0
 
                 val checkedCount = dayChecks?.count { it.value } ?: 0
                 val isCompleted = checkedCount >= specificDateGoalsCount && specificDateGoalsCount > 0

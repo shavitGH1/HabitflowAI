@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import personaRoutes from './routes/personaRoutes';
+import goalsRoutes from './routes/goalsRoutes'; // Import goals routes
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 
@@ -37,6 +38,7 @@ app.use((req, res, next) => {
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/v1/personas', personaRoutes);
+app.use('/api/v1/goals', goalsRoutes); // Register goals routes
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

@@ -2,7 +2,7 @@
  * @swagger
  * components:
  *   schemas:
- *     PersonaRequestDto:
+ *     ClassifyPersonaRequest:
  *       type: object
  *       required:
  *         - goal
@@ -10,33 +10,33 @@
  *       properties:
  *         goal:
  *           type: string
- *           description: The user's free-text habit goal
+ *           description: The user's free-text habit goal.
  *         quizAnswers:
  *           type: array
  *           items:
  *             type: string
- *           description: Array of answers to personality questions
- *     PersonaResponseDto:
+ *           description: Array of answers to personality questions.
+ *     ClassifyPersonaResponse:
  *       type: object
  *       properties:
+ *         id:
+ *           type: string
+ *           description: The unique identifier for the user.
  *         personaType:
  *           type: string
- *           enum: [Architect, Achiever]
- *           description: The classified persona type
- *         motivationalMessage:
- *           type: string
- *           description: A personalized motivational message
+ *           description: The classified persona type.
  *         success:
  *           type: boolean
- *           description: Indicates if the request was successful
+ *           description: Indicates if the request was successful.
  */
-export interface PersonaRequestDto {
+
+export interface ClassifyPersonaRequest {
   goal: string;
   quizAnswers: string[];
 }
 
-export interface PersonaResponseDto {
-  personaType: 'Architect' | 'Achiever';
-  motivationalMessage: string;
+export interface ClassifyPersonaResponse {
+  id: string;
+  personaType: string;
   success: boolean;
 }

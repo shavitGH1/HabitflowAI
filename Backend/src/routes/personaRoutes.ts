@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { classifyPersona } from '../controllers/personaController';
+import { classifyPersonaController } from '../controllers/personaController';
 
 const router = Router();
 
@@ -7,26 +7,26 @@ const router = Router();
  * @swagger
  * /api/v1/personas/classify:
  *   post:
- *     summary: Classify user persona
+ *     summary: Classify user persona and create a user session
  *     tags: [Personas]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/PersonaRequestDto'
+ *             $ref: '#/components/schemas/ClassifyPersonaRequest'
  *     responses:
  *       200:
  *         description: The user persona was successfully classified
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/PersonaResponseDto'
+ *               $ref: '#/components/schemas/ClassifyPersonaResponse'
  *       400:
- *         description: Bad request
+ *         description: Invalid input
  *       500:
  *         description: Internal server error
  */
-router.post('/classify', classifyPersona);
+router.post('/classify', classifyPersonaController);
 
 export default router;

@@ -48,32 +48,38 @@ class OnboardingViewModel(
         viewModelScope.launch {
             _uiState.value = currentState.copy(isLoading = true, errorMessage = null, navigateToHome = false)
 
-            // Local calculation logic (Bypass Network to prevent connection failure)
-            kotlinx.coroutines.delay(1200) // Fake analysis delay
+            try {
+                val request = ClassifyPersonaRequest(currentState.goal, currentState.quizAnswers)
+                val response = repository.classifyPersona(request)
 
-            // Extract dominant trait from answers (the beautiful quiz UI maps character names in the answers)
-            val answers = currentState.quizAnswers.filter { it.isNotBlank() }
-            val dominantCharacter = if (answers.isNotEmpty()) {
-                answers.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: "Regulator"
-            } else {
-                "Regulator"
+                if (response is Resource.Success && response.data != null) {
+                    val result = response.data
+                    if (result.success) {
+                        _uiState.value = currentState.copy(
+                            isLoading = false,
+                            personaResult = result,
+                            errorMessage = null,
+                            navigateToHome = true
+                        )
+                    } else {
+                        // Assuming success=false from backend means invalid goal / gibberish
+                        _uiState.value = currentState.copy(
+                            isLoading = false,
+                            errorMessage = result.motivationalMessage ?: "Invalid goal or gibberish detected. Please enter a new valid goal."
+                        )
+                    }
+                } else if (response is Resource.Error) {
+                    _uiState.value = currentState.copy(
+                        isLoading = false,
+                        errorMessage = response.message ?: "Failed to classify persona"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = currentState.copy(
+                    isLoading = false,
+                    errorMessage = "Network error: ${e.message}"
+                )
             }
-
-            val goalMessage = if (currentState.goal.isNotBlank()) " to '${currentState.goal}'" else ""
-
-            val response = ClassifyPersonaResponse(
-                id = java.util.UUID.randomUUID().toString(),
-                personaType = dominantCharacter,
-                motivationalMessage = "Your adaptive journey begins here$goalMessage, $dominantCharacter!",
-                success = true
-            )
-
-            _uiState.value = currentState.copy(
-                isLoading = false,
-                personaResult = response,
-                errorMessage = null,
-                navigateToHome = true
-            )
         }
     }
 }
