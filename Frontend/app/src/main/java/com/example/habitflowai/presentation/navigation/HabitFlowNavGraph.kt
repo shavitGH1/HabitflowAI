@@ -25,8 +25,12 @@ import com.example.habitflowai.presentation.ui.home.HomeRoute
 import com.example.habitflowai.presentation.ui.habits.HabitsRoute
 import com.example.habitflowai.presentation.ui.social.SocialRoute
 import com.example.habitflowai.presentation.ui.onboarding.OnboardingRoute
+import com.example.habitflowai.presentation.ui.auth.LoginRoute
+import com.example.habitflowai.presentation.ui.auth.RegisterCredentialsRoute
 import com.example.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.example.habitflowai.presentation.viewmodel.OnboardingViewModelFactory
+import com.example.habitflowai.presentation.viewmodel.LoginViewModel
+import com.example.habitflowai.presentation.viewmodel.LoginViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,12 +41,17 @@ fun HabitFlowNavGraph(
     val onboardingViewModel: OnboardingViewModel = viewModel(
         factory = OnboardingViewModelFactory(repository)
     )
+    val loginViewModel: LoginViewModel = viewModel(
+        factory = LoginViewModelFactory(NetworkModule.habitFlowApi)
+    )
     val uiState by onboardingViewModel.uiState.collectAsState()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val isFullApp = currentRoute != NavRoute.Onboarding.route
+    val isFullApp = currentRoute != NavRoute.Onboarding.route &&
+                    currentRoute != NavRoute.Login.route &&
+                    currentRoute != NavRoute.RegisterCredentials.route
 
     Scaffold(
         topBar = {
@@ -85,18 +94,42 @@ fun HabitFlowNavGraph(
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = NavRoute.Onboarding.route,
+            startDestination = NavRoute.Login.route,
             modifier = Modifier.padding(paddingValues)
         ) {
+            composable(NavRoute.Login.route) {
+                LoginRoute(
+                    viewModel = loginViewModel,
+                    onLoginSuccess = {
+                        navController.navigate(NavRoute.Home.route) {
+                            popUpTo(NavRoute.Login.route) { inclusive = true }
+                        }
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate(NavRoute.RegisterCredentials.route)
+                    }
+                )
+            }
+            composable(NavRoute.RegisterCredentials.route) {
+                RegisterCredentialsRoute(
+                    viewModel = onboardingViewModel,
+                    onNext = {
+                        navController.navigate(NavRoute.Onboarding.route)
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
             composable(NavRoute.Onboarding.route) {
                 OnboardingRoute(
                     uiState = uiState,
                     onGoalChange = onboardingViewModel::onGoalChange,
                     onQuizAnswerChange = onboardingViewModel::onQuizAnswerChange,
-                    onSubmit = onboardingViewModel::classifyPersona,
+                    onSubmit = onboardingViewModel::registerUser, // Updated to call register instead of classifyPersona for this flow
                     onPersonaClassified = {
                         navController.navigate(NavRoute.Home.route) {
-                            popUpTo(NavRoute.Onboarding.route) { inclusive = true }
+                            popUpTo(NavRoute.Login.route) { inclusive = true }
                         }
                     },
                     onNavigationHandled = onboardingViewModel::onHomeNavigated

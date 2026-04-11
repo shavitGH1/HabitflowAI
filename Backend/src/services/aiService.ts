@@ -1,23 +1,48 @@
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
-import { GenerateGoalsResponse } from '../dto/goal.dto';
+import { GenerateGoalsResponse, GoalTask } from '../dto/goal.dto';
 import { User } from '../repository/userRepository';
 
 dotenv.config();
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// Updated to avoid the 404 error and prioritize the best free tier models
+// Updated to the stable models we verified earlier
 const FREE_TIER_MODELS = [
   'gemini-2.5-flash-lite',
-  'gemini-1.5-flash',
-  'gemini-2.0-flash-exp'
+  'gemini-flash-lite-latest',
+  'gemini-2.5-flash'
 ];
 
 interface PersonaClassificationResult {
   isValid: boolean;
   errorReason?: string;
   personaType?: string;
+}
+
+export async function listAvailableModels() {
+  try {
+    console.log('Fetching available models...');
+
+    // In the new SDK, ai.models.list() returns an async iterable
+    const modelList = await ai.models.list();
+    const availableModels = [];
+
+    for await (const model of modelList) {
+      console.log(model.name, model.supportedActions)
+      if (model.supportedActions?.includes('generateContent')) {
+        availableModels.push(model);
+      }
+    }
+
+    console.log('Available models that support generateContent:');
+    availableModels.forEach(model => console.log('- ', model.name));
+    return availableModels;
+
+  } catch (error) {
+    console.error('Error listing models:', error);
+    return [];
+  }
 }
 
 async function generateWithFallback<T>(prompt: string): Promise<T> {
@@ -31,23 +56,18 @@ async function generateWithFallback<T>(prompt: string): Promise<T> {
         model: currentModel,
         contents: prompt,
         config: {
-          // Enforce JSON output so we don't have to strip markdown formatting
           responseMimeType: "application/json",
         }
       });
 
-      // In the new SDK, .text is a property, not a function
       const text = response.text;
-
       if (!text) {
         throw new Error("Received empty response from model.");
       }
-
       return JSON.parse(text) as T;
 
     } catch (error: any) {
-      console.warn(`[Warning] ${currentModel} failed!`);
-
+      console.warn(`[Warning] ${currentModel} failed: ${error.message}`);
       if (i === FREE_TIER_MODELS.length - 1) {
         console.error("All fallback models exhausted.");
         throw new Error("AI Service is currently overloaded. Please try again in a few seconds.");
@@ -90,8 +110,8 @@ export async function classifyPersona(
   return generateWithFallback<PersonaClassificationResult>(prompt);
 }
 
-export async function generateGoals(
-    user: User,
+export async function generateInitialGoals(
+    user: Omit<User, 'id' | 'password' | 'motivationalMessage' | 'coreGoals' | 'dailyVariations' | 'tasksLastGeneratedDate'>,
     dayOfWeek: number
 ): Promise<GenerateGoalsResponse> {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -118,4 +138,28 @@ export async function generateGoals(
   `;
 
   return generateWithFallback<GenerateGoalsResponse>(prompt);
+}
+
+export async function generateDailyVariations(user: User, dayOfWeek: number): Promise<GoalTask[]> {
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const targetDay = days[dayOfWeek];
+
+  const prompt = `
+    You are an expert productivity and habit-tracking coach.
+    
+    Based on the user's persona and goal, generate a new set of daily variation tasks for the specified day.
+    
+    User Persona: "${user.personaType}"
+    User's Goal: "${user.goal}"
+    Target Day of the Week: "${targetDay}"
+
+    OUTPUT FORMAT:
+    Return the response STRICTLY as a valid JSON object containing only the "dailyVariations" array.
+    {
+      "dailyVariations": [ { "description": "New day-specific task 1", "points": 30 }, { "description": "New day-specific task 2", "points": 15 } ]
+    }
+  `;
+
+  const response = await generateWithFallback<{ dailyVariations: GoalTask[] }>(prompt);
+  return response.dailyVariations;
 }

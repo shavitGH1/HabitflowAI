@@ -1,32 +1,42 @@
 import { Router } from 'express';
-import { classifyPersonaController } from '../controllers/personaController';
+import { reclassifyPersona } from '../controllers/personaController';
+import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = Router();
 
 /**
  * @swagger
- * /api/v1/personas/classify:
+ * /api/v1/personas/reclassify:
  *   post:
- *     summary: Classify user persona and create a user session
+ *     summary: Reclassify a user's persona and generate new goals
  *     tags: [Personas]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/ClassifyPersonaRequest'
+ *             type: object
+ *             properties:
+ *               goal:
+ *                 type: string
+ *               quizAnswers:
+ *                 type: array
+ *                 items:
+ *                   type: string
  *     responses:
  *       200:
- *         description: The user persona was successfully classified
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ClassifyPersonaResponse'
+ *         description: Successfully reclassified persona and updated user data
  *       400:
  *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
  *       500:
  *         description: Internal server error
  */
-router.post('/classify', classifyPersonaController);
+router.post('/reclassify', authMiddleware, reclassifyPersona);
 
 export default router;

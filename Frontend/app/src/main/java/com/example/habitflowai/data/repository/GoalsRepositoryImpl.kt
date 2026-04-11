@@ -2,6 +2,7 @@ package com.example.habitflowai.data.repository
 
 import com.example.habitflowai.data.network.HabitFlowApi
 import com.example.habitflowai.data.model.GenerateGoalsRequest
+import com.example.habitflowai.data.model.HomeResponse
 import com.example.habitflowai.data.model.toGoalPairList
 
 class GoalsRepositoryImpl(
@@ -16,5 +17,9 @@ class GoalsRepositoryImpl(
         }
 
         return response.toGoalPairList()
+    }
+
+    suspend fun getHomeData(): HomeResponse {
+        return api.getHome()
     }
 }

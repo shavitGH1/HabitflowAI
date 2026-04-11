@@ -39,116 +39,12 @@ import com.example.habitflowai.presentation.viewmodel.HomeViewModel
 import com.example.habitflowai.presentation.viewmodel.HomeViewModelFactory
 import com.example.habitflowai.data.network.NetworkModule
 import com.example.habitflowai.data.repository.GoalsRepositoryImpl
+import com.example.habitflowai.data.model.HomeGoalTask
 
-fun getGoalsForPersona(personaType: String, date: LocalDate): List<Pair<String, Int>> {
-    val dayOfWeek = date.dayOfWeek.value // 1 (Monday) to 7 (Sunday)
-
-    val coreGoals = when (personaType) {
-        "Achiever" -> listOf("Complete 3 high-priority tasks" to 50, "Log all daily stats" to 20, "Drink 2L of water" to 10, "Review leaderboard standing" to 15)
-        "Grower" -> listOf("Write in reflection journal" to 0, "Observe a new emotional trigger" to 0, "Read 10 pages" to 0, "Practice mindfulness for 10 mins" to 0)
-        "Socializer" -> listOf("Share progress on feed" to 0, "Cheer on 2 community members" to 0, "Message accountability partner" to 0, "Check group chat" to 0)
-        "Explorer" -> listOf("Take a different route or approach" to 0, "Read an article on a new topic" to 0, "Try a new healthy snack" to 0, "Log one new discovery" to 0)
-        "Altruist" -> listOf("Do one random act of kindness" to 0, "Leave positive feedback for a peer" to 0, "Check in on family/friend" to 0, "Express gratitude publicly" to 0)
-        "Regulator", "Architect" -> listOf("Wake up by 6:00 AM" to 0, "No screens after 9:00 PM" to 0, "Follow morning protocol" to 0, "Track every hour of deep work" to 0)
-        else -> listOf("Log daily habit" to 0, "Review end of day" to 0, "Stay hydrated" to 0, "Plan for tomorrow" to 0)
-    }
-
-    val dailyVariations = when (personaType) {
-        "Achiever" -> when (dayOfWeek) {
-            1 -> listOf("Plan the week's biggest win" to 30, "Set 3 micro-goals for Monday" to 20)
-            2 -> listOf("Speed-run a minor task" to 25, "Optimize workspace for focus" to 15)
-            3 -> listOf("Review halfway milestone tracker" to 25, "Push limits on core metric" to 50)
-            4 -> listOf("Eliminate one distraction" to 20, "Review weekly metric velocity" to 30)
-            5 -> listOf("Wrap up weekly main objective" to 100, "Log end-of-week reflection" to 20)
-            6 -> listOf("Active recovery & low-intensity tracking" to 10, "Prepare next week's layout" to 25)
-            else -> listOf("Strategize next week's targets" to 20, "Rest and visualize success" to 10)
-        }
-        "Grower" -> when (dayOfWeek) {
-            1 -> listOf("Set a new learning intention" to 0, "Listen to a growth podcast" to 0)
-            2 -> listOf("Practice a new skill for 20 mins" to 0, "Identify one limiting belief" to 0)
-            3 -> listOf("Re-read notes from a favorite book" to 0, "Meditate on mid-week stress" to 0)
-            4 -> listOf("Apply one learning to daily life" to 0, "Seek constructive feedback" to 0)
-            5 -> listOf("Summarize the week's learnings" to 0, "Journal about a hurdle faced" to 0)
-            6 -> listOf("Spend time in nature without tech" to 0, "Explore a creative outlet" to 0)
-            else -> listOf("Plan personal growth goals for next week" to 0, "Rest your mind" to 0)
-        }
-        "Socializer" -> when (dayOfWeek) {
-            1 -> listOf("Kick off the week with a team message" to 0, "Set a shared goal with a friend" to 0)
-            2 -> listOf("Join a quick group challenge" to 0, "Leave 3 supportive comments" to 0)
-            3 -> listOf("Reach out to an accountability partner" to 0, "Ask for advice on a struggle" to 0)
-            4 -> listOf("Host or join a mini-habit pod" to 0, "Share a useful tip you learned" to 0)
-            5 -> listOf("Celebrate someone else's weekly win" to 0, "Post your weekly recap" to 0)
-            6 -> listOf("Attend a social or networking event" to 0, "Connect with someone new" to 0)
-            else -> listOf("Reflect on community impact" to 0, "Plan a group activity for next week" to 0)
-        }
-        "Explorer" -> when (dayOfWeek) {
-            1 -> listOf("Research a completely new hobby" to 0, "Pick a random documentary to watch" to 0)
-            2 -> listOf("Try a new productivity tool" to 0, "Reorganize your daily schedule" to 0)
-            3 -> listOf("Cook an unfamiliar recipe" to 0, "Listen to a distinct genre of music" to 0)
-            4 -> listOf("Explore a different workout style" to 0, "Take a 15-minute curiosity dive" to 0)
-            5 -> listOf("Explore a new part of your city" to 0, "Talk to someone with a different perspective" to 0)
-            6 -> listOf("Break one routine intentionally" to 0, "Visit a new coffee shop or park" to 0)
-            else -> listOf("Document the week's discoveries" to 0, "Brainstorm next week's adventures" to 0)
-        }
-        "Altruist" -> when (dayOfWeek) {
-            1 -> listOf("Help someone plan their week" to 0, "Dedicate 10 mins to a cause" to 0)
-            2 -> listOf("Donate a small amount or item" to 0, "Compliment a coworker or classmate" to 0)
-            3 -> listOf("Offer a skill for free to a friend" to 0, "Write a thank-you note" to 0)
-            4 -> listOf("Check in on someone you haven't talked to" to 0, "Share a resource that helped you" to 0)
-            5 -> listOf("Volunteer for a quick 10-minute task" to 0, "Highlight someone else's achievement" to 0)
-            6 -> listOf("Pick up litter in your neighborhood" to 0, "Support a local small business" to 0)
-            else -> listOf("Plan next week's giving" to 0, "Reflect on how you helped others" to 0)
-        }
-        "Regulator", "Architect" -> when (dayOfWeek) {
-            1 -> listOf("Finalize the weekly blueprint" to 0, "Meal prep for Monday & Tuesday" to 0)
-            2 -> listOf("Audit time-wasting activities" to 0, "Strict adherence to block scheduling" to 0)
-            3 -> listOf("Mid-week schedule realignment" to 0, "Review habit compliance score" to 0)
-            4 -> listOf("Deep work block: 90 mins uninterrupted" to 0, "Inbox zero by 5 PM" to 0)
-            5 -> listOf("Review schedule compliance score" to 0, "Plan weekend downtime limits" to 0)
-            6 -> listOf("Flexible structure day (reduced rules)" to 0, "Declutter physical workspace" to 0)
-            else -> listOf("Prepare Monday's outfit & meals" to 0, "Weekly calendar review" to 0)
-        }
-        else -> when (dayOfWeek) {
-            1 -> listOf("Monday Motivation Setup" to 0, "Define 1 key priority" to 0)
-            3 -> listOf("Wednesday Check-in" to 0, "Adjust course if needed" to 0)
-            5 -> listOf("Friday Wrap-up" to 0, "Log weekly success" to 0)
-            else -> listOf("Maintain consistent baseline" to 0, "Do a quick 5-min stretch" to 0)
-        }
-    }
-    return coreGoals + dailyVariations
-}
-
-fun generateMockHistory(today: LocalDate, personaType: String, goalsMap: Map<LocalDate, List<Pair<String, Int>>>): Map<LocalDate, Map<String, Boolean>> {
-    val map = mutableMapOf<LocalDate, Map<String, Boolean>>()
-    // Generate history for the past 5 days
-    for (i in 1..5) {
-        val pastDate = today.minusDays(i.toLong())
-        val dayGoals = mutableMapOf<String, Boolean>()
-        val specificGoals = goalsMap[pastDate] ?: emptyList()
-
-        specificGoals.forEachIndexed { index, (goal, _) ->
-            // Recent days fully complete, older days partially complete
-            dayGoals[goal] = if (i <= 2) true else (index % 2 == 0)
-        }
-        map[pastDate] = dayGoals
-    }
-    return map
-}
+// ... getGoalsForPersona and generateMockHistory removed for new DTO ...
 
 @Composable
 fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
-    if (personaResult == null) {
-        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-            Text(text = "No persona data yet.", style = MaterialTheme.typography.headlineMedium)
-            Text(
-                text = "Complete onboarding to unlock your adaptive dashboard.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        return
-    }
-
     val goalsRepository = remember { GoalsRepositoryImpl(NetworkModule.habitFlowApi) }
     val viewModel: HomeViewModel = viewModel(
         factory = HomeViewModelFactory(goalsRepository)
@@ -164,27 +60,49 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
     val weekDates = (0..6).map { startOfWeek.plusDays(it.toLong()) }
 
     LaunchedEffect(userId) {
-        if (userId.isNotBlank()) {
-            // Fetch goals for today, the selected date (if different), and the past 5 days, plus the rest of the week if necessary
-            val datesToFetch = (weekDates + today + (1..5).map { today.minusDays(it.toLong()) }).distinct()
-            viewModel.fetchGoalsForDateRange(datesToFetch, userId)
-        }
+        viewModel.fetchHomeData()
     }
 
-    if (uiState.isLoading && uiState.goalsMap.isEmpty()) {
+    if (uiState.isLoading && uiState.homeData == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         return
     }
 
-    // Dynamic goals fetch based on selected day!
-    val goalsForSelectedDate = uiState.goalsMap[selectedDate] ?: emptyList()
+    val homeData = uiState.homeData
+    if (homeData == null && !uiState.isLoading) {
+        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+            Text(text = "No goal data yet.", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                text = "Complete onboarding to unlock your adaptive dashboard.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
 
-    var checklistState by remember(uiState.goalsMap) { mutableStateOf(generateMockHistory(today, personaResult.personaType, uiState.goalsMap)) }
+    val actualPersonaTypeRaw = homeData?.personaType ?: personaResult?.personaType ?: "Achiever" // Default if null (logged in directly)
+    val actualPersonaType = actualPersonaTypeRaw.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+
+    // Grouping all tasks for GoalPlanSection
+    val goalsForSelectedDate = remember(homeData) {
+        val core = homeData?.coreGoals ?: emptyList()
+        val daily = homeData?.dailyVariations ?: emptyList()
+        core + daily
+    }
+
+    var checklistState by remember(goalsForSelectedDate) {
+        val map = mutableMapOf<String, Boolean>()
+        goalsForSelectedDate.forEach { task ->
+            map[task.id] = task.completed
+        }
+        mutableStateOf(map)
+    }
 
     // Determine specific persona colors
-    val (startColor, endColor) = when (personaResult.personaType) {
+    val (startColor, endColor) = when (actualPersonaType) {
         "Achiever" -> Color(0xFFFFD54F) to Color(0xFFFF8A65)
         "Grower" -> Color(0xFFAED581) to Color(0xFF4DB6AC)
         "Regulator", "Architect" -> Color(0xFF64B5F6) to Color(0xFF1E88E5)
@@ -223,7 +141,7 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Welcome, ${personaResult.personaType}!",
+            text = "Welcome, $actualPersonaType!",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.ExtraBold,
             color = Color(0xFF37474F)
@@ -245,15 +163,24 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
             elevation = CardDefaults.cardElevation(8.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
-            when (personaResult.personaType) {
-                "Achiever" -> AchieverHome(personaResult)
-                "Grower" -> GrowerHome(personaResult)
-                "Socializer" -> SocializerHome(personaResult)
-                "Explorer" -> ExplorerHome(personaResult)
-                "Altruist" -> AltruistHome(personaResult)
-                "Regulator" -> RegulatorHome(personaResult)
-                "Architect" -> ArchitectHome(personaResult)
-                else -> RegulatorHome(personaResult) // Default fallback to requested Regulator layout
+            if (homeData != null) {
+                Text(
+                    text = homeData.motivationalMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.DarkGray,
+                    modifier = Modifier.padding(24.dp)
+                )
+            }
+
+            when (actualPersonaType) {
+                "Achiever" -> AchieverHome()
+                "Grower" -> GrowerHome()
+                "Socializer" -> SocializerHome()
+                "Explorer" -> ExplorerHome()
+                "Altruist" -> AltruistHome()
+                "Regulator" -> RegulatorHome()
+                "Architect" -> ArchitectHome()
+                else -> RegulatorHome() // Default fallback to requested Regulator layout
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -263,15 +190,13 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
                 goals = goalsForSelectedDate,
                 selectedDate = selectedDate,
                 today = today,
-                checkedGoals = checklistState[selectedDate] ?: emptyMap(),
-                onGoalToggled = { goal, isChecked ->
-                    val dayMap = (checklistState[selectedDate] ?: emptyMap()).toMutableMap()
-                    dayMap[goal] = isChecked
+                checkedGoals = checklistState,
+                onGoalToggled = { taskId, isChecked ->
                     val newState = checklistState.toMutableMap()
-                    newState[selectedDate] = dayMap
+                    newState[taskId] = isChecked
                     checklistState = newState
                 },
-                personaType = personaResult.personaType
+                personaType = actualPersonaType
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -281,20 +206,19 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
                 today = today,
                 selectedDate = selectedDate,
                 onDateSelected = { selectedDate = it },
-                checklistState = checklistState,
-                personaType = personaResult.personaType,
-                goalsMap = uiState.goalsMap
+                checkedCount = checklistState.values.count { it },
+                totalCount = goalsForSelectedDate.size
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // Progress Phase Indicator
-            ProgressPhaseSection(personaResult.personaType)
+            ProgressPhaseSection(actualPersonaType)
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // Comprehensive Plan Explanation
-            PlanExplanationSection(personaResult.personaType)
+            PlanExplanationSection(actualPersonaType)
 
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -303,7 +227,7 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
 
 @Composable
 private fun GoalPlanSection(
-    goals: List<Pair<String, Int>>,
+    goals: List<HomeGoalTask>,
     selectedDate: LocalDate,
     today: LocalDate,
     checkedGoals: Map<String, Boolean>,
@@ -321,13 +245,13 @@ private fun GoalPlanSection(
             color = Color(0xFF37474F)
         )
 
-        goals.forEach { (goal, score) ->
-            val isChecked = checkedGoals[goal] ?: false
+        goals.forEach { task ->
+            val isChecked = checkedGoals[task.id] ?: task.completed
             InteractiveGoalItem(
-                goalText = goal,
-                score = if (personaType == "Achiever") score else 0,
+                goalText = task.description,
+                score = if (personaType == "Achiever") task.points else 0,
                 isChecked = isChecked,
-                onCheckedChange = { onGoalToggled(goal, it) }
+                onCheckedChange = { onGoalToggled(task.id, it) }
             )
         }
     }
@@ -338,9 +262,8 @@ private fun HistoryCalendarSection(
     today: LocalDate,
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
-    checklistState: Map<LocalDate, Map<String, Boolean>>,
-    personaType: String,
-    goalsMap: Map<LocalDate, List<Pair<String, Int>>>
+    checkedCount: Int,
+    totalCount: Int
 ) {
     val startOfWeek = today.with(DayOfWeek.MONDAY)
     val weekDates = (0..6).map { startOfWeek.plusDays(it.toLong()) }
@@ -362,13 +285,9 @@ private fun HistoryCalendarSection(
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(weekDates) { date ->
-                val dayChecks = checklistState[date]
-                val specificDateGoalsCount = goalsMap[date]?.size ?: 0
-
-                val checkedCount = dayChecks?.count { it.value } ?: 0
-                val isCompleted = checkedCount >= specificDateGoalsCount && specificDateGoalsCount > 0
                 val isToday = date == today
                 val isSelected = date == selectedDate
+                val isCompleted = isToday && (checkedCount >= totalCount && totalCount > 0)
 
                 Card(
                     modifier = Modifier
@@ -551,7 +470,7 @@ private fun InteractiveGoalItem(
 }
 
 @Composable
-private fun RegulatorHome(personaResult: ClassifyPersonaResponse) {
+private fun RegulatorHome() {
         Column(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -604,7 +523,7 @@ private fun TimeSlotCard(time: String, activity: String) {
 }
 
 @Composable
-private fun AchieverHome(personaResult: ClassifyPersonaResponse) {
+private fun AchieverHome() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -657,7 +576,7 @@ private fun LeaderboardRow(rank: Int, name: String, score: Int, highlight: Boole
 }
 
 @Composable
-private fun GrowerHome(personaResult: ClassifyPersonaResponse) {
+private fun GrowerHome() {
     BaseTemplate(
         title = "GROWER TEMPLATE",
         lines = listOf("🌱 Daily Reflection Log", "📚 Skills Acquired", "📈 Effort Graph")
@@ -665,7 +584,7 @@ private fun GrowerHome(personaResult: ClassifyPersonaResponse) {
 }
 
 @Composable
-private fun SocializerHome(personaResult: ClassifyPersonaResponse) {
+private fun SocializerHome() {
     BaseTemplate(
         title = "SOCIALIZER TEMPLATE",
         lines = listOf("👥 Team Challenges", "🗣️ Community Feed", "🙌 Supportive Cheers Sent: 12")
@@ -673,7 +592,7 @@ private fun SocializerHome(personaResult: ClassifyPersonaResponse) {
 }
 
 @Composable
-private fun ExplorerHome(personaResult: ClassifyPersonaResponse) {
+private fun ExplorerHome() {
     BaseTemplate(
         title = "EXPLORER TEMPLATE",
         lines = listOf("🧭 New Habits Discovered", "🗺️ Unknown Territory Unlocked", "🚀 Curiosity Quests")
@@ -681,7 +600,7 @@ private fun ExplorerHome(personaResult: ClassifyPersonaResponse) {
 }
 
 @Composable
-private fun AltruistHome(personaResult: ClassifyPersonaResponse) {
+private fun AltruistHome() {
     BaseTemplate(
         title = "ALTRUIST TEMPLATE",
         lines = listOf("🤝 Points Donated to Charity", "❤️ Friends Assisted", "🌟 Community Impact Score")
@@ -689,7 +608,7 @@ private fun AltruistHome(personaResult: ClassifyPersonaResponse) {
 }
 
 @Composable
-private fun ArchitectHome(personaResult: ClassifyPersonaResponse) {
+private fun ArchitectHome() {
     BaseTemplate(
         title = "ARCHITECT TEMPLATE",
         lines = listOf("🏗️ Foundation Habits", "📐 Daily Blueprint", "☑️ Checklists")

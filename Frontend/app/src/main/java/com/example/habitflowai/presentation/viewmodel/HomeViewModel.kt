@@ -9,9 +9,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import com.example.habitflowai.data.model.HomeResponse
 
 data class HomeUiState(
-    val goalsMap: Map<LocalDate, List<Pair<String, Int>>> = emptyMap(),
+    val homeData: HomeResponse? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -23,18 +24,12 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    fun fetchGoalsForDateRange(dates: List<LocalDate>, userId: String) {
+    fun fetchHomeData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            val updatedMap = _uiState.value.goalsMap.toMutableMap()
             try {
-                for (date in dates) {
-                    if (!updatedMap.containsKey(date)) {
-                        val goals = goalsRepository.fetchGoals(userId, date.dayOfWeek.value)
-                        updatedMap[date] = goals
-                    }
-                }
-                _uiState.value = _uiState.value.copy(goalsMap = updatedMap, isLoading = false)
+                val data = goalsRepository.getHomeData()
+                _uiState.value = _uiState.value.copy(homeData = data, isLoading = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message)
             }

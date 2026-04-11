@@ -17,12 +17,18 @@
  *     GoalTask:
  *       type: object
  *       properties:
+ *         id:
+ *           type: string
+ *           description: The unique identifier for the task.
  *         description:
  *           type: string
  *           description: The description of the habit-related task.
  *         points:
  *           type: number
  *           description: The point value assigned to completing the task.
+ *         completed:
+ *           type: boolean
+ *           description: Whether the task has been completed.
  *     GenerateGoalsResponse:
  *       type: object
  *       properties:
@@ -56,8 +62,10 @@ export interface GenerateGoalsRequest {
 }
 
 export interface GoalTask {
+  id: string;
   description: string;
   points: number;
+  completed: boolean;
 }
 
 export interface GenerateGoalsResponse {
