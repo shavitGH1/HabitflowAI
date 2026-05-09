@@ -12,7 +12,8 @@ services:
 
   backend:
     build:
-      context: ./apps/backend
+      context: .
+      dockerfile: apps/backend/Dockerfile
     depends_on:
       - mongo
     env_file:
@@ -20,7 +21,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./apps/backend/src:/app/src
+      - ./apps/backend/src:/app/apps/backend/src
 
   mongo-express:
     image: mongo-express:1

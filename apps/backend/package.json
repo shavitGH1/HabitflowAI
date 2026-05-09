@@ -11,13 +11,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "bcrypt",
-      "@nestjs/core",
-      "@scarf/scarf"
-    ]
-  },
   "dependencies": {
     "@google/genai": "^0.14.0",
     "@nestjs/common": "^11.1.19",
