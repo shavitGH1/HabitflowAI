@@ -1,18 +1,19 @@
 import { GoogleGenAI } from '@google/genai';
-import dotenv from 'dotenv';
 import { GenerateGoalsResponse, GoalTask } from '../dto/goal.dto';
 import { UserData as User } from '../users/user.repository';
 
-dotenv.config();
+// aiService is a plain module loaded at import time, before ConfigModule runs dotenv.
+// Read env vars lazily inside functions so they are resolved at call time.
+function getAI(): GoogleGenAI {
+  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+}
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// Updated to the stable models we verified earlier
-const FREE_TIER_MODELS = [
-  'gemini-2.5-flash-lite',
-  'gemini-flash-lite-latest',
-  'gemini-2.5-flash'
-];
+function getModels(): string[] {
+  const configured = process.env.GEMINI_MODEL;
+  return configured
+    ? [configured]
+    : ['gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
+}
 
 interface PersonaClassificationResult {
   isValid: boolean;
@@ -23,13 +24,11 @@ interface PersonaClassificationResult {
 export async function listAvailableModels() {
   try {
     console.log('Fetching available models...');
-
-    // In the new SDK, ai.models.list() returns an async iterable
-    const modelList = await ai.models.list();
+    const modelList = await getAI().models.list();
     const availableModels = [];
 
     for await (const model of modelList) {
-      console.log(model.name, model.supportedActions)
+      console.log(model.name, model.supportedActions);
       if (model.supportedActions?.includes('generateContent')) {
         availableModels.push(model);
       }
@@ -46,8 +45,11 @@ export async function listAvailableModels() {
 }
 
 async function generateWithFallback<T>(prompt: string): Promise<T> {
-  for (let i = 0; i < FREE_TIER_MODELS.length; i++) {
-    const currentModel = FREE_TIER_MODELS[i];
+  const models = getModels();
+  const ai = getAI();
+
+  for (let i = 0; i < models.length; i++) {
+    const currentModel = models[i];
 
     try {
       console.log(`Attempting generation with: ${currentModel}`);
@@ -68,7 +70,7 @@ async function generateWithFallback<T>(prompt: string): Promise<T> {
 
     } catch (error: any) {
       console.warn(`[Warning] ${currentModel} failed: ${error.message}`);
-      if (i === FREE_TIER_MODELS.length - 1) {
+      if (i === models.length - 1) {
         console.error("All fallback models exhausted.");
         throw new Error("AI Service is currently overloaded. Please try again in a few seconds.");
       }

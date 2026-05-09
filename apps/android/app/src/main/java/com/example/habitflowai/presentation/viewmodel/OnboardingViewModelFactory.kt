@@ -9,7 +9,8 @@ class OnboardingViewModelFactory(
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return OnboardingViewModel(repository) as T
+        if (modelClass.isAssignableFrom(OnboardingViewModel::class.java)) return OnboardingViewModel(repository) as T
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
 

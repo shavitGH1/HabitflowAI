@@ -11,10 +11,11 @@ import okhttp3.Authenticator
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
+import com.example.habitflowai.BuildConfig
 import com.example.habitflowai.data.model.TokenRefreshRequest
 
 object NetworkModule {
-    private const val BASE_URL = "http://10.0.0.10:3000/"
+    private val BASE_URL = BuildConfig.BASE_URL
 
     var accessToken: String? = null
     var refreshToken: String? = null

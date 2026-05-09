@@ -57,6 +57,7 @@ class LoginViewModel(private val api: HabitFlowApi) : ViewModel() {
 }
 
 class LoginViewModelFactory(private val api: HabitFlowApi) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(LoginViewModel::class.java)) return LoginViewModel(api) as T
         throw IllegalArgumentException("Unknown ViewModel class")

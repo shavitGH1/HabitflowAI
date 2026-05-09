@@ -56,7 +56,6 @@ val quizQuestions = listOf(
     )
 )
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun OnboardingScreen(
     uiState: OnboardingUiState,
@@ -79,7 +78,7 @@ fun OnboardingScreen(
         if (currentStep < quizQuestions.size) {
             val progress = (currentStep + 1).toFloat() / quizQuestions.size
             LinearProgressIndicator(
-                progress = progress,
+                progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp),

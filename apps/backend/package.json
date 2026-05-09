@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node dist/main.js",
     "start:dev": "ts-node-dev --respawn --transpile-only -r reflect-metadata src/main.ts",
-    "build": "tsc"
+    "dev": "ts-node-dev --respawn --transpile-only -r reflect-metadata src/main.ts",
+    "build": "tsc",
+    "test": "echo \"No tests yet\" && exit 0"
   },
   "keywords": [],
   "author": "",
