@@ -1,13 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { classifyPersona, generateInitialGoals } from '../services/aiService';
-import { findUserById, updateUserPersona } from '../repository/userRepository';
+import { UserRepository } from '../users/user.repository';
 import { ReclassifyDto } from './dto/reclassify.dto';
 
 @Injectable()
 export class PersonasService {
+  constructor(private readonly userRepository: UserRepository) {}
+
   async reclassify(userId: string, { goal, quizAnswers }: ReclassifyDto) {
-    const user = findUserById(userId);
+    const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
     const classification = await classifyPersona(goal, quizAnswers);
@@ -21,7 +23,7 @@ export class PersonasService {
       today.getDay(),
     );
 
-    const updatedUser = updateUserPersona(userId, {
+    const updatedUser = await this.userRepository.updateUserPersona(userId, {
       goal,
       personaType: classification.personaType,
       motivationalMessage: goals.motivationalMessage ?? '',

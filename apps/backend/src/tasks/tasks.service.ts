@@ -1,18 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { findUserById } from '../repository/userRepository';
+import { UserRepository } from '../users/user.repository';
 
 @Injectable()
 export class TasksService {
-  completeTask(userId: string, taskId: string) {
-    const user = findUserById(userId);
+  constructor(private readonly userRepository: UserRepository) {}
+
+  async completeTask(userId: string, taskId: string) {
+    const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
-    const task =
-      user.coreGoals.find(t => t.id === taskId) ??
-      user.dailyVariations.find(t => t.id === taskId);
-    if (!task) throw new NotFoundException('Task not found');
+    const found = await this.userRepository.completeTask(userId, taskId);
+    if (!found) throw new NotFoundException('Task not found');
 
-    task.completed = true;
     return { message: 'Task marked as complete', success: true };
   }
 }

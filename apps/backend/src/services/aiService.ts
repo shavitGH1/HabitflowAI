@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { GenerateGoalsResponse, GoalTask } from '../dto/goal.dto';
-import { User } from '../repository/userRepository';
+import { UserData as User } from '../users/user.repository';
 
 dotenv.config();
 

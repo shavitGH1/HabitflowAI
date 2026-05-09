@@ -3,15 +3,17 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { classifyPersona, generateDailyVariations, generateInitialGoals } from '../services/aiService';
-import { findUserByEmail, findUserById, saveUser, updateUserDailyTasks, updateUserRefreshToken } from '../repository/userRepository';
-import { RegisterDto } from './dto/register.dto';
+import { UserRepository } from '../users/user.repository';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
+  constructor(private readonly userRepository: UserRepository) {}
+
   async register({ email, password, goal, quizAnswers }: RegisterDto) {
-    if (findUserByEmail(email)) {
+    if (await this.userRepository.findUserByEmail(email)) {
       throw new BadRequestException('User with this email already exists');
     }
 
@@ -27,7 +29,7 @@ export class AuthService {
       today.getDay(),
     );
 
-    const newUser = saveUser({
+    const newUser = await this.userRepository.saveUser({
       email,
       password: hashedPassword,
       goal,
@@ -42,7 +44,7 @@ export class AuthService {
   }
 
   async login({ email, password }: LoginDto) {
-    const user = findUserByEmail(email);
+    const user = await this.userRepository.findUserByEmail(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -52,20 +54,23 @@ export class AuthService {
     const todayStr = today.toISOString().split('T')[0];
     if (user.tasksLastGeneratedDate !== todayStr) {
       const newDailyTasks = await generateDailyVariations(user, today.getDay());
-      updateUserDailyTasks(user.id, newDailyTasks.map(t => ({ ...t, id: uuidv4(), completed: false })));
+      await this.userRepository.updateUserDailyTasks(
+        user.id,
+        newDailyTasks.map(t => ({ ...t, id: uuidv4(), completed: false })),
+      );
     }
 
     const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
     const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_REFRESH_SECRET as string, { expiresIn: '7d' });
-    updateUserRefreshToken(user.id, refreshToken);
+    await this.userRepository.updateUserRefreshToken(user.id, refreshToken);
 
     return { accessToken, refreshToken, success: true };
   }
 
-  refresh({ refreshToken }: RefreshDto) {
+  async refresh({ refreshToken }: RefreshDto) {
     try {
       const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string) as { id: string };
-      const user = findUserById(decoded.id);
+      const user = await this.userRepository.findUserById(decoded.id);
       if (!user || user.refreshToken !== refreshToken) throw new Error();
 
       const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
@@ -75,8 +80,8 @@ export class AuthService {
     }
   }
 
-  logout(userId: string) {
-    updateUserRefreshToken(userId, undefined);
+  async logout(userId: string) {
+    await this.userRepository.updateUserRefreshToken(userId, undefined);
     return { message: 'Successfully logged out', success: true };
   }
 }
