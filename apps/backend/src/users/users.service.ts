@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import { generateDailyVariations } from '../services/aiService';
+import { AiService } from '../ai/ai.service';
 import { UserRepository } from './user.repository';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly ai: AiService,
+  ) {}
 
   async getHomePageData(userId: string) {
     const user = await this.userRepository.findUserById(userId);
@@ -13,7 +16,7 @@ export class UsersService {
 
     const today = new Date().toISOString().split('T')[0];
     if (user.tasksLastGeneratedDate !== today) {
-      const newDailyTasks = await generateDailyVariations(user, new Date().getDay());
+      const newDailyTasks = await this.ai.generateDailyVariations(user, new Date().getDay());
       const updatedTasks = newDailyTasks.map(t => ({ ...t, id: uuidv4(), completed: false }));
       const updated = await this.userRepository.updateUserDailyTasks(userId, updatedTasks);
       user.dailyVariations = updated?.dailyVariations ?? updatedTasks;
