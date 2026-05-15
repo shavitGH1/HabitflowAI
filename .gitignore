@@ -1,83 +1,84 @@
 # =========================
 # Backend (Node.js & TypeScript)
 # =========================
-# Dependencies
-Backend/node_modules/
+.env
+apps/backend/node_modules/
+apps/backend/dist/
+apps/backend/.env
+apps/backend/tsconfig.tsbuildinfo
+apps/backend/firebase-service-account.json
 
-# Build output
-Backend/dist/
-
-# Environment variables & Secrets (DO NOT COMMIT)
-Backend/.env
-Backend/firebase-service-account.json
+# pnpm & Turbo
+node_modules/
+.pnpm-store/
+.turbo/
 
 # Logs
-Backend/npm-debug.log*
-Backend/yarn-debug.log*
-Backend/yarn-error.log*
-Backend/*.log
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # =========================
-# Frontend (Android, Kotlin & Gradle)
+# Android (Kotlin & Gradle)
 # =========================
-# Gradle files
-Frontend/.gradle/
-Frontend/build/
-Frontend/*/build/
-Frontend/**/build/
-Frontend/gradle.properties
-
-# Local configuration file (sdk path, etc)
-Frontend/local.properties
-
-# Compiled class file
-Frontend/*.class
-
-# Log file
-Frontend/*.log
-
-# Mobile Tools for Java (J2ME)
-Frontend/.mtj.tmp/
-
-# Package Files
-Frontend/*.jar
-Frontend/*.war
-Frontend/*.nar
-Frontend/*.ear
-Frontend/*.zip
-Frontend/*.tar.gz
-Frontend/*.rar
-
-# Android Studio / IntelliJ IDEA
-Frontend/.idea/
-Frontend/*.iml
-Frontend/*.modules.xml
-
-# Android compiled binaries
-Frontend/*.apk
-Frontend/*.ap_
-Frontend/*.aab
-Frontend/*.dex
-
-# NDK
-Frontend/obj/
-
-# Android Studio captures folder
-Frontend/captures/
-
-# Google Services (Client-side Firebase config - DO NOT COMMIT)
-Frontend/google-services.json
-Frontend/app/google-services.json
-
-# Keystore files (DO NOT COMMIT)
-Frontend/*.jks
-Frontend/*.keystore
+# Gradle caches and build output
+apps/android/.gradle/
+apps/android/build/
+apps/android/*/build/
+apps/android/**/build/
+apps/android/buildOutputCleanup/
+apps/android/vcs-*/
+# Gradle version-named cache dirs (e.g. 8.13/)
+apps/android/[0-9]*/
+# Gradle internals
+apps/android/config.properties
+apps/android/file-system.probe
+apps/android/gradle/gradle-daemon-jvm.properties
+# Build log files
+apps/android/build_output*.txt
+# Local config (never commit)
+apps/android/gradle.properties
+apps/android/local.properties
+# Compiled / generated
+apps/android/*.class
+apps/android/.mtj.tmp/
+apps/android/*.jar
+apps/android/*.war
+apps/android/*.nar
+apps/android/*.ear
+apps/android/*.zip
+apps/android/*.tar.gz
+apps/android/*.rar
+# IDE
+apps/android/.idea/
+apps/android/*.iml
+apps/android/*.modules.xml
+# Android binaries
+apps/android/*.apk
+apps/android/*.ap_
+apps/android/*.aab
+apps/android/*.dex
+apps/android/obj/
+apps/android/captures/
+# Secrets
+apps/android/google-services.json
+apps/android/app/google-services.json
+apps/android/*.jks
+apps/android/*.keystore
 
 # =========================
-# OS & IDE Files (Applied Globally)
+# OS & IDE
 # =========================
 .vscode/
 .DS_Store
 Thumbs.db
 *.swp
 */.idea
+.idea/
+
+# =========================
+# Project-specific
+# =========================
+.claude/
+.docs/
