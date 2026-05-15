@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -21,9 +22,11 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
   @ApiOperation({ summary: 'Login and receive JWT access + refresh tokens' })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }

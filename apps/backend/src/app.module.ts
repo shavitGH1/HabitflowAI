@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ThrottlerModule } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import { AuthModule } from './auth/auth.module';
 import { PersonasModule } from './personas/personas.module';
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module';
         uri: config.get<string>('MONGO_URI'),
       }),
     }),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 5 }]),
     AuthModule,
     UsersModule,
     TasksModule,
