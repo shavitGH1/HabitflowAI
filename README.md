@@ -1,206 +1,257 @@
-# HabitFlowAI (POC)
+# HabitFlow AI
 
-HabitFlowAI is a mobile + backend proof of concept for personalized habit coaching.
-The backend uses Gemini to classify user motivation persona and generate goal plans, and the Android app consumes the API with Retrofit.
+HabitFlow AI is a smart Android habit coaching app that identifies a user's motivational
+persona (Achiever, Grower, Socializer, Explorer, Altruist, Architect) using Gemini AI and
+adapts the experience — goals, daily tasks, and motivation messages — to that persona.
 
-## What This Project Includes
+## Stack
 
-- Backend: Node.js + TypeScript + Express + Swagger
-- Frontend: Android app (Kotlin + Jetpack Compose)
-- Auth flow: Register, login, JWT access token + refresh token
-- AI flow: Persona classification, motivational message generation, and daily task variations
+- **Monorepo:** pnpm workspaces + Turbo
+- **Backend:** NestJS + TypeScript (strict), MongoDB via Docker, Mongoose
+- **Auth:** JWT access token (15 min) + refresh token (7 days) + Google OAuth
+- **AI:** Google Gemini (via AI Studio) — persona classification, portfolio generation, daily motivation
+- **Android:** Kotlin + Jetpack Compose, MVVM + Clean Architecture, Room (offline SSOT), Hilt, Retrofit
+- **Containerization:** Docker Compose (MongoDB only — backend runs locally)
 
 ## Repository Structure
 
-		Backend/
-			src/
-				config/
-				controllers/
-				dto/
-				middleware/
-				repository/
-				routes/
-				services/
+```
+/
+├── apps/
+│   ├── backend/          NestJS API (runs locally)
+│   └── android/          Android app (Kotlin + Jetpack Compose)
+├── packages/
+│   └── shared-types/     Shared TypeScript enums (PersonaType, etc.)
+├── docker-compose.yml    MongoDB + mongo-express only
+├── turbo.json
+├── pnpm-workspace.yaml
+└── package.json          pnpm workspace root
+```
 
-		Frontend/
-			app/src/main/
+## Prerequisites
+
+- Node.js 20+
+- pnpm 9+ (`npm install -g pnpm`)
+- Docker Desktop (for MongoDB)
+- Android Studio (for the Android app)
+- JDK 17
+
+---
+
+## Quick Start
+
+```
+pnpm install
+docker compose up -d
+cd apps/backend && pnpm dev
+```
+
+That's it. Backend is live at `http://localhost:3000`.
+
+---
 
 ## Backend Setup
 
-### Prerequisites
+### 1. Install dependencies
 
-- Node.js 18+
-- npm 9+
+From the repo root:
 
-### Install dependencies
+```
+pnpm install
+```
 
-		cd Backend
-		npm install
+### 2. Configure environment
 
-### Required local .env
+```
+copy apps\backend\.env.example apps\backend\.env
+```
 
-Start from the template:
+Edit `apps/backend/.env`:
 
-	copy Backend\\.env.example Backend\\.env
+```
+PORT=3000
+MONGO_URI=mongodb://admin:password@localhost:27018/habitflow?authSource=admin
+GEMINI_API_KEY=your_gemini_api_key
+JWT_SECRET=your_jwt_secret
+JWT_REFRESH_SECRET=your_jwt_refresh_secret
+```
 
-Or create a file at Backend/.env with:
+Also create the root `.env` for Docker Compose:
 
-		PORT=3000
-		GEMINI_API_KEY=YOUR_GEMINI_API_KEY
-		JWT_SECRET=YOUR_ACCESS_TOKEN_SECRET
-		JWT_REFRESH_SECRET=YOUR_REFRESH_TOKEN_SECRET
+```
+copy .env.example .env
+```
 
-Environment variables used by the backend:
+Variable reference:
 
-- PORT: Optional. Defaults to 3000.
-- GEMINI_API_KEY: Required. Used by Gemini SDK in AI service.
-- JWT_SECRET: Required. Used to sign/verify access tokens.
-- JWT_REFRESH_SECRET: Required. Used to sign/verify refresh tokens.
+| Variable | File | Required | Description |
+|---|---|---|---|
+| PORT | apps/backend/.env | No (default 3000) | Backend listen port |
+| MONGO_URI | apps/backend/.env | Yes | MongoDB connection string |
+| GEMINI_API_KEY | apps/backend/.env | Yes | Google AI Studio key |
+| JWT_SECRET | apps/backend/.env | Yes | Signs access tokens |
+| JWT_REFRESH_SECRET | apps/backend/.env | Yes | Signs refresh tokens |
+| MONGO_INITDB_ROOT_USERNAME | .env (root) | Yes | Mongo root user for Docker |
+| MONGO_INITDB_ROOT_PASSWORD | .env (root) | Yes | Mongo root password for Docker |
 
-Security note:
+Never commit either `.env` file. Rotate secrets immediately if exposed.
 
-- Never commit Backend/.env.
-- Rotate secrets immediately if they are ever exposed.
+### 3. Start MongoDB
 
-### Run backend
+```
+docker compose up -d
+```
 
-		cd Backend
-		npm start
+MongoDB is ready when `docker compose ps` shows `healthy` for `habitflow-mongo`.
 
-Server starts on:
+### 4. Start the backend
 
-- http://localhost:3000
-- Swagger UI: http://localhost:3000/api-docs
+```
+cd apps/backend
+pnpm dev
+```
 
-## Swagger Documentation
+Or from the repo root:
 
-Swagger is configured with OpenAPI 3.0 and generated from route + DTO annotations.
+```
+pnpm dev
+```
 
-- Source config: Backend/src/config/swagger.ts
-- Scanned annotations: Backend/src/routes/*.ts and Backend/src/dto/*.ts
-- Global auth scheme: Bearer JWT
+Services:
 
-How to use Swagger auth:
+| Service | URL |
+|---|---|
+| Backend API | http://localhost:3000 |
+| Swagger UI | http://localhost:3000/api-docs |
 
-1. Login using the auth endpoint to get an access token.
-2. Click Authorize in Swagger UI.
-3. Paste: Bearer YOUR_ACCESS_TOKEN
-4. Call protected endpoints.
+### 5. Start mongo-express (optional, GUI for MongoDB)
+
+```
+docker compose --profile dev up -d
+```
+
+mongo-express: http://localhost:8081
+
+### 6. Run tests
+
+```
+pnpm test
+```
+
+Or from the backend directory:
+
+```
+cd apps/backend && pnpm test
+```
+
+### Stop MongoDB
+
+```
+docker compose down
+```
+
+To also wipe all data:
+
+```
+docker compose down -v
+```
+
+---
+
+## Android Setup
+
+### 1. Open in Android Studio
+
+Open the `apps/android/` folder in Android Studio. Sync Gradle when prompted.
+
+### 2. Set backend URL
+
+Open `apps/android/local.properties` and set your backend URL:
+
+```properties
+# Emulator
+backend.base.url=http://10.0.2.2:3000/
+
+# Physical device (find your LAN IP via ipconfig)
+backend.base.url=http://192.168.x.x:3000/
+```
+
+The default is `10.0.2.2:3000` (emulator) if the property is not set.
+
+### 3. Run
+
+Select a device/emulator and press Run.
+
+---
+
+## Monorepo Commands
+
+Run from the repo root. Turbo caches results — repeated runs only re-execute what changed.
+
+| Command | Description |
+|---|---|
+| `pnpm install` | Install all workspace dependencies |
+| `pnpm dev` | Start backend in watch/dev mode |
+| `pnpm build` | Build all apps |
+| `pnpm test` | Run all test suites |
+| `docker compose up -d` | Start MongoDB |
+| `docker compose down` | Stop MongoDB |
+| `docker compose down -v` | Stop MongoDB and wipe data |
+
+---
 
 ## API Reference
 
-Base URL:
-
-- http://localhost:3000
+Base URL: `http://localhost:3000`
+Full interactive docs: `http://localhost:3000/api-docs`
 
 ### Auth
 
-- POST /api/v1/auth/register
-	- Public
-	- Body: email, password, goal, quizAnswers[]
-	- Response: userId, success
-
-- POST /api/v1/auth/login
-	- Public
-	- Body: email, password
-	- Response: accessToken, refreshToken, success
-
-- POST /api/v1/auth/refresh
-	- Public
-	- Body: refreshToken
-	- Response: accessToken, success
-
-- POST /api/v1/auth/logout
-	- Protected (Bearer token)
-	- Response: success message
+| Method | Endpoint | Auth | Body |
+|---|---|---|---|
+| POST | /api/v1/auth/register | Public | email, password, goal, openAnswers[] |
+| POST | /api/v1/auth/login | Public | email, password |
+| POST | /api/v1/auth/refresh | Public | refreshToken |
+| POST | /api/v1/auth/logout | Bearer | — |
 
 ### Users
 
-- GET /api/v1/users/me/home
-	- Protected (Bearer token)
-	- Returns: goal, personaType, motivationalMessage, coreGoals, dailyVariations
-	- Daily variations are regenerated automatically once per day.
+| Method | Endpoint | Auth | Returns |
+|---|---|---|---|
+| GET | /api/v1/users/me/home | Bearer | goal, personaType, portfolio, coreGoals, dailyVariations |
 
 ### Tasks
 
-- PATCH /api/v1/tasks/:taskId/complete
-	- Protected (Bearer token)
-	- Marks task as completed.
+| Method | Endpoint | Auth | Body |
+|---|---|---|---|
+| PATCH | /api/v1/tasks/:taskId/complete | Bearer | — |
 
 ### Personas
 
-- POST /api/v1/personas/reclassify
-	- Protected (Bearer token)
-	- Body: goal, quizAnswers[]
-	- Reclassifies persona and regenerates motivational message + tasks.
+| Method | Endpoint | Auth | Body |
+|---|---|---|---|
+| POST | /api/v1/personas/reclassify | Bearer | goal, openAnswers[] |
 
-### Utility
+---
 
-- GET /api/v1/models
-	- Public
-	- Returns available Gemini models that support generateContent.
+## Swagger Auth
 
-### Not currently mounted
+1. Login via `POST /api/v1/auth/login` and copy the `accessToken`.
+2. Click **Authorize** in Swagger UI.
+3. Enter: `Bearer YOUR_ACCESS_TOKEN`
+4. Call any protected endpoint.
 
-- Route file exists for POST /api/v1/goals/generate, but the goals router is not mounted in Backend/src/server.ts right now.
+---
 
-## Data Persistence (Important for POC)
+## Data Persistence
 
-User data is currently stored in-memory (Map in repository layer).
+User data is stored in MongoDB running in Docker. Data persists across restarts via the
+`mongo_data` Docker volume. Removing the container does **not** delete data.
 
-Implications:
+---
 
-- Restarting backend clears all users/tasks/tokens.
-- This is expected for the current POC phase.
+## Security Notes
 
-## Frontend Setup (Android)
-
-### Prerequisites
-
-- Android Studio (recent stable)
-- JDK 17
-- Android SDK / Gradle setup required by project files
-
-### Run
-
-1. Open Frontend in Android Studio.
-2. Sync Gradle.
-3. Run app module on emulator/device.
-
-### Backend URL in app
-
-Current Retrofit base URL is defined in:
-
-- Frontend/app/src/main/java/com/habitflowai/data/network/RetrofitProvider.kt
-
-Current value:
-
-		http://10.0.2.2:3000/
-
-Notes:
-
-- 10.0.2.2 is Android emulator alias to host localhost.
-- For a physical device, use your machine LAN IP (for example http://192.168.1.25:3000/).
-- Device and backend machine must be on the same network.
-
-## Quick Local Validation Flow
-
-1. Start backend.
-2. Open Swagger at /api-docs.
-3. Register a user.
-4. Login and copy accessToken.
-5. Authorize Swagger with Bearer token.
-6. Call GET /api/v1/users/me/home.
-7. Complete a task with PATCH /api/v1/tasks/:taskId/complete.
-
-## Build Scripts
-
-Backend package scripts:
-
-- npm start: Run backend with ts-node
-- npm run build: Compile TypeScript
-
-## Current Scope Notes
-
-- This repository contains legacy/parallel Android package paths under both com.habitflowai and com.example.habitflowai.
-- The backend API in this README reflects currently mounted routes in server.ts.
+- Passwords hashed with bcrypt (cost ≥ 10). Never logged.
+- Refresh tokens stored in MongoDB; invalidated on logout.
+- All Gemini API keys live in `apps/backend/.env` only — the Android app never holds them.
