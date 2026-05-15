@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,6 +14,7 @@ export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly ai: AiService,
+    private readonly config: ConfigService,
   ) {}
 
   async register({ email, password, goal, quizAnswers }: RegisterDto) {
@@ -63,8 +65,8 @@ export class AuthService {
       );
     }
 
-    const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
-    const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_REFRESH_SECRET as string, { expiresIn: '7d' });
+    const accessToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_SECRET')!, { expiresIn: this.config.get<string>('JWT_ACCESS_EXPIRATION') });
+    const refreshToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_REFRESH_SECRET')!, { expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRATION') });
     await this.userRepository.updateUserRefreshToken(user.id, refreshToken);
 
     return { accessToken, refreshToken, success: true };
@@ -72,11 +74,11 @@ export class AuthService {
 
   async refresh({ refreshToken }: RefreshDto) {
     try {
-      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string) as { id: string };
+      const decoded = jwt.verify(refreshToken, this.config.get<string>('JWT_REFRESH_SECRET')!) as { id: string };
       const user = await this.userRepository.findUserById(decoded.id);
       if (!user || user.refreshToken !== refreshToken) throw new Error();
 
-      const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
+      const accessToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_SECRET')!, { expiresIn: this.config.get<string>('JWT_ACCESS_EXPIRATION') });
       return { accessToken, success: true };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
