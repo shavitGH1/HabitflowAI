@@ -1,5 +1,5 @@
 import { GeminiClient } from '../gemini.client';
-import { buildPersonaClassifierPrompt } from '../prompts/persona-classifier.prompt';
+import { buildPersonaClassifierPrompt } from '../prompts/persona-classifier-quiz.prompt';
 
 const VALID_PERSONAS = ['Achiever', 'Grower', 'Socializer', 'Explorer', 'Altruist', 'Architect'];
 
