@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ThrottlerModule } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import { AuthModule } from './auth/auth.module';
 import { PersonasModule } from './personas/personas.module';
@@ -19,6 +20,8 @@ import { LoggingMiddleware } from './middleware/logging.middleware';
         GEMINI_API_KEY: Joi.string().required(),
         JWT_SECRET: Joi.string().required(),
         JWT_REFRESH_SECRET: Joi.string().required(),
+        JWT_ACCESS_EXPIRATION: Joi.string().default('15m'),
+        JWT_REFRESH_EXPIRATION: Joi.string().default('7d'),
       }),
       validationOptions: { abortEarly: true },
     }),
@@ -28,6 +31,7 @@ import { LoggingMiddleware } from './middleware/logging.middleware';
         uri: config.get<string>('MONGO_URI'),
       }),
     }),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 5 }]),
     AuthModule,
     UsersModule,
     TasksModule,

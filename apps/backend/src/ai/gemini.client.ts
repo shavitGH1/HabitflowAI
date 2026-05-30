@@ -17,17 +17,20 @@ export class GeminiClient {
       : ['gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
   }
 
-  async generateJson<T>(prompt: string, schema: ZodSchema<T>): Promise<T> {
+  async generateJson<T>(prompt: string, schema?: ZodSchema<T>): Promise<T> {
     const raw = await this.callWithFallback(prompt);
     const parsed = this.parseJson(raw);
-    const result = schema.safeParse(parsed);
 
-    if (!result.success) {
-      this.logger.error(`Gemini output failed schema validation: ${result.error.message}`);
-      throw new InternalServerErrorException('AI returned invalid output. Please try again.');
+    if (schema) {
+      const result = schema.safeParse(parsed);
+      if (!result.success) {
+        this.logger.error(`Gemini output failed schema validation: ${result.error.message}`);
+        throw new InternalServerErrorException('AI returned invalid output. Please try again.');
+      }
+      return result.data;
     }
 
-    return result.data;
+    return parsed as T;
   }
 
   private async callWithFallback(prompt: string): Promise<string> {
@@ -39,11 +42,8 @@ export class GeminiClient {
           contents: prompt,
           config: { responseMimeType: 'application/json' },
         });
-
         const text = response.text;
-        if (!text) {
-          throw new Error('Empty response');
-        }
+        if (!text) throw new Error('Empty response');
         return text;
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);

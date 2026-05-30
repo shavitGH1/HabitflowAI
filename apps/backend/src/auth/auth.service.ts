@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { classifyPersona, generateDailyVariations, generateInitialGoals } from '../services/aiService';
+import { AiService } from '../ai/ai.service';
 import { UserRepository } from '../users/user.repository';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
@@ -10,21 +11,25 @@ import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly ai: AiService,
+    private readonly config: ConfigService,
+  ) {}
 
   async register({ email, password, goal, quizAnswers }: RegisterDto) {
     if (await this.userRepository.findUserByEmail(email)) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const classification = await classifyPersona(goal, quizAnswers);
+    const classification = await this.ai.classifyPersona(goal, quizAnswers);
     if (!classification.isValid || !classification.personaType) {
       throw new BadRequestException(`Invalid input: ${classification.errorReason}`);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const today = new Date();
-    const goals = await generateInitialGoals(
+    const goals = await this.ai.generateInitialGoals(
       { goal, personaType: classification.personaType, email },
       today.getDay(),
     );
@@ -53,15 +58,15 @@ export class AuthService {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     if (user.tasksLastGeneratedDate !== todayStr) {
-      const newDailyTasks = await generateDailyVariations(user, today.getDay());
+      const newDailyTasks = await this.ai.generateDailyVariations(user, today.getDay());
       await this.userRepository.updateUserDailyTasks(
         user.id,
         newDailyTasks.map(t => ({ ...t, id: uuidv4(), completed: false })),
       );
     }
 
-    const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
-    const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_REFRESH_SECRET as string, { expiresIn: '7d' });
+    const accessToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_SECRET')!, { expiresIn: this.config.get<string>('JWT_ACCESS_EXPIRATION') });
+    const refreshToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_REFRESH_SECRET')!, { expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRATION') });
     await this.userRepository.updateUserRefreshToken(user.id, refreshToken);
 
     return { accessToken, refreshToken, success: true };
@@ -69,11 +74,11 @@ export class AuthService {
 
   async refresh({ refreshToken }: RefreshDto) {
     try {
-      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string) as { id: string };
+      const decoded = jwt.verify(refreshToken, this.config.get<string>('JWT_REFRESH_SECRET')!) as { id: string };
       const user = await this.userRepository.findUserById(decoded.id);
       if (!user || user.refreshToken !== refreshToken) throw new Error();
 
-      const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
+      const accessToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_SECRET')!, { expiresIn: this.config.get<string>('JWT_ACCESS_EXPIRATION') });
       return { accessToken, success: true };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
