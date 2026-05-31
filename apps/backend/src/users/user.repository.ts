@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { logger } from '../logger';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { GoalTask } from '../dto/goal.dto';
@@ -23,11 +24,16 @@ export class UserRepository {
   constructor(@InjectModel(User.name) private readonly userModel: Model<UserDocument>) {}
 
   async saveUser(data: Omit<UserData, 'id'>): Promise<UserData> {
-    const instance = new this.userModel();
-    Object.assign(instance, data);
-    // Mongoose 9 + TS: save() return type causes deep type inference — cast via unknown
-    const doc = (await instance.save()) as unknown as UserDocument;
-    return this.toUserData(doc);
+    try {
+      const instance = new this.userModel();
+      Object.assign(instance, data);
+      // Mongoose 9 + TS: save() return type causes deep type inference — cast via unknown
+      const doc = (await instance.save()) as unknown as UserDocument;
+      return this.toUserData(doc);
+    } catch (error) {
+      logger.error({ err: error }, 'DB error in saveUser');
+      throw error;
+    }
   }
 
   async findUserById(id: string): Promise<UserData | null> {
