@@ -17,6 +17,11 @@ export interface UserData {
   tasksLastGeneratedDate: string;
   refreshToken?: string;
   personaBreakdown?: Record<string, number>;
+  weightedScores?: Record<string, number>;
+  portfolioSummary?: string;
+  tips?: string[];
+  failurePatterns?: string[];
+  confidenceScore?: number;
 }
 
 @Injectable()
@@ -102,6 +107,11 @@ export class UserRepository {
       tasksLastGeneratedDate: doc.tasksLastGeneratedDate,
       refreshToken: doc.refreshToken,
       personaBreakdown: doc.personaBreakdown,
+      weightedScores: doc.weightedScores,
+      portfolioSummary: doc.portfolioSummary,
+      tips: doc.tips,
+      failurePatterns: doc.failurePatterns,
+      confidenceScore: doc.confidenceScore,
     };
   }
 }
