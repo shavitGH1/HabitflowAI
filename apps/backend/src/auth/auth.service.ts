@@ -8,6 +8,7 @@ import { UserRepository } from '../users/user.repository';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
+import { logger } from '../logger';
 
 @Injectable()
 export class AuthService {
@@ -45,15 +46,22 @@ export class AuthService {
       tasksLastGeneratedDate: today.toISOString().split('T')[0],
     });
 
+    logger.info({ userId: newUser.id }, 'user registered');
     return { message: 'User registered successfully', userId: newUser.id, success: true };
   }
 
   async login({ email, password }: LoginDto) {
     const user = await this.userRepository.findUserByEmail(email);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user) {
+      logger.warn({ email }, 'login failed: unknown email');
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
+    if (!isPasswordValid) {
+      logger.warn({ email }, 'login failed: invalid password');
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
@@ -69,6 +77,7 @@ export class AuthService {
     const refreshToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_REFRESH_SECRET')!, { expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRATION') });
     await this.userRepository.updateUserRefreshToken(user.id, refreshToken);
 
+    logger.info({ userId: user.id }, 'user logged in');
     return { accessToken, refreshToken, success: true };
   }
 
