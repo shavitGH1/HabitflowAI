@@ -49,6 +49,21 @@ export class User {
 
   @Prop({ type: Object, default: {} })
   personaBreakdown: Record<string, number>;
+
+  @Prop({ type: Object, default: {} })
+  weightedScores: Record<string, number>;
+
+  @Prop({ default: '' })
+  portfolioSummary: string;
+
+  @Prop({ type: [String], default: [] })
+  tips: string[];
+
+  @Prop({ type: [String], default: [] })
+  failurePatterns: string[];
+
+  @Prop()
+  confidenceScore?: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
