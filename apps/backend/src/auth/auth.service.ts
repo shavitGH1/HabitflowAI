@@ -18,36 +18,49 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register({ email, password, goal, quizAnswers }: RegisterDto) {
+  async register({ email, password, openAnswers }: RegisterDto) {
     if (await this.userRepository.findUserByEmail(email)) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const classification = await this.ai.classifyPersona(goal, quizAnswers);
-    if (!classification.isValid || !classification.personaType) {
+    const goal = openAnswers[0];
+
+    const classification = await this.ai.classifyPersonaWeighted({ goal, openAnswers });
+    if (!classification.isValid) {
       throw new BadRequestException(`Invalid input: ${classification.errorReason}`);
     }
 
+    const { personaType, weightedBreakdown, confidenceScore } = classification;
+    const portfolio = await this.ai.generatePortfolio({ goal, openAnswers, personaType, weightedBreakdown });
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const today = new Date();
-    const goals = await this.ai.generateInitialGoals(
-      { goal, personaType: classification.personaType, email },
-      today.getDay(),
-    );
 
     const newUser = await this.userRepository.saveUser({
       email,
       password: hashedPassword,
       goal,
-      personaType: classification.personaType,
-      motivationalMessage: goals.motivationalMessage ?? '',
-      coreGoals: goals.coreGoals?.map(g => ({ ...g, id: uuidv4(), completed: false })) ?? [],
-      dailyVariations: goals.dailyVariations?.map(g => ({ ...g, id: uuidv4(), completed: false })) ?? [],
+      personaType,
+      motivationalMessage: portfolio.summary,
+      coreGoals: portfolio.coreGoals.map(g => ({ ...g, id: uuidv4(), completed: false })),
+      dailyVariations: portfolio.dailyVariations.map(g => ({ ...g, id: uuidv4(), completed: false })),
       tasksLastGeneratedDate: today.toISOString().split('T')[0],
+      personaBreakdown: weightedBreakdown,
+      weightedScores: weightedBreakdown,
+      portfolioSummary: portfolio.summary,
+      tips: portfolio.tips,
+      failurePatterns: portfolio.failurePatterns,
+      confidenceScore,
     });
 
     logger.info({ userId: newUser.id }, 'user registered');
-    return { message: 'User registered successfully', userId: newUser.id, success: true };
+    return {
+      message: 'User registered successfully',
+      userId: newUser.id,
+      portfolioSummary: portfolio.summary,
+      coreGoals: newUser.coreGoals,
+      success: true,
+    };
   }
 
   async login({ email, password }: LoginDto) {
