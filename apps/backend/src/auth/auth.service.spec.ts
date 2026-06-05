@@ -11,6 +11,15 @@ jest.mock('bcrypt', () => ({
   compare: jest.fn(),
 }));
 
+const OPEN_ANSWERS = [
+  'I want to build a consistent study routine',
+  'I stuck with Duolingo for months — daily streaks kept me going',
+  'Yes, I studied with friends and we held each other accountable',
+  'I switch up topics or locations when things feel stale',
+  'I want to set a good example for my younger siblings',
+  'I prefer a fixed schedule: same time and place every day',
+];
+
 const mockUserRepository = {
   findUserByEmail: jest.fn(),
   findUserById: jest.fn(),
@@ -20,8 +29,8 @@ const mockUserRepository = {
 };
 
 const mockAiService = {
-  classifyPersona: jest.fn(),
-  generateInitialGoals: jest.fn(),
+  classifyPersonaWeighted: jest.fn(),
+  generatePortfolio: jest.fn(),
   generateDailyVariations: jest.fn(),
 };
 
@@ -55,41 +64,82 @@ describe('AuthService', () => {
   });
 
   describe('register()', () => {
-    it('saves user and returns userId on valid input', async () => {
+    it('saves user and returns userId + portfolioSummary on valid input', async () => {
       mockUserRepository.findUserByEmail.mockResolvedValue(null);
-      mockAiService.classifyPersona.mockResolvedValue({ isValid: true, personaType: 'Achiever' });
-      mockAiService.generateInitialGoals.mockResolvedValue({
+      mockAiService.classifyPersonaWeighted.mockResolvedValue({
         isValid: true,
-        motivationalMessage: 'Keep going!',
+        personaType: 'Achiever',
+        weightedBreakdown: { Achievement: 80, Growth: 10, Connection: 0, Exploration: 0, Purpose: 5, Structure: 5 },
+        confidenceScore: 0.9,
+      });
+      mockAiService.generatePortfolio.mockResolvedValue({
+        summary: 'You are driven by results and measurable progress.',
+        tips: ['Set daily targets', 'Track streaks', 'Celebrate small wins'],
+        failurePatterns: ['Losing momentum when progress feels invisible'],
         coreGoals: [{ description: 'Morning run', points: 20 }],
         dailyVariations: [{ description: 'Stretch for 10 min', points: 10 }],
       });
-      mockUserRepository.saveUser.mockResolvedValue({ id: 'user-123' });
-
-      const result = await service.register({
-        email: 'test@example.com',
-        password: 'password123',
-        goal: 'Run a marathon',
-        quizAnswers: ['I want to achieve goals', 'I track with checklists', 'I reflect and retry'],
+      mockUserRepository.saveUser.mockResolvedValue({
+        id: 'user-123',
+        coreGoals: [{ id: 'goal-1', description: 'Morning run', points: 20, completed: false }],
       });
 
+      const result = await service.register({ email: 'test@example.com', password: 'password123', openAnswers: OPEN_ANSWERS });
+
+      expect(mockAiService.classifyPersonaWeighted).toHaveBeenCalledTimes(1);
+      expect(mockAiService.classifyPersonaWeighted).toHaveBeenCalledWith({ goal: OPEN_ANSWERS[0], openAnswers: OPEN_ANSWERS });
+      expect(mockAiService.generatePortfolio).toHaveBeenCalledTimes(1);
       expect(mockUserRepository.saveUser).toHaveBeenCalledTimes(1);
-      expect(result).toMatchObject({ userId: 'user-123', success: true });
+      expect(result).toMatchObject({ userId: 'user-123', portfolioSummary: 'You are driven by results and measurable progress.', success: true });
     });
 
     it('throws BadRequestException if email already exists', async () => {
       mockUserRepository.findUserByEmail.mockResolvedValue({ id: 'existing-user' });
 
       await expect(
-        service.register({
-          email: 'taken@example.com',
-          password: 'password123',
-          goal: 'Some goal',
-          quizAnswers: ['a', 'b', 'c'],
-        }),
+        service.register({ email: 'taken@example.com', password: 'password123', openAnswers: OPEN_ANSWERS }),
       ).rejects.toThrow(BadRequestException);
 
-      expect(mockAiService.classifyPersona).not.toHaveBeenCalled();
+      expect(mockAiService.classifyPersonaWeighted).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException and does not save user if classification fails', async () => {
+      mockUserRepository.findUserByEmail.mockResolvedValue(null);
+      mockAiService.classifyPersonaWeighted.mockResolvedValue({
+        isValid: false,
+        errorReason: 'Answers are too vague to classify a persona.',
+      });
+
+      await expect(
+        service.register({ email: 'test@example.com', password: 'password123', openAnswers: OPEN_ANSWERS }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockAiService.generatePortfolio).not.toHaveBeenCalled();
+      expect(mockUserRepository.saveUser).not.toHaveBeenCalled();
+    });
+
+    it('derives goal from first answer and passes all answers to classifier', async () => {
+      mockUserRepository.findUserByEmail.mockResolvedValue(null);
+      mockAiService.classifyPersonaWeighted.mockResolvedValue({
+        isValid: true,
+        personaType: 'Achiever',
+        weightedBreakdown: { Achievement: 80, Growth: 10, Connection: 0, Exploration: 0, Purpose: 5, Structure: 5 },
+        confidenceScore: 0.85,
+      });
+      mockAiService.generatePortfolio.mockResolvedValue({
+        summary: 'Goal-driven summary.',
+        tips: ['tip1', 'tip2', 'tip3'],
+        failurePatterns: ['pattern1'],
+        coreGoals: [{ description: 'Goal', points: 10 }],
+        dailyVariations: [{ description: 'Daily', points: 5 }],
+      });
+      mockUserRepository.saveUser.mockResolvedValue({ id: 'user-456', coreGoals: [] });
+
+      await service.register({ email: 'test@example.com', password: 'password123', openAnswers: OPEN_ANSWERS });
+
+      expect(mockAiService.classifyPersonaWeighted).toHaveBeenCalledWith(
+        expect.objectContaining({ goal: OPEN_ANSWERS[0] }),
+      );
     });
   });
 

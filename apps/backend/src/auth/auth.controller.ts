@@ -13,9 +13,9 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @ApiOperation({ summary: 'Register a new user and generate initial persona + goals' })
-  @ApiResponse({ status: 201, description: 'User registered successfully' })
-  @ApiResponse({ status: 400, description: 'Email already in use or invalid goal input' })
+  @ApiOperation({ summary: 'Register a new user — classifies persona and generates portfolio' })
+  @ApiResponse({ status: 201, description: 'User registered; returns portfolioSummary and coreGoals' })
+  @ApiResponse({ status: 400, description: 'Email already in use, wrong number of answers, or AI classification failed' })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
