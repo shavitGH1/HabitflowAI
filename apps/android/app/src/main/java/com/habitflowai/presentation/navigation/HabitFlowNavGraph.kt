@@ -139,7 +139,7 @@ fun HabitFlowNavGraph(
                 OnboardingRoute(
                     uiState = uiState,
                     onGoalChange = onboardingViewModel::onGoalChange,
-                    onQuizAnswerChange = onboardingViewModel::onOpenAnswerChange,
+                    onQuizAnswerChange = onboardingViewModel::onQuizAnswerChange,
                     onSubmit = onboardingViewModel::registerUser,
                     onPersonaClassified = {
                         navController.navigate(NavRoute.ProfileReveal.route) {
@@ -179,6 +179,12 @@ fun HabitFlowNavGraph(
                     onRetakeAssessment = {
                         navController.navigate(NavRoute.Onboarding.route) {
                             popUpTo(NavRoute.Home.route) { inclusive = true }
+                        }
+                    },
+                    onLogout = {
+                        onboardingViewModel.logout()
+                        navController.navigate(NavRoute.Login.route) {
+                            popUpTo(0) { inclusive = true }
                         }
                     }
                 )

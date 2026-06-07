@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import com.habitflowai.data.model.ClassifyPersonaResponse
 
 @Composable
@@ -110,6 +111,66 @@ fun ProfileRevealRoute(
 
                 Spacer(modifier = Modifier.height(48.dp))
             }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Achiever Reveal", device = "spec:width=411dp,height=891dp")
+@Composable
+fun AchieverRevealPreview() {
+    PersonaRevealPreview("Achiever")
+}
+
+@Preview(showBackground = true, name = "Grower Reveal", device = "spec:width=411dp,height=891dp")
+@Composable
+fun GrowerRevealPreview() {
+    PersonaRevealPreview("Grower")
+}
+
+@Preview(showBackground = true, name = "Regulator Reveal", device = "spec:width=411dp,height=891dp")
+@Composable
+fun RegulatorRevealPreview() {
+    PersonaRevealPreview("Regulator")
+}
+
+@Preview(showBackground = true, name = "Architect Reveal", device = "spec:width=411dp,height=891dp")
+@Composable
+fun ArchitectRevealPreview() {
+    PersonaRevealPreview("Architect")
+}
+
+@Preview(showBackground = true, name = "Socializer Reveal", device = "spec:width=411dp,height=891dp")
+@Composable
+fun SocializerRevealPreview() {
+    PersonaRevealPreview("Socializer")
+}
+
+@Preview(showBackground = true, name = "Explorer Reveal", device = "spec:width=411dp,height=891dp")
+@Composable
+fun ExplorerRevealPreview() {
+    PersonaRevealPreview("Explorer")
+}
+
+@Preview(showBackground = true, name = "Altruist Reveal", device = "spec:width=411dp,height=891dp")
+@Composable
+fun AltruistRevealPreview() {
+    PersonaRevealPreview("Altruist")
+}
+
+@Composable
+private fun PersonaRevealPreview(type: String) {
+    val sampleResponse = ClassifyPersonaResponse(
+        id = "1",
+        personaType = type,
+        motivationalMessage = "Your unique $type profile is perfectly balanced for sustainable growth and long-term success.",
+        success = true
+    )
+    MaterialTheme {
+        Surface {
+            ProfileRevealRoute(
+                personaResponse = sampleResponse,
+                onStartJourney = {}
+            )
         }
     }
 }

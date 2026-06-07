@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,10 @@ import com.habitflowai.presentation.viewmodel.HomeViewModelFactory
 import com.habitflowai.data.network.NetworkModule
 import com.habitflowai.data.repository.GoalsRepositoryImpl
 import com.habitflowai.data.model.HomeGoalTask
+import com.habitflowai.presentation.ui.theme.HabitFlowTheme
+
+import com.habitflowai.presentation.viewmodel.HomeUiState
+import com.habitflowai.data.model.HomeResponse
 
 @Composable
 fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
@@ -49,14 +54,26 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
     )
     val uiState by viewModel.uiState.collectAsState()
 
-    val scrollState = rememberScrollState()
-
-    val today = remember { LocalDate.now() }
-    var selectedDate by remember { mutableStateOf(today) }
-
     LaunchedEffect(userId) {
         viewModel.fetchHomeData()
     }
+
+    HomeScreen(
+        uiState = uiState,
+        personaResult = personaResult,
+        onCompleteTask = { viewModel.completeTask(it) }
+    )
+}
+
+@Composable
+fun HomeScreen(
+    uiState: HomeUiState,
+    personaResult: ClassifyPersonaResponse?,
+    onCompleteTask: (String) -> Unit
+) {
+    val scrollState = rememberScrollState()
+    val today = remember { LocalDate.now() }
+    var selectedDate by remember { mutableStateOf(today) }
 
     if (uiState.isLoading && uiState.homeData == null) {
         HomeSkeleton()
@@ -65,7 +82,12 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
 
     val homeData = uiState.homeData
     if (homeData == null && !uiState.isLoading) {
-        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .padding(24.dp)
+        ) {
             Text(text = "No goal data yet.", style = MaterialTheme.typography.headlineMedium)
             Text(
                 text = "Complete onboarding to unlock your adaptive dashboard.",
@@ -77,7 +99,9 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
     }
 
     val actualPersonaTypeRaw = homeData?.personaType ?: personaResult?.personaType ?: "Achiever"
-    val actualPersonaType = actualPersonaTypeRaw.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+    val actualPersonaType = actualPersonaTypeRaw.replaceFirstChar {
+        if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString()
+    }
 
     val goalsForSelectedDate = remember(homeData) {
         val core = homeData?.coreGoals ?: emptyList()
@@ -106,7 +130,15 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(startColor.copy(alpha = 0.3f), Color.White)))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        startColor.copy(alpha = 0.4f),
+                        endColor.copy(alpha = 0.1f),
+                        Color.White
+                    )
+                )
+            )
             .verticalScroll(scrollState)
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -175,46 +207,41 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            GoalPlanSection(
-                goals = goalsForSelectedDate,
-                selectedDate = selectedDate,
-                today = today,
-                checkedGoals = checklistState,
-                onGoalToggled = { taskId, isChecked ->
-                    if (isChecked) {
-                        val newState = checklistState.toMutableMap()
-                        newState[taskId] = true
-                        checklistState = newState
-
-                        viewModel.completeTask(taskId) { success ->
-                            if (!success) {
-                                val revertedState = checklistState.toMutableMap()
-                                revertedState[taskId] = false
-                                checklistState = revertedState
-                            }
+            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                GoalPlanSection(
+                    goals = goalsForSelectedDate,
+                    selectedDate = selectedDate,
+                    today = today,
+                    checkedGoals = checklistState,
+                    onGoalToggled = { taskId, isChecked ->
+                        if (isChecked) {
+                            val newState = checklistState.toMutableMap()
+                            newState[taskId] = true
+                            checklistState = newState
+                            onCompleteTask(taskId)
                         }
-                    }
-                },
-                personaType = actualPersonaType
-            )
+                    },
+                    personaType = actualPersonaType
+                )
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-            HistoryCalendarSection(
-                today = today,
-                selectedDate = selectedDate,
-                onDateSelected = { selectedDate = it },
-                checkedCount = checklistState.values.count { it },
-                totalCount = goalsForSelectedDate.size
-            )
+                HistoryCalendarSection(
+                    today = today,
+                    selectedDate = selectedDate,
+                    onDateSelected = { selectedDate = it },
+                    checkedCount = checklistState.values.count { it },
+                    totalCount = goalsForSelectedDate.size
+                )
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            ProgressPhaseSection(actualPersonaType)
+                ProgressPhaseSection(actualPersonaType)
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            PlanExplanationSection(actualPersonaType)
+                PlanExplanationSection(actualPersonaType)
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -467,8 +494,7 @@ private fun InteractiveGoalItem(
                     text = goalText,
                     style = MaterialTheme.typography.bodyLarge,
                     color = textColor,
-                    fontWeight = if (isChecked) FontWeight.Normal else FontWeight.Bold,
-                    textDecoration = if (isChecked) TextDecoration.LineThrough else null
+                    fontWeight = if (isChecked) FontWeight.Normal else FontWeight.Bold
                 )
             }
         }
@@ -632,5 +658,98 @@ private fun BaseTemplate(title: String, lines: List<String>) {
         lines.forEach { line ->
             Text(text = line, style = MaterialTheme.typography.bodyLarge, color = Color(0xFF4E342E), fontWeight = FontWeight.Medium)
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Achiever Persona", device = "spec:width=411dp,height=891dp")
+@Composable
+fun AchieverHomePreview() {
+    HomePersonaPreview("Achiever")
+}
+
+@Preview(showBackground = true, name = "Grower Persona", device = "spec:width=411dp,height=891dp")
+@Composable
+fun GrowerHomePreview() {
+    HomePersonaPreview("Grower")
+}
+
+@Preview(showBackground = true, name = "Regulator Persona", device = "spec:width=411dp,height=891dp")
+@Composable
+fun RegulatorHomePreview() {
+    HomePersonaPreview("Regulator")
+}
+
+@Preview(showBackground = true, name = "Socializer Persona", device = "spec:width=411dp,height=891dp")
+@Composable
+fun SocializerHomePreview() {
+    HomePersonaPreview("Socializer")
+}
+
+@Preview(showBackground = true, name = "Explorer Persona", device = "spec:width=411dp,height=891dp")
+@Composable
+fun ExplorerHomePreview() {
+    HomePersonaPreview("Explorer")
+}
+
+@Preview(showBackground = true, name = "Altruist Persona", device = "spec:width=411dp,height=891dp")
+@Composable
+fun AltruistHomePreview() {
+    HomePersonaPreview("Altruist")
+}
+
+@Preview(showBackground = true, name = "Component Gallery")
+@Composable
+fun ComponentGalleryPreview() {
+    HabitFlowTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            Text("Goal Items", style = MaterialTheme.typography.titleLarge)
+            InteractiveGoalItem("Unchecked Task", 10, false, {})
+            InteractiveGoalItem("Checked Task", 10, true, {})
+
+            HorizontalDivider()
+            Text("Progress Section", style = MaterialTheme.typography.titleLarge)
+            ProgressPhaseSection("Achiever")
+
+            HorizontalDivider()
+            Text("Plan Explanation", style = MaterialTheme.typography.titleLarge)
+            PlanExplanationSection("Explorer")
+        }
+    }
+}
+
+@Composable
+private fun HomePersonaPreview(personaType: String) {
+    val article = if (listOf('A', 'E', 'I', 'O', 'U').contains(personaType.firstOrNull()?.uppercaseChar())) "an" else "a"
+    val samplePersona = ClassifyPersonaResponse(
+        id = "1",
+        personaType = personaType,
+        motivationalMessage = "Your unique $personaType drive is your greatest asset.",
+        success = true
+    )
+    val sampleHomeData = HomeResponse(
+        goal = "Master my routine",
+        motivationalMessage = "You are making incredible progress as $article $personaType!",
+        coreGoals = listOf(
+            HomeGoalTask("Daily habit one", 10, "1", false),
+            HomeGoalTask("Daily habit two", 5, "2", true)
+        ),
+        dailyVariations = emptyList(),
+        success = true,
+        personaType = personaType
+    )
+    val uiState = HomeUiState(homeData = sampleHomeData, isLoading = false)
+    
+    HabitFlowTheme {
+        HomeScreen(
+            uiState = uiState,
+            personaResult = samplePersona,
+            onCompleteTask = {}
+        )
     }
 }
