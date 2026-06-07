@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -54,8 +55,9 @@ fun SummaryCard(type: String, message: String, details: PersonaDetails) {
             modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val article = if (listOf('A', 'E', 'I', 'O', 'U').contains(type.firstOrNull()?.uppercaseChar())) "an" else "a"
             Text(
-                text = "You are an",
+                text = "You are $article",
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.Gray
             )
@@ -164,5 +166,45 @@ fun ChallengesSection(details: PersonaDetails) {
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PersonaBadgePreview() {
+    val details = PersonaUiData.getDetails("Achiever")
+    Box(modifier = Modifier.padding(16.dp)) {
+        PersonaBadge(details = details)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SummaryCardPreview() {
+    val details = PersonaUiData.getDetails("Achiever")
+    Box(modifier = Modifier.padding(16.dp)) {
+        SummaryCard(
+            type = details.type,
+            message = "You have a natural drive for excellence. Your competitive spirit will help you master new habits faster than most.",
+            details = details
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TipsSectionPreview() {
+    val details = PersonaUiData.getDetails("Grower")
+    Box(modifier = Modifier.padding(16.dp)) {
+        TipsSection(details = details)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ChallengesSectionPreview() {
+    val details = PersonaUiData.getDetails("Regulator")
+    Box(modifier = Modifier.padding(16.dp)) {
+        ChallengesSection(details = details)
     }
 }

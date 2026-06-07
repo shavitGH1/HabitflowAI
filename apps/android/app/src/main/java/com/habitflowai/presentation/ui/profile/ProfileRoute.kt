@@ -12,18 +12,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.habitflowai.data.model.ClassifyPersonaResponse
 import com.habitflowai.presentation.ui.persona.*
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
+import com.habitflowai.presentation.viewmodel.OnboardingUiState
 
 @Composable
 fun ProfileRoute(
     viewModel: OnboardingViewModel,
-    onRetakeAssessment: () -> Unit
+    onRetakeAssessment: () -> Unit,
+    onLogout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scrollState = rememberScrollState()
 
+    ProfileContent(
+        uiState = uiState,
+        onRetakeAssessment = onRetakeAssessment,
+        onLogout = onLogout
+    )
+}
+
+@Composable
+fun ProfileContent(
+    uiState: OnboardingUiState,
+    onRetakeAssessment: () -> Unit,
+    onLogout: () -> Unit
+) {
+    val scrollState = rememberScrollState()
     val personaResult = uiState.personaResult
 
     if (personaResult == null) {
@@ -78,6 +95,49 @@ fun ProfileRoute(
             Text("Re-take Persona Assessment", fontWeight = FontWeight.Bold)
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = onLogout,
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+        ) {
+            Text("Logout", fontWeight = FontWeight.Bold, color = Color.White)
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Preview(showBackground = true, name = "Profile Details", device = "spec:width=411dp,height=891dp")
+@Composable
+fun ProfilePreview() {
+    ProfileContent(
+        uiState = OnboardingUiState(
+            personaResult = ClassifyPersonaResponse(
+                id = "1",
+                personaType = "Grower",
+                motivationalMessage = "You are doing great! Keep growing.",
+                success = true
+            )
+        ),
+        onRetakeAssessment = {},
+        onLogout = {}
+    )
+}
+
+@Preview(showBackground = true, name = "Logout Section Only")
+@Composable
+fun ProfileLogoutPreview() {
+    Box(modifier = Modifier.padding(24.dp)) {
+        Button(
+            onClick = {},
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+        ) {
+            Text("Logout", fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.White)
+        }
     }
 }

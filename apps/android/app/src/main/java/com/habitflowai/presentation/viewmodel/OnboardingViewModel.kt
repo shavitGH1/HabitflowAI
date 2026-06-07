@@ -19,7 +19,7 @@ data class OnboardingUiState(
     val email: String = "",
     val password: String = "",
     val goal: String = "",
-    val openAnswers: List<String> = listOf("", "", "", "", "", ""),
+    val quizAnswers: List<String> = listOf("", "", "", ""),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val personaResult: ClassifyPersonaResponse? = null,
@@ -45,16 +45,22 @@ class OnboardingViewModel(
         _uiState.value = _uiState.value.copy(goal = goal)
     }
 
-    fun onOpenAnswerChange(index: Int, value: String) {
-        val updatedAnswers = _uiState.value.openAnswers.toMutableList()
+    fun onQuizAnswerChange(index: Int, answer: String) {
+        val updatedAnswers = _uiState.value.quizAnswers.toMutableList()
         if (index in updatedAnswers.indices) {
-            updatedAnswers[index] = value
-            _uiState.value = _uiState.value.copy(openAnswers = updatedAnswers)
+            updatedAnswers[index] = answer
+            _uiState.value = _uiState.value.copy(quizAnswers = updatedAnswers)
         }
     }
 
     fun onHomeNavigated() {
         _uiState.value = _uiState.value.copy(navigateToHome = false)
+    }
+
+    fun logout() {
+        _uiState.value = OnboardingUiState()
+        NetworkModule.accessToken = null
+        NetworkModule.refreshToken = null
     }
 
     fun registerUser() {
@@ -68,7 +74,7 @@ class OnboardingViewModel(
                     email = currentState.email,
                     password = currentState.password,
                     goal = currentState.goal,
-                    quizAnswers = currentState.openAnswers // Mapping openAnswers to quizAnswers for API compatibility for now
+                    quizAnswers = currentState.quizAnswers
                 )
                 val response = api.register(request)
 
@@ -77,12 +83,11 @@ class OnboardingViewModel(
                     NetworkModule.accessToken = loginRes.accessToken
                     NetworkModule.refreshToken = loginRes.refreshToken
 
-                    // Simplified persona logic for now as we transition to AI classification
                     _uiState.value = currentState.copy(
                         isLoading = false,
                         personaResult = ClassifyPersonaResponse(
                             id = response.userId,
-                            personaType = "Achiever", // Default
+                            personaType = "Achiever", 
                             motivationalMessage = "Welcome to your growth journey!",
                             success = true,
                             userId = response.userId
@@ -111,7 +116,7 @@ class OnboardingViewModel(
             _uiState.value = currentState.copy(isLoading = true, errorMessage = null, navigateToHome = false)
 
             try {
-                val request = ClassifyPersonaRequest(currentState.goal, currentState.openAnswers)
+                val request = ClassifyPersonaRequest(currentState.goal, currentState.quizAnswers)
                 val response = repository.classifyPersona(request)
 
                 if (response is Resource.Success && response.data != null) {

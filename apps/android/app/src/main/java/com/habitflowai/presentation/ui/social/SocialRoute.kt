@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 data class Post(val id: Int, val author: String, val content: String, val hasPhoto: Boolean, var isLiked: Boolean = false, var likeCount: Int = 0)
@@ -128,4 +129,19 @@ fun PostCard(post: Post, onLikeClick: () -> Unit) {
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SocialRoutePreview() {
+    SocialRoute()
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PostCardPreview() {
+    PostCard(
+        post = Post(1, "Alex", "Just completely crushed my deep work block! 🚀", true, likeCount = 14),
+        onLikeClick = {}
+    )
 }
