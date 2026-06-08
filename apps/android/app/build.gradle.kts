@@ -13,13 +13,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.habitflowai"
+    namespace = "com.habitflowai"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.example.habitflowai"
+        applicationId = "com.habitflowai"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
