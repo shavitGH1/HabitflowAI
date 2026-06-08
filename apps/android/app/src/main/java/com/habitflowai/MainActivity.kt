@@ -3,29 +3,23 @@ package com.habitflowai
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import com.habitflowai.data.repository.HabitFlowRepositoryImpl
-import com.habitflowai.data.network.RetrofitProvider
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.habitflowai.presentation.navigation.HabitFlowNavGraph
-import com.habitflowai.presentation.viewmodel.OnboardingViewModel
+import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
-            com.habitflowai.presentation.ui.HabitFlowTheme {
-                HabitFlowApp()
+            HabitFlowTheme {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    HabitFlowNavGraph()
+                }
             }
         }
     }
-}
-
-@Composable
-private fun HabitFlowApp() {
-    val api = remember { RetrofitProvider.api }
-    val repository = remember { HabitFlowRepositoryImpl(api) }
-    val viewModel = remember { OnboardingViewModel(repository) }
-
-    HabitFlowNavGraph(viewModel = viewModel)
 }
