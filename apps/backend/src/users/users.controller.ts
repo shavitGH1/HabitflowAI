@@ -12,7 +12,7 @@ export class UsersController {
 
   @Get('me/home')
   @ApiOperation({ summary: 'Get persona, goals and daily tasks for the authenticated user' })
-  @ApiResponse({ status: 200, description: 'Home page data returned successfully' })
+  @ApiResponse({ status: 200, description: 'Home page data including persona, goals, daily tasks, and portfolio fields' })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 404, description: 'User not found' })
   getHome(@Req() req: { user: { id: string } }) {
