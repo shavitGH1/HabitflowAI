@@ -28,6 +28,10 @@ export class UsersService {
       motivationalMessage: user.motivationalMessage,
       coreGoals: user.coreGoals,
       dailyVariations: user.dailyVariations,
+      portfolioSummary: user.portfolioSummary,
+      tips: user.tips,
+      failurePatterns: user.failurePatterns,
+      confidenceScore: user.confidenceScore,
       success: true,
     };
   }
