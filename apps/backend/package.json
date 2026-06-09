@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/main.js",
     "start:dev": "ts-node-dev --respawn --transpile-only -r reflect-metadata src/main.ts",
-    "predev": "kill-port 3000 || true",
+    "predev": "kill-port 3000",
     "dev": "ts-node-dev --respawn --transpile-only -r reflect-metadata src/main.ts",
     "build": "tsc",
     "test": "jest --runInBand"
