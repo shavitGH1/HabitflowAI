@@ -11,4 +11,7 @@ sealed class NavRoute(val route: String) {
     data object DriftCheck : NavRoute("drift_check")
     data object Login : NavRoute("login")
     data object RegisterCredentials : NavRoute("register_credentials")
+    data object HabitDetail : NavRoute("habit_detail/{habitId}") {
+        fun createRoute(habitId: String) = "habit_detail/$habitId"
+    }
 }
