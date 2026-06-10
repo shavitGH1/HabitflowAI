@@ -94,11 +94,20 @@ fun RegisterCredentialsContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        val isEnabled = uiState.email.isNotBlank() && uiState.password.isNotBlank()
+        val isEnabled = uiState.email.contains("@") && uiState.password.length >= 6
         val gradient = if (isEnabled) {
             Brush.linearGradient(colors = listOf(Color(0xFF64B5F6), Color(0xFF1E88E5)))
         } else {
             Brush.linearGradient(colors = listOf(Color.LightGray, Color.Gray))
+        }
+
+        if (!isEnabled && uiState.password.isNotEmpty() && uiState.password.length < 6) {
+            Text(
+                text = "Password must be at least 6 characters",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
 
         Button(

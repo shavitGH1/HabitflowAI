@@ -115,6 +115,7 @@ fun HabitFlowNavGraph(
                 LoginRoute(
                     viewModel = loginViewModel,
                     onLoginSuccess = {
+                        onboardingViewModel.fetchProfile()
                         navController.navigate(NavRoute.Home.route) {
                             popUpTo(NavRoute.Login.route) { inclusive = true }
                         }

@@ -45,7 +45,13 @@ export class AuthService {
       tasksLastGeneratedDate: today.toISOString().split('T')[0],
     });
 
-    return { message: 'User registered successfully', userId: newUser.id, success: true };
+    return {
+      message: 'User registered successfully',
+      userId: newUser.id,
+      success: true,
+      personaType: newUser.personaType,
+      motivationalMessage: newUser.motivationalMessage,
+    };
   }
 
   async login({ email, password }: LoginDto) {
