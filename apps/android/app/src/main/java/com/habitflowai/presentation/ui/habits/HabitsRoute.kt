@@ -1,3 +1,4 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
 package com.habitflowai.presentation.ui.habits
 
 import androidx.compose.foundation.background
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.*
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,25 +20,28 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
 import com.habitflowai.data.model.Habit
 import com.habitflowai.data.model.HabitFrequency
+import com.habitflowai.presentation.ui.persona.PersonaDetails
+import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.HabitsUiState
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
-import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitsRoute(
     viewModel: HabitsViewModel,
+    personaType: String,
     onHabitClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     HabitsContent(
         uiState = uiState,
+        personaType = personaType,
         onHabitClick = onHabitClick,
         onAddHabit = viewModel::addHabit,
         onDeleteHabit = viewModel::deleteHabit
@@ -47,11 +52,13 @@ fun HabitsRoute(
 @Composable
 fun HabitsContent(
     uiState: HabitsUiState,
+    personaType: String,
     onHabitClick: (String) -> Unit,
     onAddHabit: (String, String, HabitFrequency) -> Unit,
     onDeleteHabit: (String) -> Unit
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
+    val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
 
     Box(
         modifier = Modifier
@@ -59,7 +66,7 @@ fun HabitsContent(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        details.startColor.copy(alpha = 0.15f),
                         Color.White
                     )
                 )
@@ -77,20 +84,20 @@ fun HabitsContent(
                 text = "Habit Hub",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = details.endColor
             )
             
             Text(
                 text = "Master your routine, one day at a time.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.Gray
             )
             
             Spacer(modifier = Modifier.height(32.dp))
 
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = details.endColor)
                 }
             } else if (uiState.habits.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -108,6 +115,7 @@ fun HabitsContent(
                     ) { habit ->
                         HabitItem(
                             habit = habit,
+                            personaColor = details.endColor,
                             onDelete = { onDeleteHabit(habit.id) },
                             onClick = { onHabitClick(habit.id) }
                         )
@@ -121,8 +129,8 @@ fun HabitsContent(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(24.dp),
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            containerColor = details.endColor,
+            contentColor = Color.White,
             shape = RoundedCornerShape(16.dp)
         ) {
             Icon(Icons.Rounded.Add, contentDescription = "Add Habit")
@@ -130,6 +138,7 @@ fun HabitsContent(
 
         if (showCreateSheet) {
             HabitCreateBottomSheet(
+                personaColor = details.endColor,
                 onDismiss = { showCreateSheet = false },
                 onHabitCreated = { title, desc, freq ->
                     onAddHabit(title, desc, freq)
@@ -144,6 +153,7 @@ fun HabitsContent(
 @Composable
 fun HabitItem(
     habit: Habit,
+    personaColor: Color,
     onDelete: () -> Unit,
     onClick: () -> Unit
 ) {
@@ -198,13 +208,13 @@ fun HabitItem(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                        .background(personaColor.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = habit.title.take(1).uppercase(),
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = personaColor
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
@@ -223,9 +233,9 @@ fun HabitItem(
                 Text(
                     text = habit.frequency.name.lowercase().replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
+                    color = personaColor,
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(8.dp))
+                        .background(personaColor.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
@@ -236,6 +246,7 @@ fun HabitItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitCreateBottomSheet(
+    personaColor: Color,
     onDismiss: () -> Unit,
     onHabitCreated: (String, String, HabitFrequency) -> Unit
 ) {
@@ -259,7 +270,8 @@ fun HabitCreateBottomSheet(
             Text(
                 text = "New Habit",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = personaColor
             )
 
             OutlinedTextField(
@@ -268,7 +280,11 @@ fun HabitCreateBottomSheet(
                 label = { Text("Title") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                singleLine = true
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = personaColor,
+                    focusedLabelColor = personaColor
+                )
             )
 
             OutlinedTextField(
@@ -276,7 +292,11 @@ fun HabitCreateBottomSheet(
                 onValueChange = { description = it },
                 label = { Text("Description") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = personaColor,
+                    focusedLabelColor = personaColor
+                )
             )
 
             Text(
@@ -299,7 +319,11 @@ fun HabitCreateBottomSheet(
                                 modifier = Modifier.padding(vertical = 8.dp)
                             ) 
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = personaColor,
+                            selectedLabelColor = Color.White
+                        )
                     )
                 }
             }
@@ -314,7 +338,8 @@ fun HabitCreateBottomSheet(
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                enabled = title.isNotBlank()
+                enabled = title.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = personaColor)
             ) {
                 Text("Create Habit", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
@@ -323,18 +348,118 @@ fun HabitCreateBottomSheet(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Achiever Hub")
 @Composable
-fun HabitsContentPreview() {
+fun HabitsAchieverPreview() {
     HabitFlowTheme {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    Habit("1", "Morning Run", "5km", HabitFrequency.DAILY),
-                    Habit("2", "Read Book", "20 pages", HabitFrequency.DAILY),
-                    Habit("3", "Weekly Review", "Plan week", HabitFrequency.WEEKLY)
+                    Habit("1", "Workout", "Gym session", HabitFrequency.DAILY),
+                    Habit("2", "Beat PR", "Run faster", HabitFrequency.WEEKLY)
                 )
             ),
+            personaType = "Achiever",
+            onHabitClick = {},
+            onAddHabit = { _, _, _ -> },
+            onDeleteHabit = {}
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, name = "Grower Hub")
+@Composable
+fun HabitsGrowerPreview() {
+    HabitFlowTheme {
+        HabitsContent(
+            uiState = HabitsUiState(
+                habits = listOf(
+                    Habit("1", "Meditation", "10 mins daily", HabitFrequency.DAILY),
+                    Habit("2", "Journaling", "Reflect on day", HabitFrequency.DAILY)
+                )
+            ),
+            personaType = "Grower",
+            onHabitClick = {},
+            onAddHabit = { _, _, _ -> },
+            onDeleteHabit = {}
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, name = "Regulator Hub")
+@Composable
+fun HabitsRegulatorPreview() {
+    HabitFlowTheme {
+        HabitsContent(
+            uiState = HabitsUiState(
+                habits = listOf(
+                    Habit("1", "Morning Routine", "Follow schedule", HabitFrequency.DAILY),
+                    Habit("2", "Deep Work", "Block time", HabitFrequency.DAILY)
+                )
+            ),
+            personaType = "Regulator",
+            onHabitClick = {},
+            onAddHabit = { _, _, _ -> },
+            onDeleteHabit = {}
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, name = "Socializer Hub")
+@Composable
+fun HabitsSocializerPreview() {
+    HabitFlowTheme {
+        HabitsContent(
+            uiState = HabitsUiState(
+                habits = listOf(
+                    Habit("1", "Call Friend", "Stay connected", HabitFrequency.WEEKLY),
+                    Habit("2", "Group Class", "Fitness with others", HabitFrequency.WEEKLY)
+                )
+            ),
+            personaType = "Socializer",
+            onHabitClick = {},
+            onAddHabit = { _, _, _ -> },
+            onDeleteHabit = {}
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, name = "Explorer Hub")
+@Composable
+fun HabitsExplorerPreview() {
+    HabitFlowTheme {
+        HabitsContent(
+            uiState = HabitsUiState(
+                habits = listOf(
+                    Habit("1", "Try New Food", "Explore cuisine", HabitFrequency.WEEKLY),
+                    Habit("2", "Random Walk", "Discover paths", HabitFrequency.DAILY)
+                )
+            ),
+            personaType = "Explorer",
+            onHabitClick = {},
+            onAddHabit = { _, _, _ -> },
+            onDeleteHabit = {}
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, name = "Altruist Hub")
+@Composable
+fun HabitsAltruistPreview() {
+    HabitFlowTheme {
+        HabitsContent(
+            uiState = HabitsUiState(
+                habits = listOf(
+                    Habit("1", "Volunteer", "Community help", HabitFrequency.MONTHLY),
+                    Habit("2", "Help Neighbor", "Small acts", HabitFrequency.WEEKLY)
+                )
+            ),
+            personaType = "Altruist",
             onHabitClick = {},
             onAddHabit = { _, _, _ -> },
             onDeleteHabit = {}
@@ -349,6 +474,7 @@ fun HabitCreateBottomSheetPreview() {
     HabitFlowTheme {
         Surface {
             HabitCreateBottomSheet(
+                personaColor = Color(0xFFBA68C8),
                 onDismiss = {},
                 onHabitCreated = { _, _, _ -> }
             )
