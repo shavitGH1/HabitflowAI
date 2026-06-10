@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.habitflowai.data.network.NetworkModule
 import com.habitflowai.data.repository.PersonaRepositoryImpl
 import com.habitflowai.presentation.ui.home.HomeRoute
+import com.habitflowai.presentation.ui.habits.HabitDetailRoute
 import com.habitflowai.presentation.ui.habits.HabitsRoute
 import com.habitflowai.presentation.ui.social.SocialRoute
 import com.habitflowai.presentation.ui.onboarding.OnboardingRoute
@@ -30,6 +31,7 @@ import com.habitflowai.presentation.ui.drift.DriftCheckRoute
 import com.habitflowai.presentation.ui.persona.ProfileRevealRoute
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.habitflowai.presentation.viewmodel.OnboardingViewModelFactory
+import com.habitflowai.presentation.viewmodel.HabitsViewModel
 import com.habitflowai.presentation.viewmodel.LoginViewModel
 import com.habitflowai.presentation.viewmodel.LoginViewModelFactory
 
@@ -45,6 +47,7 @@ fun HabitFlowNavGraph(
     val loginViewModel: LoginViewModel = viewModel(
         factory = LoginViewModelFactory(NetworkModule.habitFlowApi)
     )
+    val habitsViewModel: HabitsViewModel = viewModel()
     val uiState by onboardingViewModel.uiState.collectAsState()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -169,7 +172,20 @@ fun HabitFlowNavGraph(
                 )
             }
             composable(NavRoute.Habits.route) {
-                HabitsRoute()
+                HabitsRoute(
+                    viewModel = habitsViewModel,
+                    onHabitClick = { habitId ->
+                        navController.navigate(NavRoute.HabitDetail.createRoute(habitId))
+                    }
+                )
+            }
+            composable(NavRoute.HabitDetail.route) { backStackEntry ->
+                val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
+                HabitDetailRoute(
+                    habitId = habitId,
+                    viewModel = habitsViewModel,
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable(NavRoute.Social.route) {
                 SocialRoute()
