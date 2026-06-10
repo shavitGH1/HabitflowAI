@@ -1,20 +1,6 @@
 package com.habitflowai.presentation.ui.persona
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 
 data class PersonaDetails(
     val type: String,
@@ -112,55 +98,6 @@ object PersonaUiData {
                 tips = listOf("Consistency is key.", "Keep showing up.", "Build your foundation."),
                 challenges = listOf("Inconsistency", "Lack of clear goals")
             )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PersonaDataGalleryPreview() {
-    val personas = listOf("Achiever", "Grower", "Regulator", "Architect", "Socializer", "Explorer", "Altruist")
-    MaterialTheme {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Text(
-                    text = "Persona UI Data Gallery",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-            items(personas) { type ->
-                val details = PersonaUiData.getDetails(type)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .background(Brush.linearGradient(listOf(details.startColor, details.endColor)))
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = details.type,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Tips: ${details.tips.size} | Challenges: ${details.challenges.size}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                    }
-                }
-            }
         }
     }
 }
