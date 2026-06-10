@@ -174,6 +174,7 @@ fun HabitFlowNavGraph(
             composable(NavRoute.Habits.route) {
                 HabitsRoute(
                     viewModel = habitsViewModel,
+                    personaType = uiState.personaResult?.personaType ?: "Regulator",
                     onHabitClick = { habitId ->
                         navController.navigate(NavRoute.HabitDetail.createRoute(habitId))
                     }
@@ -184,6 +185,7 @@ fun HabitFlowNavGraph(
                 HabitDetailRoute(
                     habitId = habitId,
                     viewModel = habitsViewModel,
+                    personaType = uiState.personaResult?.personaType ?: "Regulator",
                     onBack = { navController.popBackStack() }
                 )
             }
