@@ -31,7 +31,9 @@ data class RegisterRequest(
 data class RegisterResponse(
     val message: String,
     val userId: String,
-    val success: Boolean
+    val success: Boolean,
+    val personaType: String? = null,
+    val motivationalMessage: String? = null
 )
 
 data class HomeGoalTask(
