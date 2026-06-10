@@ -1,5 +1,5 @@
 import { GeminiClient } from '../gemini.client';
-import { buildPersonaClassifierPrompt } from '../prompts/persona-classifier-quiz.prompt';
+import { buildPersonaClassifierPrompt } from '../prompts/persona-classifier.prompt';
 
 const VALID_PERSONAS = ['Achiever', 'Grower', 'Socializer', 'Explorer', 'Altruist', 'Architect'];
 
@@ -15,7 +15,7 @@ export const classifyPersona = async (
   answers: string[],
 ): Promise<PersonaResult> => {
   const result = await client.generateJson<PersonaResult>(
-    buildPersonaClassifierPrompt(goal, answers),
+    buildPersonaClassifierPrompt({ goal, openAnswers: answers }),
   );
   if (result.isValid && result.personaType && !VALID_PERSONAS.includes(result.personaType)) {
     return { isValid: false, errorReason: `Unknown persona type: ${result.personaType}` };

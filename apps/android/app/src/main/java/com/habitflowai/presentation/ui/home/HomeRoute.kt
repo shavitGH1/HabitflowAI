@@ -98,7 +98,13 @@ fun HomeScreen(
         return
     }
 
-    val actualPersonaTypeRaw = homeData?.personaType ?: personaResult?.personaType ?: "Achiever"
+    val actualPersonaTypeRaw = homeData?.personaType ?: personaResult?.personaType
+
+    if (actualPersonaTypeRaw == null) {
+        HomeSkeleton()
+        return
+    }
+
     val actualPersonaType = actualPersonaTypeRaw.replaceFirstChar {
         if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString()
     }
