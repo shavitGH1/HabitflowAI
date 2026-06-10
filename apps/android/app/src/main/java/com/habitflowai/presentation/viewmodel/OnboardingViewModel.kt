@@ -19,7 +19,7 @@ data class OnboardingUiState(
     val email: String = "",
     val password: String = "",
     val goal: String = "",
-    val quizAnswers: List<String> = listOf("", "", "", ""),
+    val quizAnswers: List<String> = List(7) { "" },
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val personaResult: ClassifyPersonaResponse? = null,
@@ -57,6 +57,28 @@ class OnboardingViewModel(
         _uiState.value = _uiState.value.copy(navigateToHome = false)
     }
 
+    fun fetchProfile() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            try {
+                val homeData = NetworkModule.habitFlowApi.getHome()
+                if (homeData.success) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        personaResult = ClassifyPersonaResponse(
+                            id = "",
+                            personaType = homeData.personaType ?: "Achiever",
+                            motivationalMessage = homeData.motivationalMessage,
+                            success = true
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
+        }
+    }
+
     fun logout() {
         _uiState.value = OnboardingUiState()
         NetworkModule.accessToken = null
@@ -74,7 +96,7 @@ class OnboardingViewModel(
                     email = currentState.email,
                     password = currentState.password,
                     goal = currentState.goal,
-                    quizAnswers = currentState.quizAnswers
+                    quizAnswers = currentState.quizAnswers.drop(1) // Drop index 0 (Goal) to match backend prompt
                 )
                 val response = api.register(request)
 
@@ -87,8 +109,8 @@ class OnboardingViewModel(
                         isLoading = false,
                         personaResult = ClassifyPersonaResponse(
                             id = response.userId,
-                            personaType = "Achiever", 
-                            motivationalMessage = "Welcome to your growth journey!",
+                            personaType = response.personaType ?: "Achiever",
+                            motivationalMessage = response.motivationalMessage ?: "Welcome to your growth journey!",
                             success = true,
                             userId = response.userId
                         ),
@@ -102,9 +124,20 @@ class OnboardingViewModel(
                     )
                 }
             } catch (e: Exception) {
+                val errorMsg = if (e is retrofit2.HttpException) {
+                    try {
+                        val errorBody = e.response()?.errorBody()?.string()
+                        val jsonObject = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
+                        jsonObject.get("message").asString
+                    } catch (inner: Exception) {
+                        "Server error: ${e.code()}"
+                    }
+                } else {
+                    "Network error: ${e.message}"
+                }
                 _uiState.value = currentState.copy(
                     isLoading = false,
-                    errorMessage = "Network error: ${e.message}"
+                    errorMessage = errorMsg
                 )
             }
         }
@@ -116,7 +149,8 @@ class OnboardingViewModel(
             _uiState.value = currentState.copy(isLoading = true, errorMessage = null, navigateToHome = false)
 
             try {
-                val request = ClassifyPersonaRequest(currentState.goal, currentState.quizAnswers)
+                // Drop index 0 (Goal) to match backend prompt which expects 6 answers
+                val request = ClassifyPersonaRequest(currentState.goal, currentState.quizAnswers.drop(1))
                 val response = repository.classifyPersona(request)
 
                 if (response is Resource.Success && response.data != null) {
@@ -141,9 +175,20 @@ class OnboardingViewModel(
                     )
                 }
             } catch (e: Exception) {
+                val errorMsg = if (e is retrofit2.HttpException) {
+                    try {
+                        val errorBody = e.response()?.errorBody()?.string()
+                        val jsonObject = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
+                        jsonObject.get("message").asString
+                    } catch (inner: Exception) {
+                        "Server error: ${e.code()}"
+                    }
+                } else {
+                    "Network error: ${e.message}"
+                }
                 _uiState.value = currentState.copy(
                     isLoading = false,
-                    errorMessage = "Network error: ${e.message}"
+                    errorMessage = errorMsg
                 )
             }
         }
