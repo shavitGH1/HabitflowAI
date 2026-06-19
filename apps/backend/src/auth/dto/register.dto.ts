@@ -31,5 +31,5 @@ export class RegisterDto {
       'I prefer a fixed schedule: same time, same place every day',
     ],
   })
-  openAnswers: string[];
+  quizAnswers: string[];
 }
