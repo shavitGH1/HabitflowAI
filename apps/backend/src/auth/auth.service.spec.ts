@@ -84,10 +84,10 @@ describe('AuthService', () => {
         coreGoals: [{ id: 'goal-1', description: 'Morning run', points: 20, completed: false }],
       });
 
-      const result = await service.register({ email: 'test@example.com', password: 'password123', openAnswers: OPEN_ANSWERS });
+      const result = await service.register({ email: 'test@example.com', password: 'password123', quizAnswers: OPEN_ANSWERS });
 
       expect(mockAiService.classifyPersonaWeighted).toHaveBeenCalledTimes(1);
-      expect(mockAiService.classifyPersonaWeighted).toHaveBeenCalledWith({ goal: OPEN_ANSWERS[0], openAnswers: OPEN_ANSWERS });
+      expect(mockAiService.classifyPersonaWeighted).toHaveBeenCalledWith({ goal: OPEN_ANSWERS[0], quizAnswers: OPEN_ANSWERS });
       expect(mockAiService.generatePortfolio).toHaveBeenCalledTimes(1);
       expect(mockUserRepository.saveUser).toHaveBeenCalledTimes(1);
       expect(result).toMatchObject({ userId: 'user-123', portfolioSummary: 'You are driven by results and measurable progress.', success: true });
@@ -97,7 +97,7 @@ describe('AuthService', () => {
       mockUserRepository.findUserByEmail.mockResolvedValue({ id: 'existing-user' });
 
       await expect(
-        service.register({ email: 'taken@example.com', password: 'password123', openAnswers: OPEN_ANSWERS }),
+        service.register({ email: 'taken@example.com', password: 'password123', quizAnswers: OPEN_ANSWERS }),
       ).rejects.toThrow(BadRequestException);
 
       expect(mockAiService.classifyPersonaWeighted).not.toHaveBeenCalled();
@@ -111,7 +111,7 @@ describe('AuthService', () => {
       });
 
       await expect(
-        service.register({ email: 'test@example.com', password: 'password123', openAnswers: OPEN_ANSWERS }),
+        service.register({ email: 'test@example.com', password: 'password123', quizAnswers: OPEN_ANSWERS }),
       ).rejects.toThrow(BadRequestException);
 
       expect(mockAiService.generatePortfolio).not.toHaveBeenCalled();
@@ -135,7 +135,7 @@ describe('AuthService', () => {
       });
       mockUserRepository.saveUser.mockResolvedValue({ id: 'user-456', coreGoals: [] });
 
-      await service.register({ email: 'test@example.com', password: 'password123', openAnswers: OPEN_ANSWERS });
+      await service.register({ email: 'test@example.com', password: 'password123', quizAnswers: OPEN_ANSWERS });
 
       expect(mockAiService.classifyPersonaWeighted).toHaveBeenCalledWith(
         expect.objectContaining({ goal: OPEN_ANSWERS[0] }),
