@@ -1,11 +1,11 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 import { ZodSchema } from 'zod';
+import { logger } from '../logger';
 
 @Injectable()
 export class GeminiClient {
-  private readonly logger = new Logger(GeminiClient.name);
   private readonly ai: GoogleGenAI;
   private readonly models: string[];
 
@@ -24,7 +24,7 @@ export class GeminiClient {
     if (schema) {
       const result = schema.safeParse(parsed);
       if (!result.success) {
-        this.logger.error(`Gemini output failed schema validation: ${result.error.message}`);
+        logger.error({ err: result.error.message }, 'Gemini output failed schema validation');
         throw new InternalServerErrorException('AI returned invalid output. Please try again.');
       }
       return result.data;
@@ -47,12 +47,13 @@ export class GeminiClient {
         return text;
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        this.logger.warn(`Model ${model} failed: ${msg}`);
         if (i === this.models.length - 1) {
+          logger.error({ model, err: msg }, 'all Gemini models exhausted');
           throw new InternalServerErrorException(
             'AI Service is currently overloaded. Please try again in a few seconds.',
           );
         }
+        logger.warn({ model, err: msg }, 'Gemini model failed, trying next');
       }
     }
     throw new InternalServerErrorException('AI Service unavailable.');

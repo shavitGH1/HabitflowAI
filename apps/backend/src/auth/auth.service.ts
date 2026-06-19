@@ -8,6 +8,7 @@ import { UserRepository } from '../users/user.repository';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
+import { logger } from '../logger';
 
 @Injectable()
 export class AuthService {
@@ -17,49 +18,65 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register({ email, password, goal, quizAnswers }: RegisterDto) {
+  async register({ email, password, openAnswers }: RegisterDto) {
     if (await this.userRepository.findUserByEmail(email)) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const classification = await this.ai.classifyPersona(goal, quizAnswers);
-    if (!classification.isValid || !classification.personaType) {
+    const goal = openAnswers[0];
+
+    const classification = await this.ai.classifyPersonaWeighted({ goal, openAnswers });
+    if (!classification.isValid) {
       throw new BadRequestException(`Invalid input: ${classification.errorReason}`);
     }
 
+    const { personaType, weightedBreakdown, confidenceScore } = classification;
+    const portfolio = await this.ai.generatePortfolio({ goal, openAnswers, personaType, weightedBreakdown });
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const today = new Date();
-    const goals = await this.ai.generateInitialGoals(
-      { goal, personaType: classification.personaType, email },
-      today.getDay(),
-    );
 
     const newUser = await this.userRepository.saveUser({
       email,
       password: hashedPassword,
       goal,
-      personaType: classification.personaType,
-      motivationalMessage: goals.motivationalMessage ?? '',
-      coreGoals: goals.coreGoals?.map(g => ({ ...g, id: uuidv4(), completed: false })) ?? [],
-      dailyVariations: goals.dailyVariations?.map(g => ({ ...g, id: uuidv4(), completed: false })) ?? [],
+      personaType,
+      motivationalMessage: portfolio.summary,
+      coreGoals: portfolio.coreGoals.map(g => ({ ...g, id: uuidv4(), completed: false })),
+      dailyVariations: portfolio.dailyVariations.map(g => ({ ...g, id: uuidv4(), completed: false })),
       tasksLastGeneratedDate: today.toISOString().split('T')[0],
+      personaBreakdown: weightedBreakdown,
+      weightedScores: weightedBreakdown,
+      portfolioSummary: portfolio.summary,
+      tips: portfolio.tips,
+      failurePatterns: portfolio.failurePatterns,
+      confidenceScore,
     });
 
+    logger.info({ userId: newUser.id }, 'user registered');
     return {
       message: 'User registered successfully',
       userId: newUser.id,
+      portfolioSummary: portfolio.summary,
+      coreGoals: newUser.coreGoals,
       success: true,
-      personaType: newUser.personaType,
-      motivationalMessage: newUser.motivationalMessage,
+      personaType: newUser.personaType, //TODO: added by Gal, needed by the frontend - are the coreGoals and portfolioSummary also needed?
+      motivationalMessage: newUser.motivationalMessage, //TODO: added by Gal, needed by the frontend - are the coreGoals and portfolioSummary also needed?
     };
   }
 
   async login({ email, password }: LoginDto) {
     const user = await this.userRepository.findUserByEmail(email);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user) {
+      logger.warn({ email }, 'login failed: unknown email');
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
+    if (!isPasswordValid) {
+      logger.warn({ email }, 'login failed: invalid password');
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
@@ -75,6 +92,7 @@ export class AuthService {
     const refreshToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_REFRESH_SECRET')!, { expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRATION') });
     await this.userRepository.updateUserRefreshToken(user.id, refreshToken);
 
+    logger.info({ userId: user.id }, 'user logged in');
     return { accessToken, refreshToken, success: true };
   }
 
