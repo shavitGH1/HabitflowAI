@@ -109,6 +109,11 @@ export class AuthService {
     }
   }
 
+  async checkEmail(email: string) {
+    const existing = await this.userRepository.findUserByEmail(email);
+    return { available: !existing };
+  }
+
   async logout(userId: string) {
     await this.userRepository.updateUserRefreshToken(userId, undefined);
     return { message: 'Successfully logged out', success: true };
