@@ -1,5 +1,7 @@
 package com.habitflowai.data.repository
 
+import com.habitflowai.data.local.dao.UserDao
+import com.habitflowai.data.local.entity.UserEntity
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.data.model.GenerateGoalsRequest
 import com.habitflowai.data.model.HomeResponse
@@ -8,7 +10,8 @@ import com.habitflowai.domain.repository.GoalsRepository
 import javax.inject.Inject
 
 class GoalsRepositoryImpl @Inject constructor(
-    private val api: HabitFlowApi
+    private val api: HabitFlowApi,
+    private val userDao: UserDao
 ) : GoalsRepository {
     override suspend fun fetchGoals(userId: String, dayOfWeek: Int): List<Pair<String, Int>> {
         val request = GenerateGoalsRequest(userId, dayOfWeek)
@@ -22,7 +25,20 @@ class GoalsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getHomeData(): HomeResponse {
-        return api.getHome()
+        val response = api.getHome()
+        savePortfolioToRoom(response)
+        return response
+    }
+
+    private suspend fun savePortfolioToRoom(homeData: HomeResponse) {
+        val existingUser = userDao.getFirstUser() ?: return
+        val updatedUser = existingUser.copy(
+            portfolioSummary = homeData.portfolioSummary,
+            tips = homeData.tips?.joinToString(","),
+            failurePatterns = homeData.failurePatterns?.joinToString(","),
+            confidenceScore = homeData.confidenceScore
+        )
+        userDao.insert(updatedUser)
     }
 
     override suspend fun completeTask(taskId: String): Boolean {
