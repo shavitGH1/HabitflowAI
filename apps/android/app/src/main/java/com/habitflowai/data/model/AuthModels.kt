@@ -25,7 +25,8 @@ data class RegisterRequest(
     val email: String,
     val password: String,
     val goal: String,
-    val quizAnswers: List<String>
+    @SerializedName("quizAnswers")
+    val openAnswers: List<String>
 )
 
 data class RegisterResponse(
@@ -49,5 +50,9 @@ data class HomeResponse(
     @SerializedName("coreGoals") val coreGoals: List<HomeGoalTask>,
     @SerializedName("dailyVariations") val dailyVariations: List<HomeGoalTask>,
     @SerializedName("success") val success: Boolean,
-    @SerializedName("personaType", alternate = ["persona", "persona_type"]) val personaType: String? = null
+    @SerializedName("personaType", alternate = ["persona", "persona_type"]) val personaType: String? = null,
+    @SerializedName("portfolioSummary") val portfolioSummary: String? = null,
+    @SerializedName("tips") val tips: List<String>? = null,
+    @SerializedName("failurePatterns") val failurePatterns: List<String>? = null,
+    @SerializedName("confidenceScore") val confidenceScore: Double? = null
 )

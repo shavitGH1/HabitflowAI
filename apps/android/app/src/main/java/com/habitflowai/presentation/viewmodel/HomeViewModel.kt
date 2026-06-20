@@ -14,7 +14,11 @@ import javax.inject.Inject
 data class HomeUiState(
     val homeData: HomeResponse? = null,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val portfolioSummary: String? = null,
+    val tips: List<String>? = null,
+    val failurePatterns: List<String>? = null,
+    val confidenceScore: Double? = null
 )
 
 @HiltViewModel
@@ -60,7 +64,14 @@ class HomeViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
                 val data = goalsRepository.getHomeData()
-                _uiState.value = _uiState.value.copy(homeData = data, isLoading = false)
+                _uiState.value = _uiState.value.copy(
+                    homeData = data,
+                    isLoading = false,
+                    portfolioSummary = data.portfolioSummary,
+                    tips = data.tips,
+                    failurePatterns = data.failurePatterns,
+                    confidenceScore = data.confidenceScore
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message)
             }

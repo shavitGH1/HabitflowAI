@@ -23,7 +23,7 @@ object DatabaseModule {
             context,
             HabitFlowDatabase::class.java,
             "habitflow_db"
-        ).build()
+        ).fallbackToDestructiveMigration().build()
     }
 
     @Provides

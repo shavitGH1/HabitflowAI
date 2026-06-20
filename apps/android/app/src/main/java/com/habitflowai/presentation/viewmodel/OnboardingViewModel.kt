@@ -8,6 +8,7 @@ import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.di.AuthManager
+import com.habitflowai.domain.repository.AuthRepository
 import com.habitflowai.domain.repository.PersonaRepository
 import com.habitflowai.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,7 +22,7 @@ data class OnboardingUiState(
     val email: String = "",
     val password: String = "",
     val goal: String = "",
-    val quizAnswers: List<String> = List(7) { "" },
+    val quizAnswers: List<String> = List(6) { "" },
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val personaResult: ClassifyPersonaResponse? = null,
@@ -31,6 +32,7 @@ data class OnboardingUiState(
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val repository: PersonaRepository,
+    private val authRepository: AuthRepository,
     private val api: HabitFlowApi,
     private val authManager: AuthManager
 ) : ViewModel() {
@@ -91,6 +93,12 @@ class OnboardingViewModel @Inject constructor(
 
     fun registerUser() {
         val currentState = _uiState.value
+        val filledAnswers = currentState.quizAnswers.count { it.isNotBlank() }
+        if (filledAnswers < 4) {
+            _uiState.value = currentState.copy(errorMessage = "Please answer at least 4 questions before continuing.")
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = currentState.copy(isLoading = true, errorMessage = null, navigateToHome = false)
 
@@ -99,9 +107,9 @@ class OnboardingViewModel @Inject constructor(
                     email = currentState.email,
                     password = currentState.password,
                     goal = currentState.goal,
-                    quizAnswers = currentState.quizAnswers.drop(1) // Drop index 0 (Goal) to match backend prompt
+                    openAnswers = currentState.quizAnswers
                 )
-                val response = api.register(request)
+                val response = authRepository.register(request)
 
                 if (response.success) {
                     val loginRes = api.login(LoginRequest(currentState.email, currentState.password))
@@ -151,8 +159,7 @@ class OnboardingViewModel @Inject constructor(
             _uiState.value = currentState.copy(isLoading = true, errorMessage = null, navigateToHome = false)
 
             try {
-                // Drop index 0 (Goal) to match backend prompt which expects 6 answers
-                val request = ClassifyPersonaRequest(currentState.goal, currentState.quizAnswers.drop(1))
+                val request = ClassifyPersonaRequest(currentState.goal, currentState.quizAnswers)
                 val response = repository.classifyPersona(request)
 
                 if (response is Resource.Success && response.data != null) {

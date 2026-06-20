@@ -9,5 +9,9 @@ data class UserEntity(
     val id: String,
     val email: String,
     val goal: String?,
-    val personaType: String?
+    val personaType: String?,
+    val portfolioSummary: String? = null,
+    val tips: String? = null,
+    val failurePatterns: String? = null,
+    val confidenceScore: Double? = null
 )
