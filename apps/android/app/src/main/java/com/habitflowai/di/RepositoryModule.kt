@@ -2,9 +2,11 @@ package com.habitflowai.di
 
 import com.habitflowai.data.repository.AuthRepositoryImpl
 import com.habitflowai.data.repository.GoalsRepositoryImpl
+import com.habitflowai.data.repository.HabitsRepositoryImpl
 import com.habitflowai.data.repository.PersonaRepositoryImpl
 import com.habitflowai.domain.repository.AuthRepository
 import com.habitflowai.domain.repository.GoalsRepository
+import com.habitflowai.domain.repository.HabitsRepository
 import com.habitflowai.domain.repository.PersonaRepository
 import dagger.Binds
 import dagger.Module
@@ -33,4 +35,10 @@ abstract class RepositoryModule {
     abstract fun bindAuthRepository(
         impl: AuthRepositoryImpl
     ): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindHabitsRepository(
+        impl: HabitsRepositoryImpl
+    ): HabitsRepository
 }
