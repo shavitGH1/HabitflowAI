@@ -36,10 +36,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.Box
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.habitflowai.presentation.viewmodel.HomeViewModel
-import com.habitflowai.presentation.viewmodel.HomeViewModelFactory
-import com.habitflowai.data.network.NetworkModule
-import com.habitflowai.data.repository.GoalsRepositoryImpl
 import com.habitflowai.data.model.HomeGoalTask
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 
@@ -48,10 +46,7 @@ import com.habitflowai.data.model.HomeResponse
 
 @Composable
 fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
-    val goalsRepository = remember { GoalsRepositoryImpl(NetworkModule.habitFlowApi) }
-    val viewModel: HomeViewModel = viewModel(
-        factory = HomeViewModelFactory(goalsRepository)
-    )
+    val viewModel: HomeViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(userId) {

@@ -4,11 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habitflowai.data.model.Habit
 import com.habitflowai.data.model.HabitFrequency
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
+import javax.inject.Inject
 
 data class HabitsUiState(
     val habits: List<Habit> = emptyList(),
@@ -16,7 +18,8 @@ data class HabitsUiState(
     val errorMessage: String? = null
 )
 
-class HabitsViewModel : ViewModel() {
+@HiltViewModel
+class HabitsViewModel @Inject constructor() : ViewModel() {
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
 
