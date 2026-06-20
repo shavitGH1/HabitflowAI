@@ -23,7 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.habitflowai.data.model.Habit
+import com.habitflowai.data.local.entity.HabitEntity
+import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.data.model.HabitFrequency
 import com.habitflowai.presentation.ui.persona.PersonaDetails
 import com.habitflowai.presentation.ui.persona.PersonaUiData
@@ -54,7 +55,7 @@ fun HabitsContent(
     uiState: HabitsUiState,
     personaType: String,
     onHabitClick: (String) -> Unit,
-    onAddHabit: (String, String, HabitFrequency) -> Unit,
+    onAddHabit: (String, String, String) -> Unit,
     onDeleteHabit: (String) -> Unit
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
@@ -152,7 +153,7 @@ fun HabitsContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitItem(
-    habit: Habit,
+    habit: HabitEntity,
     personaColor: Color,
     onDelete: () -> Unit,
     onClick: () -> Unit
@@ -225,13 +226,13 @@ fun HabitItem(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = habit.description,
+                        text = habit.description.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Text(
-                    text = habit.frequency.name.lowercase().replaceFirstChar { it.uppercase() },
+                    text = habit.frequency.lowercase().replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.labelSmall,
                     color = personaColor,
                     modifier = Modifier
@@ -248,11 +249,11 @@ fun HabitItem(
 fun HabitCreateBottomSheet(
     personaColor: Color,
     onDismiss: () -> Unit,
-    onHabitCreated: (String, String, HabitFrequency) -> Unit
+    onHabitCreated: (String, String, String) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var frequency by remember { mutableStateOf(HabitFrequency.DAILY) }
+    var frequency by remember { mutableStateOf("DAILY") }
     val sheetState = rememberModalBottomSheetState()
 
     ModalBottomSheet(
@@ -311,8 +312,8 @@ fun HabitCreateBottomSheet(
             ) {
                 HabitFrequency.entries.forEach { freq ->
                     FilterChip(
-                        selected = frequency == freq,
-                        onClick = { frequency = freq },
+                        selected = frequency == freq.name,
+                        onClick = { frequency = freq.name },
                         label = { 
                             Text(
                                 text = freq.name.lowercase().replaceFirstChar { it.uppercase() },
@@ -355,8 +356,8 @@ fun HabitsAchieverPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    Habit("1", "Workout", "Gym session", HabitFrequency.DAILY),
-                    Habit("2", "Beat PR", "Run faster", HabitFrequency.WEEKLY)
+                    HabitEntity("1", "Workout", "Gym session", "DAILY", "", false),
+                    HabitEntity("2", "Beat PR", "Run faster", "WEEKLY", "", false)
                 )
             ),
             personaType = "Achiever",
@@ -375,8 +376,8 @@ fun HabitsGrowerPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    Habit("1", "Meditation", "10 mins daily", HabitFrequency.DAILY),
-                    Habit("2", "Journaling", "Reflect on day", HabitFrequency.DAILY)
+                    HabitEntity("1", "Meditation", "10 mins daily", "DAILY", "", false),
+                    HabitEntity("2", "Journaling", "Reflect on day", "DAILY", "", false)
                 )
             ),
             personaType = "Grower",
@@ -395,8 +396,8 @@ fun HabitsRegulatorPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    Habit("1", "Morning Routine", "Follow schedule", HabitFrequency.DAILY),
-                    Habit("2", "Deep Work", "Block time", HabitFrequency.DAILY)
+                    HabitEntity("1", "Morning Routine", "Follow schedule", "DAILY", "", false),
+                    HabitEntity("2", "Deep Work", "Block time", "DAILY", "", false)
                 )
             ),
             personaType = "Regulator",
@@ -415,8 +416,8 @@ fun HabitsSocializerPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    Habit("1", "Call Friend", "Stay connected", HabitFrequency.WEEKLY),
-                    Habit("2", "Group Class", "Fitness with others", HabitFrequency.WEEKLY)
+                    HabitEntity("1", "Call Friend", "Stay connected", "WEEKLY", "", false),
+                    HabitEntity("2", "Group Class", "Fitness with others", "WEEKLY", "", false)
                 )
             ),
             personaType = "Socializer",
@@ -435,8 +436,8 @@ fun HabitsExplorerPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    Habit("1", "Try New Food", "Explore cuisine", HabitFrequency.WEEKLY),
-                    Habit("2", "Random Walk", "Discover paths", HabitFrequency.DAILY)
+                    HabitEntity("1", "Try New Food", "Explore cuisine", "WEEKLY", "", false),
+                    HabitEntity("2", "Random Walk", "Discover paths", "DAILY", "", false)
                 )
             ),
             personaType = "Explorer",
@@ -455,8 +456,8 @@ fun HabitsAltruistPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    Habit("1", "Volunteer", "Community help", HabitFrequency.MONTHLY),
-                    Habit("2", "Help Neighbor", "Small acts", HabitFrequency.WEEKLY)
+                    HabitEntity("1", "Volunteer", "Community help", "MONTHLY", "", false),
+                    HabitEntity("2", "Help Neighbor", "Small acts", "WEEKLY", "", false)
                 )
             ),
             personaType = "Altruist",

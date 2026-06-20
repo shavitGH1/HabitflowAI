@@ -2,6 +2,7 @@ package com.habitflowai.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.work.WorkManager
 import com.habitflowai.data.local.HabitFlowDatabase
 import com.habitflowai.data.local.dao.HabitDao
 import com.habitflowai.data.local.dao.UserDao
@@ -31,4 +32,10 @@ object DatabaseModule {
 
     @Provides
     fun provideHabitDao(database: HabitFlowDatabase): HabitDao = database.habitDao()
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
+        return WorkManager.getInstance(context)
+    }
 }

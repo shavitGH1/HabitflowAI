@@ -11,5 +11,9 @@ data class HabitEntity(
     val description: String?,
     val frequency: String,
     val userId: String,
-    val completed: Boolean
+    val completed: Boolean,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val syncStatus: SyncStatus = SyncStatus.SYNCED,
+    val serverId: String? = null
 )
