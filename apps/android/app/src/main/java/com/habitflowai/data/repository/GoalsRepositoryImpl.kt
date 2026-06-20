@@ -4,11 +4,13 @@ import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.data.model.GenerateGoalsRequest
 import com.habitflowai.data.model.HomeResponse
 import com.habitflowai.data.model.toGoalPairList
+import com.habitflowai.domain.repository.GoalsRepository
+import javax.inject.Inject
 
-class GoalsRepositoryImpl(
+class GoalsRepositoryImpl @Inject constructor(
     private val api: HabitFlowApi
-) {
-    suspend fun fetchGoals(userId: String, dayOfWeek: Int): List<Pair<String, Int>> {
+) : GoalsRepository {
+    override suspend fun fetchGoals(userId: String, dayOfWeek: Int): List<Pair<String, Int>> {
         val request = GenerateGoalsRequest(userId, dayOfWeek)
         val response = api.generateGoals(request)
 
@@ -19,11 +21,11 @@ class GoalsRepositoryImpl(
         return response.toGoalPairList()
     }
 
-    suspend fun getHomeData(): HomeResponse {
+    override suspend fun getHomeData(): HomeResponse {
         return api.getHome()
     }
 
-    suspend fun completeTask(taskId: String): Boolean {
+    override suspend fun completeTask(taskId: String): Boolean {
         val response = api.completeTask(taskId)
         return response.isSuccessful
     }

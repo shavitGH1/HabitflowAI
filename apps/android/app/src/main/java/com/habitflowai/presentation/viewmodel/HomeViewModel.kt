@@ -1,14 +1,15 @@
 package com.habitflowai.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.habitflowai.data.repository.GoalsRepositoryImpl
+import com.habitflowai.domain.repository.GoalsRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import com.habitflowai.data.model.HomeResponse
+import javax.inject.Inject
 
 data class HomeUiState(
     val homeData: HomeResponse? = null,
@@ -16,8 +17,9 @@ data class HomeUiState(
     val errorMessage: String? = null
 )
 
-class HomeViewModel(
-    private val goalsRepository: GoalsRepositoryImpl
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val goalsRepository: GoalsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -66,12 +68,3 @@ class HomeViewModel(
     }
 }
 
-class HomeViewModelFactory(private val repository: GoalsRepositoryImpl) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return HomeViewModel(repository) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
-}
