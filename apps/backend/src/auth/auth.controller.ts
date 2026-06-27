@@ -4,6 +4,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { CheckEmailDto } from './dto/check-email.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -11,6 +12,14 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('check-email')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Check whether an email address is available for registration' })
+  @ApiResponse({ status: 200, description: 'Returns { available: boolean }' })
+  checkEmail(@Body() dto: CheckEmailDto) {
+    return this.authService.checkEmail(dto.email);
+  }
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user — classifies persona and generates portfolio' })
