@@ -62,8 +62,6 @@ export class AuthService {
       portfolioSummary: portfolio.summary,
       coreGoals: newUser.coreGoals,
       success: true,
-      personaType: newUser.personaType, //TODO: added by Gal, needed by the frontend - are the coreGoals and portfolioSummary also needed?
-      motivationalMessage: newUser.motivationalMessage, //TODO: added by Gal, needed by the frontend - are the coreGoals and portfolioSummary also needed?
     };
   }
 
