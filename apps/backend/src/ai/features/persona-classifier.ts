@@ -15,7 +15,7 @@ export const classifyPersona = async (
   answers: string[],
 ): Promise<PersonaResult> => {
   const result = await client.generateJson<PersonaResult>(
-    buildPersonaClassifierPrompt({ goal, openAnswers: answers }),
+    buildPersonaClassifierPrompt({ goal, quizAnswers: answers }),
   );
   if (result.isValid && result.personaType && !VALID_PERSONAS.includes(result.personaType)) {
     return { isValid: false, errorReason: `Unknown persona type: ${result.personaType}` };
