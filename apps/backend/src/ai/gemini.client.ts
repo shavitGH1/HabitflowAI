@@ -14,7 +14,7 @@ export class GeminiClient {
     const configured = this.config.get<string>('GEMINI_MODEL');
     this.models = configured
       ? [configured]
-      : ['gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
+      : ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
   }
 
   async generateJson<T>(prompt: string, schema?: ZodSchema<T>): Promise<T> {
