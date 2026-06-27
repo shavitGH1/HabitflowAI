@@ -2,12 +2,14 @@ package com.habitflowai.presentation.ui.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -31,11 +33,18 @@ fun RegisterCredentialsRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(uiState.proceedToOnboarding) {
+        if (uiState.proceedToOnboarding) {
+            viewModel.onOnboardingNavigated()
+            onNext()
+        }
+    }
+
     RegisterCredentialsContent(
         uiState = uiState,
         onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
-        onNext = onNext,
+        onNext = viewModel::checkEmail,
         onNavigateBack = onNavigateBack
     )
 }
@@ -94,7 +103,7 @@ fun RegisterCredentialsContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        val isEnabled = uiState.email.contains("@") && uiState.password.length >= 6
+        val isEnabled = uiState.email.contains("@") && uiState.password.length >= 6 && !uiState.isLoading
         val gradient = if (isEnabled) {
             Brush.linearGradient(colors = listOf(Color(0xFF64B5F6), Color(0xFF1E88E5)))
         } else {
@@ -127,12 +136,20 @@ fun RegisterCredentialsContent(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    "Next",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        "Next",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
             }
         }
 

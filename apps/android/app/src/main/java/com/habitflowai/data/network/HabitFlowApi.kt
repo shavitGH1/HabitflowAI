@@ -6,6 +6,8 @@ import com.habitflowai.data.model.GenerateGoalsRequest
 import com.habitflowai.data.model.GenerateGoalsResponse
 import com.habitflowai.data.model.HabitRequest
 import com.habitflowai.data.model.HabitResponse
+import com.habitflowai.data.model.CheckEmailRequest
+import com.habitflowai.data.model.CheckEmailResponse
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.model.LoginResponse
 import com.habitflowai.data.model.RegisterRequest
@@ -24,6 +26,9 @@ import retrofit2.http.Path
 import retrofit2.Response
 
 interface HabitFlowApi {
+    @POST("api/v1/auth/check-email")
+    suspend fun checkEmail(@Body request: CheckEmailRequest): CheckEmailResponse
+
     @POST("api/v1/auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
