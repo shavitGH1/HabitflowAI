@@ -42,40 +42,34 @@ val onboardingQuestions = listOf(
         placeholder = "e.g. Run a marathon, study more..."
     ),
     Question(
-        title = "What is your primary motivation?",
-        type = QuestionType.SINGLE_CHOICE,
-        options = listOf(
-            Option("Competition & Rewards", "Achiever", Color(0xFFFFE082)),
-            Option("Self improvement & Growth", "Grower", Color(0xFFA5D6A7)),
-            Option("Structure & Routine", "Regulator", Color(0xFF90CAF9)),
-            Option("Helping & Sharing", "Altruist", Color(0xFFF48FB1)),
-            Option("Connecting & Teamwork", "Socializer", Color(0xFFCE93D8)),
-            Option("Discovery & Novelty", "Explorer", Color(0xFFFFAB91))
-        )
+        title = "Describe a recent goal you set for yourself. What pushed you to start it, and how did you measure progress?",
+        type = QuestionType.OPEN,
+        placeholder = "Your answer..."
     ),
     Question(
-        title = "How do you prefer to track progress? (Choose one or more)",
-        type = QuestionType.MULTI_CHOICE,
-        options = listOf(
-            Option("Milestones and achievements", "Achiever", Color(0xFFFFE082)),
-            Option("Reflecting on past habits", "Grower", Color(0xFFA5D6A7)),
-            Option("Detailed logs and schedules", "Regulator", Color(0xFF90CAF9)),
-            Option("Community impact metrics", "Altruist", Color(0xFFF48FB1)),
-            Option("Leaderboards with friends", "Socializer", Color(0xFFCE93D8)),
-            Option("Unlocking new habit zones", "Explorer", Color(0xFFFFAB91))
-        )
+        title = "Think of a habit or skill you stuck with for more than a month. What kept you coming back to it?",
+        type = QuestionType.OPEN,
+        placeholder = "Your answer..."
     ),
     Question(
-        title = "When you fail a habit, how do you react?",
-        type = QuestionType.SINGLE_CHOICE,
-        options = listOf(
-            Option("Push harder to win it back", "Achiever", Color(0xFFFFE082)),
-            Option("Analyze what went wrong to learn", "Grower", Color(0xFFA5D6A7)),
-            Option("Adjust my daily schedule", "Regulator", Color(0xFF90CAF9)),
-            Option("Focus on supporting others", "Altruist", Color(0xFFF48FB1)),
-            Option("Talk with my group", "Socializer", Color(0xFFCE93D8)),
-            Option("Change to something exciting", "Explorer", Color(0xFFFFAB91))
-        )
+        title = "When you want to make a change in your life, do you tend to involve other people? Describe a specific example.",
+        type = QuestionType.OPEN,
+        placeholder = "Your answer..."
+    ),
+    Question(
+        title = "How do you react when a routine starts to feel boring or stale? Give an example.",
+        type = QuestionType.OPEN,
+        placeholder = "Your answer..."
+    ),
+    Question(
+        title = "What is the deeper reason you want to build better habits right now? Who or what is this for?",
+        type = QuestionType.OPEN,
+        placeholder = "Your answer..."
+    ),
+    Question(
+        title = "Describe your ideal daily routine. How structured or flexible is it, and why does that work for you?",
+        type = QuestionType.OPEN,
+        placeholder = "Your answer..."
     )
 )
 
@@ -212,21 +206,33 @@ fun OnboardingScreen(
 
                         when (question.type) {
                             QuestionType.OPEN -> {
+                                val value = if (step == 0) uiState.goal else uiState.quizAnswers[step]
+                                val onValueChange: (String) -> Unit = {
+                                    if (step == 0) onGoalChange(it) else onQuizAnswerChange(step, it)
+                                }
+
                                 OutlinedTextField(
-                                    value = uiState.goal,
-                                    onValueChange = onGoalChange,
+                                    value = value,
+                                    onValueChange = onValueChange,
                                     placeholder = { Text(question.placeholder) },
                                     modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(16.dp)
+                                    shape = RoundedCornerShape(16.dp),
+                                    minLines = if (step == 0) 1 else 3
                                 )
                                 Spacer(modifier = Modifier.height(32.dp))
                                 Button(
-                                    onClick = { onStepChange(currentStep + 1) },
-                                    enabled = uiState.goal.isNotBlank(),
+                                    onClick = {
+                                        if (currentStep < totalSteps - 1) onStepChange(currentStep + 1) else onSubmit()
+                                    },
+                                    enabled = value.isNotBlank(),
                                     modifier = Modifier.fillMaxWidth().height(56.dp),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Text("Next", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = if (currentStep < totalSteps - 1) "Next" else "Analyze My Persona",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
                             QuestionType.SINGLE_CHOICE -> {
@@ -418,7 +424,7 @@ fun OnboardingStep3Preview() {
     OnboardingScreen(
         uiState = OnboardingUiState(
             goal = "Run a marathon",
-            quizAnswers = listOf("", "", "Achiever,Grower", "")
+            quizAnswers = List(7) { "" }
         ),
         currentStep = 2,
         onStepChange = {},

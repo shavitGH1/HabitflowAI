@@ -57,6 +57,8 @@ export class AuthService {
     return {
       message: 'User registered successfully',
       userId: newUser.id,
+      personaType: newUser.personaType,
+      motivationalMessage: newUser.motivationalMessage,
       portfolioSummary: portfolio.summary,
       coreGoals: newUser.coreGoals,
       success: true,
