@@ -2,6 +2,7 @@ package com.habitflowai.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.habitflowai.data.model.CheckEmailRequest
 import com.habitflowai.data.model.ClassifyPersonaRequest
 import com.habitflowai.data.model.ClassifyPersonaResponse
 import com.habitflowai.data.model.RegisterRequest
@@ -26,7 +27,8 @@ data class OnboardingUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val personaResult: ClassifyPersonaResponse? = null,
-    val navigateToHome: Boolean = false
+    val navigateToHome: Boolean = false,
+    val proceedToOnboarding: Boolean = false
 )
 
 @HiltViewModel
@@ -62,6 +64,27 @@ class OnboardingViewModel @Inject constructor(
 
     fun onHomeNavigated() {
         _uiState.value = _uiState.value.copy(navigateToHome = false)
+    }
+
+    fun onOnboardingNavigated() {
+        _uiState.value = _uiState.value.copy(proceedToOnboarding = false)
+    }
+
+    fun checkEmail() {
+        val email = _uiState.value.email
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            try {
+                val result = api.checkEmail(CheckEmailRequest(email))
+                if (result.available) {
+                    _uiState.value = _uiState.value.copy(isLoading = false, proceedToOnboarding = true)
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "An account with this email already exists")
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "Network error. Please try again.")
+            }
+        }
     }
 
     fun fetchProfile() {
@@ -106,8 +129,7 @@ class OnboardingViewModel @Inject constructor(
                 val request = RegisterRequest(
                     email = currentState.email,
                     password = currentState.password,
-                    goal = currentState.goal,
-                    openAnswers = currentState.quizAnswers
+                    openAnswers = listOf(currentState.goal) + currentState.quizAnswers.drop(1).take(5)
                 )
                 val response = authRepository.register(request)
 
