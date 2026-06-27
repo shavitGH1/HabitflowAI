@@ -10,14 +10,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.habitflowai.data.network.NetworkModule
-import com.habitflowai.data.repository.PersonaRepositoryImpl
 import com.habitflowai.presentation.ui.home.HomeRoute
 import com.habitflowai.presentation.ui.habits.HabitDetailRoute
 import com.habitflowai.presentation.ui.habits.HabitsRoute
@@ -30,24 +28,17 @@ import com.habitflowai.presentation.ui.map.MapRoute
 import com.habitflowai.presentation.ui.drift.DriftCheckRoute
 import com.habitflowai.presentation.ui.persona.ProfileRevealRoute
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
-import com.habitflowai.presentation.viewmodel.OnboardingViewModelFactory
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
 import com.habitflowai.presentation.viewmodel.LoginViewModel
-import com.habitflowai.presentation.viewmodel.LoginViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitFlowNavGraph(
     navController: NavHostController = rememberNavController()
 ) {
-    val repository = remember { PersonaRepositoryImpl(NetworkModule.habitFlowApi) }
-    val onboardingViewModel: OnboardingViewModel = viewModel(
-        factory = OnboardingViewModelFactory(repository)
-    )
-    val loginViewModel: LoginViewModel = viewModel(
-        factory = LoginViewModelFactory(NetworkModule.habitFlowApi)
-    )
-    val habitsViewModel: HabitsViewModel = viewModel()
+    val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+    val loginViewModel: LoginViewModel = hiltViewModel()
+    val habitsViewModel: HabitsViewModel = hiltViewModel()
     val uiState by onboardingViewModel.uiState.collectAsState()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()

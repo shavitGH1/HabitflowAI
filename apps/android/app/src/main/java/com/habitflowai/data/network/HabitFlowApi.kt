@@ -4,6 +4,8 @@ import com.habitflowai.data.model.ClassifyPersonaRequest
 import com.habitflowai.data.model.ClassifyPersonaResponse
 import com.habitflowai.data.model.GenerateGoalsRequest
 import com.habitflowai.data.model.GenerateGoalsResponse
+import com.habitflowai.data.model.HabitRequest
+import com.habitflowai.data.model.HabitResponse
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.model.LoginResponse
 import com.habitflowai.data.model.RegisterRequest
@@ -13,8 +15,10 @@ import com.habitflowai.data.model.TokenRefreshResponse
 import com.habitflowai.data.model.HomeResponse
 import retrofit2.Call
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.PATCH
 import retrofit2.http.Path
 import retrofit2.Response
@@ -40,4 +44,16 @@ interface HabitFlowApi {
 
     @PATCH("api/v1/tasks/{taskId}/complete")
     suspend fun completeTask(@Path("taskId") taskId: String): Response<Unit>
+
+    @POST("api/v1/habits")
+    suspend fun createHabit(@Body habit: HabitRequest): HabitResponse
+
+    @PUT("api/v1/habits/{id}")
+    suspend fun updateHabit(@Path("id") id: String, @Body habit: HabitRequest): HabitResponse
+
+    @DELETE("api/v1/habits/{id}")
+    suspend fun deleteHabit(@Path("id") id: String): Response<Unit>
+
+    @GET("api/v1/habits")
+    suspend fun getHabits(): List<HabitResponse>
 }

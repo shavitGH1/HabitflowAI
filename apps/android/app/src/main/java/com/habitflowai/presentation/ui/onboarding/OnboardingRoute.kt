@@ -206,9 +206,10 @@ fun OnboardingScreen(
 
                         when (question.type) {
                             QuestionType.OPEN -> {
-                                val value = if (step == 0) uiState.goal else uiState.quizAnswers[step]
+                                val answerIndex = step - 1
+                                val value = if (step == 0) uiState.goal else uiState.quizAnswers.getOrElse(answerIndex) { "" }
                                 val onValueChange: (String) -> Unit = {
-                                    if (step == 0) onGoalChange(it) else onQuizAnswerChange(step, it)
+                                    if (step == 0) onGoalChange(it) else onQuizAnswerChange(answerIndex, it)
                                 }
 
                                 OutlinedTextField(
@@ -424,7 +425,7 @@ fun OnboardingStep3Preview() {
     OnboardingScreen(
         uiState = OnboardingUiState(
             goal = "Run a marathon",
-            quizAnswers = List(7) { "" }
+            quizAnswers = List(6) { "" }
         ),
         currentStep = 2,
         onStepChange = {},

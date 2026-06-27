@@ -15,13 +15,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.habitflowai.data.model.Habit
-import com.habitflowai.data.model.HabitFrequency
+import com.habitflowai.data.local.entity.HabitEntity
+import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.presentation.ui.persona.PersonaDetails
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
-import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +43,7 @@ fun HabitDetailRoute(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitDetailContent(
-    habit: Habit?,
+    habit: HabitEntity?,
     personaType: String,
     onBack: () -> Unit
 ) {
@@ -89,63 +88,55 @@ fun HabitDetailContent(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = habit.description,
+                            text = habit.description.orEmpty(),
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.DarkGray
                         )
                     }
                 }
 
-                Text(
-                    text = "Completion History",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-
-                CompletionCalendar(habit.completionHistory, details.endColor)
-            }
-        }
-    }
-}
-
-@Composable
-fun CompletionCalendar(history: List<LocalDate>, highlightColor: Color) {
-    val today = LocalDate.now()
-    val days = (0..27).map { today.minusDays(it.toLong()) }.reversed()
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(16.dp))
-            .padding(16.dp)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Last 28 Days", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-            Text("${history.size} completions", style = MaterialTheme.typography.labelMedium, color = highlightColor)
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-
-        val rows = days.chunked(7)
-        rows.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                row.forEach { date ->
-                    val isCompleted = history.contains(date)
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f)
-                            .background(
-                                color = if (isCompleted) highlightColor else Color.LightGray.copy(alpha = 0.3f),
-                                shape = RoundedCornerShape(4.dp)
-                            )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (habit.completed) Color(0xFFC8E6C9) else Color(0xFFFFF9C4)
                     )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Status",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (habit.completed) "Completed" else "In Progress",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = if (habit.completed) Color(0xFF2E7D32) else Color(0xFFF57F17)
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Frequency",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = habit.frequency.lowercase().replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -156,17 +147,7 @@ fun CompletionCalendar(history: List<LocalDate>, highlightColor: Color) {
 fun HabitDetailAchieverPreview() {
     HabitFlowTheme {
         HabitDetailContent(
-            habit = Habit(
-                id = "1",
-                title = "Weightlifting",
-                description = "Push day at the gym",
-                frequency = HabitFrequency.DAILY,
-                completionHistory = listOf(
-                    LocalDate.now().minusDays(1),
-                    LocalDate.now().minusDays(2),
-                    LocalDate.now().minusDays(4)
-                )
-            ),
+            habit = HabitEntity("1", "Weightlifting", "Push day at the gym", "DAILY", "", false),
             personaType = "Achiever",
             onBack = {}
         )
@@ -179,17 +160,7 @@ fun HabitDetailAchieverPreview() {
 fun HabitDetailGrowerPreview() {
     HabitFlowTheme {
         HabitDetailContent(
-            habit = Habit(
-                id = "2",
-                title = "Meditation",
-                description = "10 minutes of mindfulness",
-                frequency = HabitFrequency.DAILY,
-                completionHistory = listOf(
-                    LocalDate.now().minusDays(1),
-                    LocalDate.now().minusDays(3),
-                    LocalDate.now().minusDays(5)
-                )
-            ),
+            habit = HabitEntity("2", "Meditation", "10 minutes of mindfulness", "DAILY", "", false),
             personaType = "Grower",
             onBack = {}
         )
@@ -202,106 +173,8 @@ fun HabitDetailGrowerPreview() {
 fun HabitDetailRegulatorPreview() {
     HabitFlowTheme {
         HabitDetailContent(
-            habit = Habit(
-                id = "3",
-                title = "Morning Protocol",
-                description = "Wake up at 6 AM",
-                frequency = HabitFrequency.DAILY,
-                completionHistory = listOf(
-                    LocalDate.now().minusDays(1),
-                    LocalDate.now().minusDays(2),
-                    LocalDate.now().minusDays(3)
-                )
-            ),
+            habit = HabitEntity("3", "Morning Protocol", "Wake up at 6 AM", "DAILY", "", false),
             personaType = "Regulator",
-            onBack = {}
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "Architect Detail")
-@Composable
-fun HabitDetailArchitectPreview() {
-    HabitFlowTheme {
-        HabitDetailContent(
-            habit = Habit(
-                id = "4",
-                title = "Deep Work",
-                description = "90 minutes of focused coding",
-                frequency = HabitFrequency.DAILY,
-                completionHistory = listOf(
-                    LocalDate.now().minusDays(2),
-                    LocalDate.now().minusDays(4),
-                    LocalDate.now().minusDays(6)
-                )
-            ),
-            personaType = "Architect",
-            onBack = {}
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "Socializer Detail")
-@Composable
-fun HabitDetailSocializerPreview() {
-    HabitFlowTheme {
-        HabitDetailContent(
-            habit = Habit(
-                id = "5",
-                title = "Group Run",
-                description = "Weekly 5km with the club",
-                frequency = HabitFrequency.WEEKLY,
-                completionHistory = listOf(
-                    LocalDate.now().minusDays(7),
-                    LocalDate.now().minusDays(14)
-                )
-            ),
-            personaType = "Socializer",
-            onBack = {}
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "Explorer Detail")
-@Composable
-fun HabitDetailExplorerPreview() {
-    HabitFlowTheme {
-        HabitDetailContent(
-            habit = Habit(
-                id = "6",
-                title = "New Recipe",
-                description = "Cook something new once a week",
-                frequency = HabitFrequency.WEEKLY,
-                completionHistory = listOf(
-                    LocalDate.now().minusDays(5),
-                    LocalDate.now().minusDays(12)
-                )
-            ),
-            personaType = "Explorer",
-            onBack = {}
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "Altruist Detail")
-@Composable
-fun HabitDetailAltruistPreview() {
-    HabitFlowTheme {
-        HabitDetailContent(
-            habit = Habit(
-                id = "7",
-                title = "Volunteering",
-                description = "Helping at the local shelter",
-                frequency = HabitFrequency.MONTHLY,
-                completionHistory = listOf(
-                    LocalDate.now().minusDays(20)
-                )
-            ),
-            personaType = "Altruist",
             onBack = {}
         )
     }

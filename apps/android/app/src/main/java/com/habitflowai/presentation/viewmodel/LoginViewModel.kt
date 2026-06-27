@@ -1,15 +1,16 @@
 package com.habitflowai.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.network.HabitFlowApi
-import com.habitflowai.data.network.NetworkModule
+import com.habitflowai.di.AuthManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class LoginUiState(
     val email: String = "",
@@ -19,7 +20,11 @@ data class LoginUiState(
     val navigateToHome: Boolean = false
 )
 
-class LoginViewModel(private val api: HabitFlowApi) : ViewModel() {
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val api: HabitFlowApi,
+    private val authManager: AuthManager
+) : ViewModel() {
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
@@ -42,8 +47,7 @@ class LoginViewModel(private val api: HabitFlowApi) : ViewModel() {
         viewModelScope.launch {
             try {
                 val response = api.login(LoginRequest(current.email, current.password))
-                NetworkModule.accessToken = response.accessToken
-                NetworkModule.refreshToken = response.refreshToken
+                authManager.updateTokens(response.accessToken, response.refreshToken)
                 _uiState.value = _uiState.value.copy(isLoading = false, navigateToHome = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message ?: "Login failed")
@@ -53,13 +57,5 @@ class LoginViewModel(private val api: HabitFlowApi) : ViewModel() {
 
     fun onNavigated() {
         _uiState.value = _uiState.value.copy(navigateToHome = false)
-    }
-}
-
-class LoginViewModelFactory(private val api: HabitFlowApi) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(LoginViewModel::class.java)) return LoginViewModel(api) as T
-        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
