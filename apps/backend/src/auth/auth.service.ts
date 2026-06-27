@@ -18,20 +18,20 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register({ email, password, quizAnswers }: RegisterDto) {
+  async register({ email, password, openAnswers }: RegisterDto) {
     if (await this.userRepository.findUserByEmail(email)) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const goal = quizAnswers[0];
+    const goal = openAnswers[0];
 
-    const classification = await this.ai.classifyPersonaWeighted({ goal, quizAnswers });
+    const classification = await this.ai.classifyPersonaWeighted({ goal, openAnswers });
     if (!classification.isValid) {
       throw new BadRequestException(`Invalid input: ${classification.errorReason}`);
     }
 
     const { personaType, weightedBreakdown, confidenceScore } = classification;
-    const portfolio = await this.ai.generatePortfolio({ goal, quizAnswers, personaType, weightedBreakdown });
+    const portfolio = await this.ai.generatePortfolio({ goal, openAnswers, personaType, weightedBreakdown });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const today = new Date();

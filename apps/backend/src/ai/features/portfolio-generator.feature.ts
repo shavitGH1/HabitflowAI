@@ -9,7 +9,7 @@ import {
 
 export interface PortfolioGeneratorInput {
   goal: string;
-  quizAnswers: string[];
+  openAnswers: string[];
   personaType: PersonaType;
   weightedBreakdown: Record<Pillar, number>;
 }
