@@ -2,19 +2,19 @@ import { ONBOARDING_QUESTIONS, PERSONA_TYPES, PILLAR_DEFINITIONS, PILLARS } from
 
 export interface PersonaClassifierPromptInput {
   goal: string;
-  openAnswers: string[];
+  quizAnswers: string[];
 }
 
 export const buildPersonaClassifierPrompt = ({
   goal,
-  openAnswers,
+  quizAnswers,
 }: PersonaClassifierPromptInput): string => {
   const pillarsBlock = PILLAR_DEFINITIONS
     .map((p) => `- ${p.key} (persona: ${p.persona}): ${p.description}`)
     .join('\n');
 
   const questionsBlock = ONBOARDING_QUESTIONS
-    .map((q, i) => `Q${q.id} (primary pillar: ${q.primaryPillar}): ${q.text}\nAnswer: "${openAnswers[i] ?? ''}"`)
+    .map((q, i) => `Q${q.id} (primary pillar: ${q.primaryPillar}): ${q.text}\nAnswer: "${quizAnswers[i] ?? ''}"`)
     .join('\n\n');
 
   const personaList = PERSONA_TYPES.map((p) => `"${p}"`).join(', ');

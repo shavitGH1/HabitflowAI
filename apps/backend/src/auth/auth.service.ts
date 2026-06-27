@@ -18,20 +18,20 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register({ email, password, openAnswers }: RegisterDto) {
+  async register({ email, password, quizAnswers }: RegisterDto) {
     if (await this.userRepository.findUserByEmail(email)) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const goal = openAnswers[0];
+    const goal = quizAnswers[0];
 
-    const classification = await this.ai.classifyPersonaWeighted({ goal, openAnswers });
+    const classification = await this.ai.classifyPersonaWeighted({ goal, quizAnswers });
     if (!classification.isValid) {
       throw new BadRequestException(`Invalid input: ${classification.errorReason}`);
     }
 
     const { personaType, weightedBreakdown, confidenceScore } = classification;
-    const portfolio = await this.ai.generatePortfolio({ goal, openAnswers, personaType, weightedBreakdown });
+    const portfolio = await this.ai.generatePortfolio({ goal, quizAnswers, personaType, weightedBreakdown });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const today = new Date();
@@ -62,6 +62,8 @@ export class AuthService {
       portfolioSummary: portfolio.summary,
       coreGoals: newUser.coreGoals,
       success: true,
+      personaType: newUser.personaType, //TODO: added by Gal, needed by the frontend - are the coreGoals and portfolioSummary also needed?
+      motivationalMessage: newUser.motivationalMessage, //TODO: added by Gal, needed by the frontend - are the coreGoals and portfolioSummary also needed?
     };
   }
 
