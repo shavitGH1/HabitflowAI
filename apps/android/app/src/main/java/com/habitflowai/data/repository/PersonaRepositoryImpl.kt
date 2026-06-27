@@ -7,8 +7,9 @@ import com.habitflowai.domain.repository.PersonaRepository
 import com.habitflowai.util.Resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class PersonaRepositoryImpl(
+class PersonaRepositoryImpl @Inject constructor(
     private val api: HabitFlowApi
 ) : PersonaRepository {
     override suspend fun classifyPersona(request: ClassifyPersonaRequest): Resource<ClassifyPersonaResponse> {
