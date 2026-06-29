@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import { AuthModule } from './auth/auth.module';
+import { InsightsModule } from './insights/insights.module';
 import { PersonasModule } from './personas/personas.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
@@ -31,10 +33,12 @@ import { UsersModule } from './users/users.module';
       }),
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 5 }]),
+    ScheduleModule.forRoot(),
     AuthModule,
     UsersModule,
     TasksModule,
     PersonasModule,
+    InsightsModule,
   ],
 })
 export class AppModule {}

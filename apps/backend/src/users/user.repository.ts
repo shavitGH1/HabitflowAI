@@ -51,6 +51,11 @@ export class UserRepository {
     return doc ? this.toUserData(doc) : null;
   }
 
+  async findAllUsers(): Promise<UserData[]> {
+    const docs = await this.userModel.find();
+    return docs.map((doc) => this.toUserData(doc));
+  }
+
   async updateUserDailyTasks(userId: string, newDailyTasks: GoalTask[]): Promise<UserData | null> {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
