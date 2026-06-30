@@ -74,7 +74,7 @@ export class UserRepository {
 
   async updateUserPersona(
     userId: string,
-    updates: Partial<Pick<UserData, 'goal' | 'personaType' | 'motivationalMessage' | 'coreGoals' | 'dailyVariations' | 'tasksLastGeneratedDate'>>,
+    updates: Partial<Pick<UserData, 'goal' | 'personaType' | 'motivationalMessage' | 'coreGoals' | 'dailyVariations' | 'tasksLastGeneratedDate' | 'personaBreakdown' | 'weightedScores'>>,
   ): Promise<UserData | null> {
     const doc = await this.userModel.findByIdAndUpdate(userId, updates, { new: true });
     return doc ? this.toUserData(doc) : null;

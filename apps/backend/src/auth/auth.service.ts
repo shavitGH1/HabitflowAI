@@ -18,20 +18,20 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register({ email, password, quizAnswers }: RegisterDto) {
+  async register({ email, password, openAnswers }: RegisterDto) {
     if (await this.userRepository.findUserByEmail(email)) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const goal = quizAnswers[0];
+    const goal = openAnswers[0];
 
-    const classification = await this.ai.classifyPersonaWeighted({ goal, quizAnswers });
+    const classification = await this.ai.classifyPersonaWeighted({ goal, openAnswers });
     if (!classification.isValid) {
       throw new BadRequestException(`Invalid input: ${classification.errorReason}`);
     }
 
     const { personaType, weightedBreakdown, confidenceScore } = classification;
-    const portfolio = await this.ai.generatePortfolio({ goal, quizAnswers, personaType, weightedBreakdown });
+    const portfolio = await this.ai.generatePortfolio({ goal, openAnswers, personaType, weightedBreakdown });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const today = new Date();
@@ -62,8 +62,6 @@ export class AuthService {
       portfolioSummary: portfolio.summary,
       coreGoals: newUser.coreGoals,
       success: true,
-      personaType: newUser.personaType, //TODO: added by Gal, needed by the frontend - are the coreGoals and portfolioSummary also needed?
-      motivationalMessage: newUser.motivationalMessage, //TODO: added by Gal, needed by the frontend - are the coreGoals and portfolioSummary also needed?
     };
   }
 
@@ -109,6 +107,11 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
+  }
+
+  async checkEmail(email: string) {
+    const existing = await this.userRepository.findUserByEmail(email);
+    return { available: !existing };
   }
 
   async logout(userId: string) {

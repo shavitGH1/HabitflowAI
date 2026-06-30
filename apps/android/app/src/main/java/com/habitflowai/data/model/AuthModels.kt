@@ -24,10 +24,11 @@ data class TokenRefreshResponse(
 data class RegisterRequest(
     val email: String,
     val password: String,
-    val goal: String,
-    @SerializedName("quizAnswers")
     val openAnswers: List<String>
 )
+
+data class CheckEmailRequest(val email: String)
+data class CheckEmailResponse(val available: Boolean)
 
 data class RegisterResponse(
     val message: String,
