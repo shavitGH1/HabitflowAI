@@ -9,22 +9,22 @@ import {
 
 export interface PersonaClassifierInput {
   goal: string;
-  quizAnswers: string[];
+  openAnswers: string[];
 }
 
 @Injectable()
 export class PersonaClassifierFeature {
   constructor(private readonly gemini: GeminiClient) {}
 
-  async classify({ goal, quizAnswers }: PersonaClassifierInput): Promise<PersonaClassifierOutput> {
+  async classify({ goal, openAnswers }: PersonaClassifierInput): Promise<PersonaClassifierOutput> {
     const expected = ONBOARDING_QUESTIONS.length;
-    if (quizAnswers.length !== expected) {
+    if (openAnswers.length !== expected) {
       throw new BadRequestException(
-        `Expected exactly ${expected} open-ended answers, received ${quizAnswers.length}.`,
+        `Expected exactly ${expected} open-ended answers, received ${openAnswers.length}.`,
       );
     }
 
-    const prompt = buildPersonaClassifierPrompt({ goal, quizAnswers });
+    const prompt = buildPersonaClassifierPrompt({ goal, openAnswers });
     return this.gemini.generateJson(prompt, personaClassifierOutputSchema);
   }
 }

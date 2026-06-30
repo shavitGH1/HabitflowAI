@@ -2,14 +2,14 @@ import { ONBOARDING_QUESTIONS, PILLAR_DEFINITIONS, Pillar, PersonaType } from '.
 
 export interface PortfolioGeneratorPromptInput {
   goal: string;
-  quizAnswers: string[];
+  openAnswers: string[];
   personaType: PersonaType;
   weightedBreakdown: Record<Pillar, number>;
 }
 
 export const buildPortfolioGeneratorPrompt = ({
   goal,
-  quizAnswers,
+  openAnswers,
   personaType,
   weightedBreakdown,
 }: PortfolioGeneratorPromptInput): string => {
@@ -21,7 +21,7 @@ export const buildPortfolioGeneratorPrompt = ({
   const personaDescription = personaInfo?.description ?? '';
 
   const answersBlock = ONBOARDING_QUESTIONS
-    .map((q, i) => `Q${q.id}: ${q.text}\nA: "${quizAnswers[i] ?? ''}"`)
+    .map((q, i) => `Q${q.id}: ${q.text}\nA: "${openAnswers[i] ?? ''}"`)
     .join('\n\n');
 
   return `
