@@ -22,6 +22,7 @@ export interface UserData {
   tips?: string[];
   failurePatterns?: string[];
   confidenceScore?: number;
+  fcmToken?: string;
 }
 
 @Injectable()
@@ -77,6 +78,15 @@ export class UserRepository {
     return doc ? this.toUserData(doc) : null;
   }
 
+  async updateUserFcmToken(userId: string, fcmToken: string): Promise<UserData | null> {
+    const doc = await this.userModel.findByIdAndUpdate(
+      userId,
+      { fcmToken },
+      { new: true },
+    );
+    return doc ? this.toUserData(doc) : null;
+  }
+
   async updateUserPersona(
     userId: string,
     updates: Partial<Pick<UserData, 'goal' | 'personaType' | 'motivationalMessage' | 'coreGoals' | 'dailyVariations' | 'tasksLastGeneratedDate' | 'personaBreakdown' | 'weightedScores'>>,
@@ -117,6 +127,7 @@ export class UserRepository {
       tips: doc.tips,
       failurePatterns: doc.failurePatterns,
       confidenceScore: doc.confidenceScore,
+      fcmToken: doc.fcmToken,
     };
   }
 }

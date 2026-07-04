@@ -2,14 +2,17 @@ package com.habitflowai.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.messaging.FirebaseMessaging
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.di.AuthManager
+import com.habitflowai.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 data class LoginUiState(
@@ -23,7 +26,8 @@ data class LoginUiState(
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val api: HabitFlowApi,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -48,6 +52,12 @@ class LoginViewModel @Inject constructor(
             try {
                 val response = api.login(LoginRequest(current.email, current.password))
                 authManager.updateTokens(response.accessToken, response.refreshToken)
+                val fcmToken = try {
+                    FirebaseMessaging.getInstance().token.await()
+                } catch (_: Exception) { null }
+                if (fcmToken != null) {
+                    authRepository.updateFcmToken(fcmToken)
+                }
                 _uiState.value = _uiState.value.copy(isLoading = false, navigateToHome = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message ?: "Login failed")

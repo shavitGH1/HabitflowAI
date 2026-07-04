@@ -64,6 +64,9 @@ export class User {
 
   @Prop()
   confidenceScore?: number;
+
+  @Prop()
+  fcmToken?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

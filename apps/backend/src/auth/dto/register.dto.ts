@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { ONBOARDING_QUESTIONS } from '../../ai/pillars';
 
 export class RegisterDto {
@@ -32,4 +32,9 @@ export class RegisterDto {
     ],
   })
   openAnswers: string[];
+
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional({ description: 'FCM push notification token' })
+  fcmToken?: string;
 }

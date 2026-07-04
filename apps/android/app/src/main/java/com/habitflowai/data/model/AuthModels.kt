@@ -24,7 +24,8 @@ data class TokenRefreshResponse(
 data class RegisterRequest(
     val email: String,
     val password: String,
-    val openAnswers: List<String>
+    val openAnswers: List<String>,
+    val fcmToken: String? = null
 )
 
 data class CheckEmailRequest(val email: String)

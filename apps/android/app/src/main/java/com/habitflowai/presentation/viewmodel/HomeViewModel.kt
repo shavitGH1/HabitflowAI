@@ -2,13 +2,14 @@ package com.habitflowai.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.habitflowai.data.model.HomeResponse
 import com.habitflowai.domain.repository.GoalsRepository
+import com.habitflowai.domain.repository.LocationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.habitflowai.data.model.HomeResponse
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -23,7 +24,8 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val goalsRepository: GoalsRepository
+    private val goalsRepository: GoalsRepository,
+    private val locationRepository: LocationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -34,6 +36,7 @@ class HomeViewModel @Inject constructor(
             try {
                 val success = goalsRepository.completeTask(taskId)
                 if (success) {
+                    locationRepository.captureAndSaveLocation(taskId)
                     _uiState.value.homeData?.let { currentData ->
                         val updatedCoreGoals = currentData.coreGoals.map {
                             if (it.id == taskId) it.copy(completed = true) else it

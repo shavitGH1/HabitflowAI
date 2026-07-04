@@ -1,29 +1,33 @@
 package com.habitflowai.data.network
 
+import com.habitflowai.data.model.CheckEmailRequest
+import com.habitflowai.data.model.CheckEmailResponse
 import com.habitflowai.data.model.ClassifyPersonaRequest
 import com.habitflowai.data.model.ClassifyPersonaResponse
+import com.habitflowai.data.model.DriftCheckRequest
+import com.habitflowai.data.model.DriftCheckResponse
+import com.habitflowai.data.model.FcmTokenUpdateRequest
 import com.habitflowai.data.model.GenerateGoalsRequest
 import com.habitflowai.data.model.GenerateGoalsResponse
 import com.habitflowai.data.model.HabitRequest
 import com.habitflowai.data.model.HabitResponse
-import com.habitflowai.data.model.CheckEmailRequest
-import com.habitflowai.data.model.CheckEmailResponse
+import com.habitflowai.data.model.HomeResponse
+import com.habitflowai.data.model.LocationSyncRequest
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.model.LoginResponse
 import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.model.RegisterResponse
 import com.habitflowai.data.model.TokenRefreshRequest
 import com.habitflowai.data.model.TokenRefreshResponse
-import com.habitflowai.data.model.HomeResponse
 import retrofit2.Call
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
-import retrofit2.http.PATCH
 import retrofit2.http.Path
-import retrofit2.Response
 
 interface HabitFlowApi {
     @POST("api/v1/auth/check-email")
@@ -61,4 +65,13 @@ interface HabitFlowApi {
 
     @GET("api/v1/habits")
     suspend fun getHabits(): List<HabitResponse>
+
+    @POST("api/v1/personas/drift-check")
+    suspend fun driftCheck(@Body request: DriftCheckRequest): DriftCheckResponse
+
+    @POST("api/v1/auth/fcm-token")
+    suspend fun updateFcmToken(@Body request: FcmTokenUpdateRequest): Response<Unit>
+
+    @POST("api/v1/locations")
+    suspend fun recordLocation(@Body request: LocationSyncRequest): Response<Unit>
 }
