@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { DriftCheckDto } from './dto/drift-check.dto';
 import { ReclassifyDto } from './dto/reclassify.dto';
 import { PersonasService } from './personas.service';
 
@@ -23,5 +24,18 @@ export class PersonasController {
   @ApiResponse({ status: 429, description: 'Too many requests' })
   reclassify(@Req() req: { user: { id: string } }, @Body() dto: ReclassifyDto) {
     return this.personasService.reclassify(req.user.id, dto);
+  }
+
+  @Post('drift-check')
+  @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
+  @ApiOperation({ summary: 'Evaluate whether the user is drifting toward a different persona' })
+  @ApiResponse({ status: 200, description: 'Drift evaluation result' })
+  @ApiResponse({ status: 400, description: 'User has an unknown persona' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  driftCheck(@Req() req: { user: { id: string } }, @Body() dto: DriftCheckDto) {
+    return this.personasService.driftCheck(req.user.id, dto);
   }
 }
