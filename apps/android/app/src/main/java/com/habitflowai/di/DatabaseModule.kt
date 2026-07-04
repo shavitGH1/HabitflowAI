@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.room.Room
 import androidx.work.WorkManager
 import com.habitflowai.data.local.HabitFlowDatabase
+import com.habitflowai.data.local.dao.DriftCheckDao
 import com.habitflowai.data.local.dao.HabitDao
+import com.habitflowai.data.local.dao.LocationDao
 import com.habitflowai.data.local.dao.UserDao
 import dagger.Module
 import dagger.Provides
@@ -24,7 +26,7 @@ object DatabaseModule {
             context,
             HabitFlowDatabase::class.java,
             "habitflow_db"
-        ).fallbackToDestructiveMigration().build()
+        ).addMigrations(HabitFlowDatabase.MIGRATION_2_3).build()
     }
 
     @Provides
@@ -32,6 +34,12 @@ object DatabaseModule {
 
     @Provides
     fun provideHabitDao(database: HabitFlowDatabase): HabitDao = database.habitDao()
+
+    @Provides
+    fun provideLocationDao(database: HabitFlowDatabase): LocationDao = database.locationDao()
+
+    @Provides
+    fun provideDriftCheckDao(database: HabitFlowDatabase): DriftCheckDao = database.driftCheckDao()
 
     @Provides
     @Singleton

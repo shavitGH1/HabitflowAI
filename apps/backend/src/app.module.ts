@@ -7,6 +7,7 @@ import * as Joi from 'joi';
 import { AuthModule } from './auth/auth.module';
 import { InsightsModule } from './insights/insights.module';
 import { PersonasModule } from './personas/personas.module';
+import { LocationsModule } from './locations/locations.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
 
@@ -39,6 +40,7 @@ import { UsersModule } from './users/users.module';
     TasksModule,
     PersonasModule,
     InsightsModule,
+    LocationsModule,
   ],
 })
 export class AppModule {}
