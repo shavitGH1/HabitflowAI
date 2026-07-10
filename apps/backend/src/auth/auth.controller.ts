@@ -2,10 +2,11 @@ import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { CheckEmailDto } from './dto/check-email.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
-import { CheckEmailDto } from './dto/check-email.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateFcmTokenDto } from './dto/update-fcm-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('auth')
@@ -47,6 +48,17 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
   refresh(@Body() dto: RefreshDto) {
     return this.authService.refresh(dto);
+  }
+
+  @Post('fcm-token')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update the FCM push notification token' })
+  @ApiResponse({ status: 200, description: 'FCM token updated' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  updateFcmToken(@Req() req: { user: { id: string } }, @Body() dto: UpdateFcmTokenDto) {
+    return this.authService.updateFcmToken(req.user.id, dto.fcmToken);
   }
 
   @Post('logout')

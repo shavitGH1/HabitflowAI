@@ -18,7 +18,7 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register({ email, password, openAnswers }: RegisterDto) {
+  async register({ email, password, openAnswers, fcmToken }: RegisterDto) {
     if (await this.userRepository.findUserByEmail(email)) {
       throw new BadRequestException('User with this email already exists');
     }
@@ -51,6 +51,7 @@ export class AuthService {
       tips: portfolio.tips,
       failurePatterns: portfolio.failurePatterns,
       confidenceScore,
+      fcmToken: fcmToken ?? undefined,
     });
 
     logger.info({ userId: newUser.id }, 'user registered');
@@ -112,6 +113,11 @@ export class AuthService {
   async checkEmail(email: string) {
     const existing = await this.userRepository.findUserByEmail(email);
     return { available: !existing };
+  }
+
+  async updateFcmToken(userId: string, fcmToken: string) {
+    await this.userRepository.updateUserFcmToken(userId, fcmToken);
+    return { message: 'FCM token updated', success: true };
   }
 
   async logout(userId: string) {

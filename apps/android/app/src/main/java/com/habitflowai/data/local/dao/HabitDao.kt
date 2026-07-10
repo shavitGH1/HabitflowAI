@@ -41,4 +41,7 @@ interface HabitDao {
 
     @Query("UPDATE habits SET syncStatus = :status, updatedAt = :updatedAt WHERE id = :habitId")
     suspend fun updateSyncStatus(habitId: String, status: SyncStatus, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("SELECT * FROM habits")
+    suspend fun getAll(): List<HabitEntity>
 }
