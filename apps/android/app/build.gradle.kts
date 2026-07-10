@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -90,9 +91,19 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
 
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+    implementation(libs.androidx.coroutines.play.services)
+
+    // Play Services
+    implementation(libs.play.services.location)
+    implementation(libs.play.services.auth)
+
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.androidx.coroutines.test)
+    androidTestImplementation(libs.androidx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

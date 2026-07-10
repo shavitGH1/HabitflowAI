@@ -5,4 +5,5 @@ import com.habitflowai.data.model.RegisterResponse
 
 interface AuthRepository {
     suspend fun register(request: RegisterRequest): RegisterResponse
+    suspend fun updateFcmToken(token: String)
 }
