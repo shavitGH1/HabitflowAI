@@ -5,9 +5,10 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import { AuthModule } from './auth/auth.module';
+import { HabitsModule } from './habits/habits.module';
 import { InsightsModule } from './insights/insights.module';
-import { PersonasModule } from './personas/personas.module';
 import { LocationsModule } from './locations/locations.module';
+import { PersonasModule } from './personas/personas.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
 
@@ -41,6 +42,7 @@ import { UsersModule } from './users/users.module';
     PersonasModule,
     InsightsModule,
     LocationsModule,
+    HabitsModule,
   ],
 })
 export class AppModule {}
