@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Habit, HabitDocument } from './schemas/habit.schema';
+import { calculateStreak } from './utils/streak.utils';
 import { logger } from '../logger';
 
 export interface HabitData {
@@ -77,30 +78,9 @@ export class HabitRepository {
       doc.completionHistory.push(today);
     }
 
-    doc.streak = this.calculateStreak(doc.completionHistory);
+    doc.streak = calculateStreak(doc.completionHistory);
     const saved = await doc.save();
     return this.toHabitData(saved);
-  }
-
-  private calculateStreak(history: string[]): number {
-    const sorted = [...new Set(history)].sort().reverse();
-    if (!sorted.length) return 0;
-
-    let streak = 0;
-    const todayUtc = new Date().toISOString().split('T')[0];
-    const cursor = new Date(todayUtc + 'T00:00:00.000Z');
-
-    for (const dateStr of sorted) {
-      const expected = cursor.toISOString().split('T')[0];
-      if (dateStr === expected) {
-        streak++;
-        cursor.setUTCDate(cursor.getUTCDate() - 1);
-      } else {
-        break;
-      }
-    }
-
-    return streak;
   }
 
   private toHabitData(doc: HabitDocument): HabitData {
