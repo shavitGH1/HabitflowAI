@@ -1,25 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { LocationRecord, LocationRecordDocument } from './schemas/location.schema';
 import { LocationDto } from './dto/location.dto';
+import { LocationData, LocationRepository } from './location.repository';
 
 @Injectable()
 export class LocationsService {
-  constructor(
-    @InjectModel(LocationRecord.name)
-    private readonly locationModel: Model<LocationRecordDocument>,
-  ) {}
+  constructor(private readonly locationRepository: LocationRepository) {}
 
-  async recordLocation(userId: string, dto: LocationDto) {
-    const record = new this.locationModel({
+  async recordLocation(userId: string, dto: LocationDto): Promise<{ success: boolean }> {
+    await this.locationRepository.create({
       userId,
       habitId: dto.habitId,
       latitude: dto.latitude,
       longitude: dto.longitude,
       timestamp: dto.timestamp ?? Date.now(),
+      personaType: dto.personaType,
+      isPublic: dto.isPublic,
     });
-    await record.save();
     return { success: true };
+  }
+
+  async getBbox(
+    minLat: number,
+    maxLat: number,
+    minLng: number,
+    maxLng: number,
+  ): Promise<LocationData[]> {
+    return this.locationRepository.findByBbox(minLat, maxLat, minLng, maxLng);
   }
 }
