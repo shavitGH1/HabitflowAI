@@ -19,6 +19,15 @@ export class LocationRecord {
 
   @Prop({ default: Date.now })
   timestamp: number;
+
+  @Prop({ default: '' })
+  personaType: string;
+
+  @Prop({ default: true })
+  isPublic: boolean;
 }
 
 export const LocationRecordSchema = SchemaFactory.createForClass(LocationRecord);
+LocationRecordSchema.index({ userId: 1 });
+LocationRecordSchema.index({ createdAt: -1 });
+LocationRecordSchema.index({ latitude: 1, longitude: 1 });
