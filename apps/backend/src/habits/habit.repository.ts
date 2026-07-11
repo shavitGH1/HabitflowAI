@@ -59,12 +59,12 @@ export class HabitRepository {
   }
 
   async updateHabit(id: string, updates: UpdateHabitInput): Promise<HabitData | null> {
-    const doc = await this.habitModel.findByIdAndUpdate(id, updates, { new: true });
+    const doc = await this.habitModel.findByIdAndUpdate(id, updates, { returnDocument: 'after' });
     return doc ? this.toHabitData(doc) : null;
   }
 
   async deleteHabit(id: string): Promise<HabitData | null> {
-    const doc = await this.habitModel.findByIdAndUpdate(id, { isArchived: true }, { new: true });
+    const doc = await this.habitModel.findByIdAndUpdate(id, { isArchived: true }, { returnDocument: 'after' });
     return doc ? this.toHabitData(doc) : null;
   }
 
@@ -87,14 +87,14 @@ export class HabitRepository {
     if (!sorted.length) return 0;
 
     let streak = 0;
-    const cursor = new Date();
-    cursor.setHours(0, 0, 0, 0);
+    const todayUtc = new Date().toISOString().split('T')[0];
+    const cursor = new Date(todayUtc + 'T00:00:00.000Z');
 
     for (const dateStr of sorted) {
       const expected = cursor.toISOString().split('T')[0];
       if (dateStr === expected) {
         streak++;
-        cursor.setDate(cursor.getDate() - 1);
+        cursor.setUTCDate(cursor.getUTCDate() - 1);
       } else {
         break;
       }
