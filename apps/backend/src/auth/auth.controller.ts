@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -70,5 +71,20 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   logout(@Req() req: { user: { id: string } }) {
     return this.authService.logout(req.user.id);
+  }
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Initiate Google OAuth consent flow' })
+  @ApiResponse({ status: 302, description: 'Redirects to Google consent screen' })
+  googleAuth() {}
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Google OAuth callback — returns JWT access + refresh tokens' })
+  @ApiResponse({ status: 200, description: 'Authentication successful; returns access + refresh tokens' })
+  @ApiResponse({ status: 401, description: 'Google account not linked to any HabitFlow account' })
+  googleCallback(@Req() req: { user: { email: string; displayName: string } }) {
+    return this.authService.handleGoogleAuth(req.user);
   }
 }
