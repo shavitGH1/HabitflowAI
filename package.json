@@ -17,6 +17,6 @@
     "turbo": "^2.5.4"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["bcrypt", "@scarf/scarf", "@nestjs/core"]
+    "onlyBuiltDependencies": ["bcrypt", "@scarf/scarf", "@nestjs/core", "mongodb-memory-server"]
   }
 }
