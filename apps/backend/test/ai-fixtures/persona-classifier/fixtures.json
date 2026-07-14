@@ -1,0 +1,386 @@
+[
+  {
+    "id": "achiever-01",
+    "description": "Results-driven runner tracking measurable milestones.",
+    "input": {
+      "goal": "Run a sub-2-hour half marathon by the end of the year.",
+      "openAnswers": [
+        "I set a goal to run a half marathon. A friend's race time pushed me to beat it, and I tracked every split in a spreadsheet.",
+        "I stuck with strength training for a year because I could see my lifts going up week over week.",
+        "Not really — I train alone and just compare my numbers to my past performance.",
+        "When a routine gets stale I add a harder target, like a faster pace or heavier weight.",
+        "I want to prove to myself I can hit a concrete number I once thought was impossible.",
+        "My days are tightly scheduled around workout blocks so I never miss a session."
+      ]
+    },
+    "expected": { "personaType": "Achiever", "dominantPillar": "Achievement" }
+  },
+  {
+    "id": "achiever-02",
+    "description": "Career-focused professional chasing promotions and KPIs.",
+    "input": {
+      "goal": "Get promoted to senior engineer within 12 months.",
+      "openAnswers": [
+        "I set a target to ship three major features this quarter and measured it by story points closed.",
+        "I kept studying system design nightly because each mock interview score climbed.",
+        "I mostly work solo toward my targets and review my own metrics.",
+        "If work feels repetitive I raise the bar with a bigger, more visible deliverable.",
+        "I want the promotion and the recognition that comes with hitting the top of the review scale.",
+        "I plan every week in a tracker with clear numeric goals and deadlines."
+      ]
+    },
+    "expected": { "personaType": "Achiever", "dominantPillar": "Achievement" }
+  },
+  {
+    "id": "achiever-03",
+    "description": "Competitive student optimizing grades and scores.",
+    "input": {
+      "goal": "Finish the semester with a 3.9 GPA.",
+      "openAnswers": [
+        "I aimed for a 95 average and tracked each test result to see if I was on pace.",
+        "I stayed with daily practice problems because my mock exam scores kept rising.",
+        "I study alone; my benchmark is my own past exam performance.",
+        "When drills get boring I switch to harder past-paper questions to push my score.",
+        "Hitting the target grade proves my effort paid off, and that drives me.",
+        "I keep a strict study timetable with measurable daily quotas."
+      ]
+    },
+    "expected": { "personaType": "Achiever", "dominantPillar": "Achievement" }
+  },
+  {
+    "id": "achiever-04",
+    "description": "Entrepreneur measuring revenue milestones.",
+    "input": {
+      "goal": "Reach $10k monthly recurring revenue for my side business.",
+      "openAnswers": [
+        "I set a revenue milestone and check the dashboard every morning to measure growth.",
+        "I stuck with cold outreach for months because the conversion numbers slowly improved.",
+        "I run it solo and judge progress purely by the sales figures.",
+        "If a tactic stops moving the numbers I replace it with a more aggressive one.",
+        "I want to hit the revenue number that proves the business is real.",
+        "I timebox each day into blocks tied to specific revenue-driving tasks."
+      ]
+    },
+    "expected": { "personaType": "Achiever", "dominantPillar": "Achievement" }
+  },
+  {
+    "id": "grower-01",
+    "description": "Lifelong learner focused on mastery over outcomes.",
+    "input": {
+      "goal": "Become genuinely fluent in Spanish, not just pass a test.",
+      "openAnswers": [
+        "I started learning guitar less to perform and more because I loved slowly getting better.",
+        "I kept journaling for two years because I noticed how much my thinking matured.",
+        "I learn mostly on my own, at my own pace, enjoying the process.",
+        "When practice feels stale I explore a new technique to deepen my skill.",
+        "I want to grow into someone more capable and self-aware than I am today.",
+        "I keep a loose routine — I care more about steady improvement than rigid scheduling."
+      ]
+    },
+    "expected": { "personaType": "Grower", "dominantPillar": "Growth" }
+  },
+  {
+    "id": "grower-02",
+    "description": "Musician valuing skill development.",
+    "input": {
+      "goal": "Master jazz piano improvisation.",
+      "openAnswers": [
+        "I began piano to enjoy the craft itself, and progress mattered more than applause.",
+        "I practiced scales daily for a year because I could feel my ear developing.",
+        "I mostly practice alone and enjoy the private sense of getting better.",
+        "Boredom pushes me to learn a new voicing or style to keep growing.",
+        "The deeper reason is I want to keep becoming a more expressive musician.",
+        "My practice is flexible; I follow curiosity more than a fixed timetable."
+      ]
+    },
+    "expected": { "personaType": "Grower", "dominantPillar": "Growth" }
+  },
+  {
+    "id": "grower-03",
+    "description": "Reader building knowledge for its own sake.",
+    "input": {
+      "goal": "Read deeply across philosophy and science this year.",
+      "openAnswers": [
+        "I set reading goals not to hit a count but because I love how much I learn.",
+        "I stayed with a reading habit for months as I watched my understanding deepen.",
+        "Reading is a solo pursuit for me; the growth is internal.",
+        "When a topic gets repetitive I branch into an adjacent field to keep learning.",
+        "I want to keep expanding how I understand the world.",
+        "I read whenever it fits; I value the learning more than a strict schedule."
+      ]
+    },
+    "expected": { "personaType": "Grower", "dominantPillar": "Growth" }
+  },
+  {
+    "id": "grower-04",
+    "description": "Developer chasing craft improvement.",
+    "input": {
+      "goal": "Get significantly better at writing clean, well-designed code.",
+      "openAnswers": [
+        "I picked up open-source work mainly to sharpen my craft, not for recognition.",
+        "I kept doing code katas for a year because my technique visibly improved.",
+        "I improve mostly through solo study and reflection.",
+        "When a pattern feels routine I explore a new paradigm to stretch my skills.",
+        "My why is to become a genuinely excellent engineer over time.",
+        "I keep my learning flexible, prioritizing depth of practice over rigid routine."
+      ]
+    },
+    "expected": { "personaType": "Grower", "dominantPillar": "Growth" }
+  },
+  {
+    "id": "socializer-01",
+    "description": "Community-driven person who needs accountability partners.",
+    "input": {
+      "goal": "Work out consistently four times a week.",
+      "openAnswers": [
+        "I set a fitness goal, but honestly it stuck once I told my friends I'd do it with them.",
+        "I kept a running habit for a year because my running group expected me there.",
+        "Absolutely — I always involve others; I joined a gym buddy system last time.",
+        "When it gets boring I invite someone new to join and it feels fresh again.",
+        "I'm doing this partly so I can be an active, present friend and partner.",
+        "My routine flexes around when my workout partners are available."
+      ]
+    },
+    "expected": { "personaType": "Socializer", "dominantPillar": "Connection" }
+  },
+  {
+    "id": "socializer-02",
+    "description": "Group-oriented learner thriving on shared progress.",
+    "input": {
+      "goal": "Finish an online course I keep abandoning.",
+      "openAnswers": [
+        "I set the goal, but it only moved when I joined a study cohort.",
+        "I stuck with a language app for months because of a friend streak challenge.",
+        "Yes, I always rope people in — last time my sister and I did it together.",
+        "If it feels stale I start a group chat to compare notes and it revives me.",
+        "I want to keep up with and support the people I care about.",
+        "I fit study sessions around group meetups more than a solo schedule."
+      ]
+    },
+    "expected": { "personaType": "Socializer", "dominantPillar": "Connection" }
+  },
+  {
+    "id": "socializer-03",
+    "description": "Team-motivated person energized by others.",
+    "input": {
+      "goal": "Build a consistent meditation practice.",
+      "openAnswers": [
+        "I framed it as a goal, but I only kept it up in a group class setting.",
+        "I maintained yoga for a year because the studio community kept me coming back.",
+        "I involve people every time — accountability partners are how I succeed.",
+        "Boredom fades when I bring a friend along or share progress publicly.",
+        "I want to show up better for my community and family.",
+        "My schedule bends toward when my group sessions happen."
+      ]
+    },
+    "expected": { "personaType": "Socializer", "dominantPillar": "Connection" }
+  },
+  {
+    "id": "socializer-04",
+    "description": "Accountability-seeking habit builder.",
+    "input": {
+      "goal": "Wake up early and stop hitting snooze.",
+      "openAnswers": [
+        "I set the alarm goal, but it worked only when a friend called me each morning.",
+        "I kept a habit for months thanks to a shared accountability spreadsheet.",
+        "I always involve others; public commitment is what makes me follow through.",
+        "When it gets dull I turn it into a friendly challenge with coworkers.",
+        "I'm doing this to be more available to the people who count on me.",
+        "I structure mornings around a shared check-in with my accountability group."
+      ]
+    },
+    "expected": { "personaType": "Socializer", "dominantPillar": "Connection" }
+  },
+  {
+    "id": "explorer-01",
+    "description": "Novelty-seeker who dies in repetitive routines.",
+    "input": {
+      "goal": "Stay active without getting bored of the same workout.",
+      "openAnswers": [
+        "I started a fitness goal mostly because trying a brand-new sport excited me.",
+        "The one habit I kept was travel journaling — every entry was something new.",
+        "Sometimes, but mostly I chase whatever new experience catches my interest.",
+        "The second a routine feels stale I drop it and try something completely different.",
+        "I want a life full of variety and new experiences.",
+        "I keep my days loose and flexible so I can follow spontaneous curiosity."
+      ]
+    },
+    "expected": { "personaType": "Explorer", "dominantPillar": "Exploration" }
+  },
+  {
+    "id": "explorer-02",
+    "description": "Curiosity-driven hobby hopper.",
+    "input": {
+      "goal": "Keep learning new creative skills.",
+      "openAnswers": [
+        "I set goals when a new hobby sparks curiosity, like pottery or filmmaking.",
+        "The habit that lasted was sketching, because I drew something different daily.",
+        "I go it alone usually, following whatever novelty pulls me.",
+        "Staleness makes me pivot instantly to a fresh medium or approach.",
+        "My deeper reason is a craving for variety and discovery.",
+        "I resist rigid routines; flexibility lets me explore freely."
+      ]
+    },
+    "expected": { "personaType": "Explorer", "dominantPillar": "Exploration" }
+  },
+  {
+    "id": "explorer-03",
+    "description": "Variety-first traveler and experimenter.",
+    "input": {
+      "goal": "Break out of my monotonous daily rut.",
+      "openAnswers": [
+        "I chase goals that promise new places and unfamiliar challenges.",
+        "The habit I kept longest was trying a new recipe each week — never the same twice.",
+        "I mostly explore solo, driven by curiosity more than company.",
+        "When things feel repetitive I immediately seek a novel twist.",
+        "I want my life to feel like an ongoing adventure.",
+        "A rigid schedule suffocates me; I thrive on flexible, open days."
+      ]
+    },
+    "expected": { "personaType": "Explorer", "dominantPillar": "Exploration" }
+  },
+  {
+    "id": "explorer-04",
+    "description": "Experience-collector avoiding sameness.",
+    "input": {
+      "goal": "Try 12 new activities this year.",
+      "openAnswers": [
+        "My goals are usually sparked by wanting to experience something I never have.",
+        "Journaling stuck only when each day's prompt was fresh and surprising.",
+        "I follow novelty on my own more than I involve others.",
+        "Boredom is my signal to swap in a completely different activity.",
+        "The why is simple: I love discovery and hate stagnation.",
+        "I deliberately keep my routine loose to leave room for spontaneity."
+      ]
+    },
+    "expected": { "personaType": "Explorer", "dominantPillar": "Exploration" }
+  },
+  {
+    "id": "altruist-01",
+    "description": "Purpose-driven person motivated by serving others.",
+    "input": {
+      "goal": "Get healthier so I can be there for my kids.",
+      "openAnswers": [
+        "I set a health goal, but what pushed me was wanting to be around for my family.",
+        "I kept volunteering weekly for years because it clearly helped my community.",
+        "I involve others when it serves the cause, but the drive is the mission itself.",
+        "When routine feels stale I reconnect with why it matters to the people I serve.",
+        "This is for my children and the people who depend on me — that's my whole why.",
+        "I keep enough structure to reliably show up for those who count on me."
+      ]
+    },
+    "expected": { "personaType": "Altruist", "dominantPillar": "Purpose" }
+  },
+  {
+    "id": "altruist-02",
+    "description": "Mission-first volunteer.",
+    "input": {
+      "goal": "Build the discipline to run a nonprofit project.",
+      "openAnswers": [
+        "My goal was driven by a cause I deeply believe in, not personal gain.",
+        "I stuck with mentoring for years because I saw the difference it made in kids' lives.",
+        "I bring people in when it helps the mission, but meaning is what moves me.",
+        "If it feels routine, remembering the impact reignites me.",
+        "The deeper reason is to serve something bigger than myself.",
+        "I hold a steady routine so the people relying on me are never let down."
+      ]
+    },
+    "expected": { "personaType": "Altruist", "dominantPillar": "Purpose" }
+  },
+  {
+    "id": "altruist-03",
+    "description": "Values-led caregiver.",
+    "input": {
+      "goal": "Manage my energy better so I can care for my aging parents.",
+      "openAnswers": [
+        "The goal started because I want to give my parents the care they deserve.",
+        "I maintained a caregiving routine for years out of a sense of duty and love.",
+        "I coordinate with family, but my core motivation is the responsibility itself.",
+        "When I'm worn down, reconnecting to the meaning behind it keeps me going.",
+        "This is entirely for the people I love and feel responsible for.",
+        "I keep a dependable structure so my caregiving never slips."
+      ]
+    },
+    "expected": { "personaType": "Altruist", "dominantPillar": "Purpose" }
+  },
+  {
+    "id": "altruist-04",
+    "description": "Meaning-anchored community builder.",
+    "input": {
+      "goal": "Stay consistent with community organizing work.",
+      "openAnswers": [
+        "I took on the goal because the cause matters more than any personal reward.",
+        "I kept organizing meetups for years because the community genuinely benefited.",
+        "I involve others in service of the mission, but purpose is the real fuel.",
+        "Staleness lifts when I revisit the impact on the people we help.",
+        "My why is contributing to something larger and lasting.",
+        "I keep a reliable rhythm so the community can depend on me."
+      ]
+    },
+    "expected": { "personaType": "Altruist", "dominantPillar": "Purpose" }
+  },
+  {
+    "id": "architect-01",
+    "description": "Systems-thinker who thrives on structure and schedules.",
+    "input": {
+      "goal": "Build a rock-solid daily routine that runs like clockwork.",
+      "openAnswers": [
+        "I set the goal and immediately built a detailed system with checklists and time blocks.",
+        "The habit that lasted was a morning routine I mapped out to the minute.",
+        "I prefer to run my own systems rather than depend on other people.",
+        "When something feels stale I redesign the system rather than abandon it.",
+        "I do this because a well-ordered life makes me feel calm and in control.",
+        "My ideal day is highly structured — fixed blocks, clear rules, tracked routines."
+      ]
+    },
+    "expected": { "personaType": "Architect", "dominantPillar": "Structure" }
+  },
+  {
+    "id": "architect-02",
+    "description": "Planner who loves frameworks and predictability.",
+    "input": {
+      "goal": "Organize my finances with a strict monthly system.",
+      "openAnswers": [
+        "I began by building a budgeting framework with rules for every category.",
+        "I stuck with expense tracking for years because the system made it automatic.",
+        "I handle it solo; my system is more reliable than coordinating with others.",
+        "If a routine gets stale I optimize the framework instead of dropping it.",
+        "Structure gives me security, and that's the real reason behind it.",
+        "My days run on a predictable schedule with clear, repeatable processes."
+      ]
+    },
+    "expected": { "personaType": "Architect", "dominantPillar": "Structure" }
+  },
+  {
+    "id": "architect-03",
+    "description": "Process-oriented routine designer.",
+    "input": {
+      "goal": "Create a repeatable weekly planning ritual.",
+      "openAnswers": [
+        "The goal came with a full system of templates and recurring reminders.",
+        "My longest habit was a Sunday planning session I never skip.",
+        "I rely on my own frameworks more than on other people.",
+        "Boredom means I refine the process, not abandon the structure.",
+        "I want an orderly, predictable life where nothing falls through the cracks.",
+        "I thrive on tight structure: scheduled blocks and consistent rules."
+      ]
+    },
+    "expected": { "personaType": "Architect", "dominantPillar": "Structure" }
+  },
+  {
+    "id": "architect-04",
+    "description": "Discipline-through-systems believer.",
+    "input": {
+      "goal": "Run my studies on a strict, trackable schedule.",
+      "openAnswers": [
+        "I set up a study system with fixed slots and progress tracking from day one.",
+        "I kept a study routine for a year because the schedule made it effortless.",
+        "I work within my own system rather than leaning on study groups.",
+        "When it feels stale I tune the system instead of quitting.",
+        "A structured life keeps me grounded, and that's why I build these systems.",
+        "My ideal routine is rigidly scheduled with clear rules and checklists."
+      ]
+    },
+    "expected": { "personaType": "Architect", "dominantPillar": "Structure" }
+  }
+]
