@@ -1,4 +1,5 @@
 import { PERSONA_TYPES, PILLARS, PILLAR_DEFINITIONS, Pillar, PersonaType } from '../pillars';
+import { PROMPT_SAFETY_GUARDRAIL } from './safety';
 
 export interface BehaviorSnapshot {
   observationWindowDays: number;
@@ -41,6 +42,8 @@ export const buildDriftDetectorPrompt = ({
 
   return `
 You are a behavioral analyst detecting whether a user's motivational profile is shifting.
+
+${PROMPT_SAFETY_GUARDRAIL}
 
 THE 6 MOTIVATIONAL PILLARS
 ${pillarsBlock}

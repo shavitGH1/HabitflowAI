@@ -1,4 +1,5 @@
 import { ONBOARDING_QUESTIONS, PERSONA_TYPES, PILLAR_DEFINITIONS, PILLARS } from '../pillars';
+import { PROMPT_SAFETY_GUARDRAIL } from './safety';
 
 export interface PersonaClassifierPromptInput {
   goal: string;
@@ -22,6 +23,8 @@ export const buildPersonaClassifierPrompt = ({
 
   return `
 You are an expert motivational psychologist and habit-formation coach.
+
+${PROMPT_SAFETY_GUARDRAIL}
 
 STEP 1 — VALIDATE INPUT
 The user submitted a long-term goal and free-text answers to 6 open-ended onboarding questions.
