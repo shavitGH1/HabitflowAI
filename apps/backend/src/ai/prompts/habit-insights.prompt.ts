@@ -1,4 +1,5 @@
 import { PILLAR_DEFINITIONS, PersonaType } from '../pillars';
+import { PROMPT_SAFETY_GUARDRAIL } from './safety';
 
 export interface HabitInsightsPromptInput {
   personaType: PersonaType;
@@ -25,6 +26,8 @@ export const buildHabitInsightsPrompt = ({
 
   return `
 You are a habit coach writing a user's weekly progress review.
+
+${PROMPT_SAFETY_GUARDRAIL}
 
 USER CONTEXT
 Persona: ${personaType} — ${personaDescription}
