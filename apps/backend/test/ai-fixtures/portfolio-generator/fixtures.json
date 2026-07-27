@@ -1,0 +1,362 @@
+[
+  {
+    "id": "achiever-portfolio-01",
+    "input": {
+      "goal": "Run a sub-2-hour half marathon by year end.",
+      "openAnswers": [
+        "I set a race target and tracked every split.",
+        "Strength training stuck because my lifts kept climbing.",
+        "I train solo and compare to my own past times.",
+        "When stale I raise the target pace.",
+        "I want to prove I can hit a number I thought impossible.",
+        "My days are built around scheduled workout blocks."
+      ],
+      "personaType": "Achiever",
+      "weightedBreakdown": { "Achievement": 70, "Growth": 10, "Connection": 5, "Exploration": 5, "Purpose": 5, "Structure": 5 }
+    },
+    "expectedOutput": {
+      "summary": "You are an Achiever — measurable wins and beating your own benchmarks keep you moving.",
+      "tips": ["Set a concrete weekly pace target", "Log every split to see progress", "Reward milestone PRs"],
+      "failurePatterns": ["Burnout from chasing numbers too aggressively", "Losing motivation when progress plateaus"],
+      "coreGoals": [
+        { "description": "Complete a structured 16-week training plan", "points": 50 },
+        { "description": "Hit a weekly long-run distance target", "points": 30 },
+        { "description": "Track and beat your 5k time monthly", "points": 20 }
+      ],
+      "dailyVariations": [
+        { "description": "Log today's run splits", "points": 10 },
+        { "description": "Do a mobility session", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "achiever-portfolio-02",
+    "input": {
+      "goal": "Reach $10k monthly recurring revenue.",
+      "openAnswers": [
+        "I check the revenue dashboard every morning.",
+        "Cold outreach stuck as conversions improved.",
+        "I run it solo and judge by sales figures.",
+        "I swap tactics that stop moving the numbers.",
+        "I want to hit the number that proves it's real.",
+        "I timebox each day around revenue tasks."
+      ],
+      "personaType": "Achiever",
+      "weightedBreakdown": { "Achievement": 75, "Growth": 8, "Connection": 5, "Exploration": 4, "Purpose": 4, "Structure": 4 }
+    },
+    "expectedOutput": {
+      "summary": "As an Achiever you thrive on hard revenue targets and visible growth curves.",
+      "tips": ["Define one north-star metric", "Review it daily", "Celebrate each revenue milestone"],
+      "failurePatterns": ["Chasing vanity metrics over durable growth"],
+      "coreGoals": [
+        { "description": "Grow MRR by a set percentage each month", "points": 50 },
+        { "description": "Maintain a weekly outreach quota", "points": 30 },
+        { "description": "Ship one conversion experiment weekly", "points": 20 }
+      ],
+      "dailyVariations": [
+        { "description": "Send 10 outreach messages", "points": 10 },
+        { "description": "Update the metrics dashboard", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "grower-portfolio-01",
+    "input": {
+      "goal": "Become genuinely fluent in Spanish.",
+      "openAnswers": [
+        "I picked up guitar to enjoy getting better.",
+        "Journaling lasted years as my thinking matured.",
+        "I learn alone at my own pace.",
+        "Staleness makes me try a new technique.",
+        "I want to grow into someone more capable.",
+        "My routine is loose; steady improvement matters most."
+      ],
+      "personaType": "Grower",
+      "weightedBreakdown": { "Achievement": 12, "Growth": 65, "Connection": 6, "Exploration": 10, "Purpose": 4, "Structure": 3 }
+    },
+    "expectedOutput": {
+      "summary": "You are a Grower — mastery and steady self-improvement matter more than the finish line.",
+      "tips": ["Track skill depth, not just streaks", "Reflect weekly on what improved", "Embrace slow, compounding gains"],
+      "failurePatterns": ["Abandoning habits that lack a visible learning curve"],
+      "coreGoals": [
+        { "description": "Reach a conversational milestone each month", "points": 40 },
+        { "description": "Keep a learning reflection journal", "points": 30 },
+        { "description": "Study one new grammar area weekly", "points": 30 }
+      ],
+      "dailyVariations": [
+        { "description": "15 minutes of speaking practice", "points": 10 },
+        { "description": "Note one thing you learned today", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "grower-portfolio-02",
+    "input": {
+      "goal": "Master jazz piano improvisation.",
+      "openAnswers": [
+        "I began piano to enjoy the craft.",
+        "Daily scales stuck as my ear developed.",
+        "I practice alone and enjoy private progress.",
+        "Boredom pushes me to learn new voicings.",
+        "I want to become a more expressive musician.",
+        "My practice follows curiosity, not a timetable."
+      ],
+      "personaType": "Grower",
+      "weightedBreakdown": { "Achievement": 10, "Growth": 68, "Connection": 5, "Exploration": 12, "Purpose": 3, "Structure": 2 }
+    },
+    "expectedOutput": {
+      "summary": "As a Grower, deepening your craft is its own reward.",
+      "tips": ["Record sessions to hear your growth", "Vary practice to stay engaged", "Focus on process goals"],
+      "failurePatterns": ["Losing interest once the challenge feels routine"],
+      "coreGoals": [
+        { "description": "Learn one new improvisation concept weekly", "points": 40 },
+        { "description": "Transcribe a solo each month", "points": 30 },
+        { "description": "Keep a practice journal", "points": 30 }
+      ],
+      "dailyVariations": [
+        { "description": "20 minutes of improvisation", "points": 10 },
+        { "description": "Ear-training drill", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "socializer-portfolio-01",
+    "input": {
+      "goal": "Work out consistently four times a week.",
+      "openAnswers": [
+        "It stuck once I told friends I'd join them.",
+        "My running group kept me coming back.",
+        "I always involve others.",
+        "Boredom lifts when I invite someone new.",
+        "I want to be a present friend and partner.",
+        "My routine flexes around my partners."
+      ],
+      "personaType": "Socializer",
+      "weightedBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 62, "Exploration": 8, "Purpose": 5, "Structure": 5 }
+    },
+    "expectedOutput": {
+      "summary": "You are a Socializer — accountability and shared progress make habits stick.",
+      "tips": ["Find a workout buddy", "Share progress publicly", "Join a class or group"],
+      "failurePatterns": ["Habits collapse when you try to go it alone"],
+      "coreGoals": [
+        { "description": "Attend group workouts weekly", "points": 40 },
+        { "description": "Check in with an accountability partner", "points": 30 },
+        { "description": "Post one weekly progress update", "points": 30 }
+      ],
+      "dailyVariations": [
+        { "description": "Message your buddy about today's plan", "points": 10 },
+        { "description": "React to a friend's progress post", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "socializer-portfolio-02",
+    "input": {
+      "goal": "Finish an online course I keep abandoning.",
+      "openAnswers": [
+        "It moved when I joined a study cohort.",
+        "A friend streak challenge kept me going.",
+        "I always rope people in.",
+        "A group chat revives me when stale.",
+        "I want to support the people I care about.",
+        "I fit study around group meetups."
+      ],
+      "personaType": "Socializer",
+      "weightedBreakdown": { "Achievement": 12, "Growth": 12, "Connection": 58, "Exploration": 8, "Purpose": 5, "Structure": 5 }
+    },
+    "expectedOutput": {
+      "summary": "As a Socializer, learning sticks best inside a community.",
+      "tips": ["Study with a cohort", "Set shared deadlines", "Celebrate group milestones"],
+      "failurePatterns": ["Dropping off when studying alone"],
+      "coreGoals": [
+        { "description": "Complete weekly modules with a study group", "points": 40 },
+        { "description": "Host a weekly review call", "points": 30 },
+        { "description": "Keep a shared progress tracker", "points": 30 }
+      ],
+      "dailyVariations": [
+        { "description": "Post today's progress to the group", "points": 10 },
+        { "description": "Help a peer with one question", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "explorer-portfolio-01",
+    "input": {
+      "goal": "Stay active without getting bored.",
+      "openAnswers": [
+        "Trying a brand-new sport excited me.",
+        "Travel journaling lasted; each entry was new.",
+        "I chase whatever new experience appears.",
+        "I drop stale routines for something different.",
+        "I want a life full of variety.",
+        "I keep days loose for spontaneity."
+      ],
+      "personaType": "Explorer",
+      "weightedBreakdown": { "Achievement": 10, "Growth": 15, "Connection": 5, "Exploration": 62, "Purpose": 4, "Structure": 4 }
+    },
+    "expectedOutput": {
+      "summary": "You are an Explorer — novelty and variety keep your motivation alive.",
+      "tips": ["Rotate activities often", "Gamify with new challenges", "Avoid rigid repetition"],
+      "failurePatterns": ["Quitting the moment a routine feels stale"],
+      "coreGoals": [
+        { "description": "Try a new activity each week", "points": 40 },
+        { "description": "Keep a discovery log", "points": 30 },
+        { "description": "Set a monthly novel-experience target", "points": 30 }
+      ],
+      "dailyVariations": [
+        { "description": "Add a twist to today's workout", "points": 10 },
+        { "description": "Note one new thing you tried", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "explorer-portfolio-02",
+    "input": {
+      "goal": "Keep learning new creative skills.",
+      "openAnswers": [
+        "New hobbies like pottery spark my goals.",
+        "Sketching lasted; each day was different.",
+        "I follow novelty alone.",
+        "Staleness makes me pivot to a fresh medium.",
+        "I crave variety and discovery.",
+        "Rigid routines suffocate me."
+      ],
+      "personaType": "Explorer",
+      "weightedBreakdown": { "Achievement": 8, "Growth": 18, "Connection": 5, "Exploration": 63, "Purpose": 3, "Structure": 3 }
+    },
+    "expectedOutput": {
+      "summary": "As an Explorer, fresh creative challenges are your fuel.",
+      "tips": ["Sample many mediums", "Keep an idea sketchbook", "Chase curiosity over consistency"],
+      "failurePatterns": ["Half-finished projects when novelty fades"],
+      "coreGoals": [
+        { "description": "Explore a new medium monthly", "points": 40 },
+        { "description": "Keep a creative discovery journal", "points": 30 },
+        { "description": "Share one experiment weekly", "points": 30 }
+      ],
+      "dailyVariations": [
+        { "description": "Try a 10-minute creative prompt", "points": 10 },
+        { "description": "Collect one inspiration reference", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "altruist-portfolio-01",
+    "input": {
+      "goal": "Get healthier so I can be there for my kids.",
+      "openAnswers": [
+        "I want to be around for my family.",
+        "Volunteering lasted because it helped others.",
+        "I involve others when it serves the cause.",
+        "I reconnect with why it matters when stale.",
+        "This is for my children.",
+        "I keep structure to show up for others."
+      ],
+      "personaType": "Altruist",
+      "weightedBreakdown": { "Achievement": 8, "Growth": 10, "Connection": 12, "Exploration": 5, "Purpose": 60, "Structure": 5 }
+    },
+    "expectedOutput": {
+      "summary": "You are an Altruist — habits stick when they serve the people and causes you love.",
+      "tips": ["Anchor habits to your why", "Frame goals around who benefits", "Revisit your purpose when energy dips"],
+      "failurePatterns": ["Neglecting self-care until it affects others"],
+      "coreGoals": [
+        { "description": "Build energy to be present for family", "points": 40 },
+        { "description": "Keep a weekly purpose reflection", "points": 30 },
+        { "description": "Maintain a caregiving-friendly routine", "points": 30 }
+      ],
+      "dailyVariations": [
+        { "description": "Do one health habit for your family's sake", "points": 10 },
+        { "description": "Note who your effort helped today", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "altruist-portfolio-02",
+    "input": {
+      "goal": "Build discipline to run a nonprofit project.",
+      "openAnswers": [
+        "A cause I believe in drives me.",
+        "Mentoring lasted; it changed kids' lives.",
+        "I bring people in for the mission.",
+        "Impact reignites me when routine sets in.",
+        "I serve something bigger than myself.",
+        "I keep a steady routine for those relying on me."
+      ],
+      "personaType": "Altruist",
+      "weightedBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 12, "Exploration": 5, "Purpose": 58, "Structure": 5 }
+    },
+    "expectedOutput": {
+      "summary": "As an Altruist, meaning and impact are what keep you consistent.",
+      "tips": ["Tie tasks to their impact", "Track lives touched, not just outputs", "Reconnect with the mission weekly"],
+      "failurePatterns": ["Overcommitting to the cause and burning out"],
+      "coreGoals": [
+        { "description": "Advance the nonprofit project weekly", "points": 40 },
+        { "description": "Log the mission's measurable impact", "points": 30 },
+        { "description": "Protect a recovery block to avoid burnout", "points": 30 }
+      ],
+      "dailyVariations": [
+        { "description": "Take one action that serves the cause", "points": 10 },
+        { "description": "Reflect on today's impact", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "architect-portfolio-01",
+    "input": {
+      "goal": "Build a rock-solid daily routine.",
+      "openAnswers": [
+        "I built a system with checklists and blocks.",
+        "A minute-mapped morning routine lasted.",
+        "I run my own systems, not others'.",
+        "I redesign the system when it feels stale.",
+        "Order makes me feel calm and in control.",
+        "My ideal day is highly structured."
+      ],
+      "personaType": "Architect",
+      "weightedBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 5, "Exploration": 5, "Purpose": 10, "Structure": 60 }
+    },
+    "expectedOutput": {
+      "summary": "You are an Architect — systems, schedules, and clear rules make habits effortless.",
+      "tips": ["Design a repeatable daily template", "Track routines with checklists", "Refine the system, don't abandon it"],
+      "failurePatterns": ["Over-engineering the system instead of acting"],
+      "coreGoals": [
+        { "description": "Establish a fixed daily routine template", "points": 40 },
+        { "description": "Run a weekly system review", "points": 30 },
+        { "description": "Automate one recurring task", "points": 30 }
+      ],
+      "dailyVariations": [
+        { "description": "Follow today's time-blocked plan", "points": 10 },
+        { "description": "Tick off the daily checklist", "points": 5 }
+      ]
+    }
+  },
+  {
+    "id": "architect-portfolio-02",
+    "input": {
+      "goal": "Organize my finances with a strict system.",
+      "openAnswers": [
+        "I built a budgeting framework with rules.",
+        "Expense tracking lasted; the system automated it.",
+        "I handle it solo with my own system.",
+        "I optimize the framework when it's stale.",
+        "Structure gives me security.",
+        "My days run on a predictable schedule."
+      ],
+      "personaType": "Architect",
+      "weightedBreakdown": { "Achievement": 12, "Growth": 8, "Connection": 5, "Exploration": 5, "Purpose": 10, "Structure": 60 }
+    },
+    "expectedOutput": {
+      "summary": "As an Architect, a well-designed financial system keeps you consistent.",
+      "tips": ["Create clear budget categories", "Schedule a weekly money review", "Automate savings transfers"],
+      "failurePatterns": ["Endless tweaking without following through"],
+      "coreGoals": [
+        { "description": "Maintain a rules-based monthly budget", "points": 40 },
+        { "description": "Reconcile expenses weekly", "points": 30 },
+        { "description": "Automate one financial routine", "points": 30 }
+      ],
+      "dailyVariations": [
+        { "description": "Log today's expenses", "points": 10 },
+        { "description": "Check the budget dashboard", "points": 5 }
+      ]
+    }
+  }
+]

@@ -1,4 +1,5 @@
 import { ONBOARDING_QUESTIONS, PILLAR_DEFINITIONS, Pillar, PersonaType } from '../pillars';
+import { PROMPT_SAFETY_GUARDRAIL } from './safety';
 
 export interface PortfolioGeneratorPromptInput {
   goal: string;
@@ -26,6 +27,8 @@ export const buildPortfolioGeneratorPrompt = ({
 
   return `
 You are an expert habit coach producing a personalized motivational portfolio.
+
+${PROMPT_SAFETY_GUARDRAIL}
 
 CONTEXT
 The user has just completed onboarding. Their persona has been classified, and you have
