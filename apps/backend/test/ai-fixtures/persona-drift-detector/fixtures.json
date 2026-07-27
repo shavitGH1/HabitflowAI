@@ -1,0 +1,110 @@
+[
+  {
+    "id": "no-drift-stable-achiever",
+    "description": "Behavior mirrors baseline exactly; no drift expected.",
+    "currentPersona": "Achiever",
+    "baselineBreakdown": { "Achievement": 70, "Growth": 10, "Connection": 5, "Exploration": 5, "Purpose": 5, "Structure": 5 },
+    "aiCurrentBreakdown": { "Achievement": 70, "Growth": 10, "Connection": 5, "Exploration": 5, "Purpose": 5, "Structure": 5 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.85, "activeStreak": 6, "completedHabits": ["Morning run", "Gym session"], "skippedHabits": [] },
+    "expected": { "driftDetected": false, "newSuggestedPersona": null }
+  },
+  {
+    "id": "no-drift-minor-wobble-grower",
+    "description": "Small pillar wobble under the 0.3 threshold; no drift.",
+    "currentPersona": "Grower",
+    "baselineBreakdown": { "Achievement": 15, "Growth": 65, "Connection": 5, "Exploration": 10, "Purpose": 3, "Structure": 2 },
+    "aiCurrentBreakdown": { "Achievement": 20, "Growth": 58, "Connection": 7, "Exploration": 10, "Purpose": 3, "Structure": 2 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.7, "activeStreak": 4, "completedHabits": ["Reading", "Language practice"], "skippedHabits": ["Journaling"] },
+    "expected": { "driftDetected": false, "newSuggestedPersona": null }
+  },
+  {
+    "id": "no-drift-stable-architect",
+    "description": "Structured user staying structured; no drift.",
+    "currentPersona": "Architect",
+    "baselineBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 5, "Exploration": 5, "Purpose": 10, "Structure": 60 },
+    "aiCurrentBreakdown": { "Achievement": 12, "Growth": 8, "Connection": 5, "Exploration": 5, "Purpose": 10, "Structure": 60 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.9, "activeStreak": 10, "completedHabits": ["Weekly planning", "Budget review"], "skippedHabits": [] },
+    "expected": { "driftDetected": false, "newSuggestedPersona": null }
+  },
+  {
+    "id": "no-drift-same-dominant-broader",
+    "description": "Distribution broadens but same dominant pillar and under threshold.",
+    "currentPersona": "Socializer",
+    "baselineBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 60, "Exploration": 10, "Purpose": 5, "Structure": 5 },
+    "aiCurrentBreakdown": { "Achievement": 12, "Growth": 12, "Connection": 52, "Exploration": 12, "Purpose": 6, "Structure": 6 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.65, "activeStreak": 3, "completedHabits": ["Group workout"], "skippedHabits": ["Solo run"] },
+    "expected": { "driftDetected": false, "newSuggestedPersona": null }
+  },
+  {
+    "id": "drift-achiever-to-socializer",
+    "description": "Clear shift from achievement to connection; drift + new persona.",
+    "currentPersona": "Achiever",
+    "baselineBreakdown": { "Achievement": 80, "Growth": 10, "Connection": 5, "Exploration": 2, "Purpose": 2, "Structure": 1 },
+    "aiCurrentBreakdown": { "Achievement": 15, "Growth": 10, "Connection": 65, "Exploration": 5, "Purpose": 3, "Structure": 2 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.5, "activeStreak": 1, "completedHabits": ["Group class", "Buddy walk"], "skippedHabits": ["Solo lifting", "Timed run"] },
+    "expected": { "driftDetected": true, "newSuggestedPersona": "Socializer" }
+  },
+  {
+    "id": "drift-grower-to-explorer",
+    "description": "Growth-focused user drifts toward novelty-seeking.",
+    "currentPersona": "Grower",
+    "baselineBreakdown": { "Achievement": 10, "Growth": 70, "Connection": 5, "Exploration": 10, "Purpose": 3, "Structure": 2 },
+    "aiCurrentBreakdown": { "Achievement": 8, "Growth": 20, "Connection": 5, "Exploration": 60, "Purpose": 4, "Structure": 3 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.45, "activeStreak": 0, "completedHabits": ["Tried new sport", "New recipe"], "skippedHabits": ["Daily practice drills"] },
+    "expected": { "driftDetected": true, "newSuggestedPersona": "Explorer" }
+  },
+  {
+    "id": "drift-architect-to-altruist",
+    "description": "Structure-driven user shifts toward purpose.",
+    "currentPersona": "Architect",
+    "baselineBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 5, "Exploration": 5, "Purpose": 10, "Structure": 60 },
+    "aiCurrentBreakdown": { "Achievement": 8, "Growth": 8, "Connection": 9, "Exploration": 5, "Purpose": 60, "Structure": 10 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.55, "activeStreak": 2, "completedHabits": ["Volunteering", "Family caregiving"], "skippedHabits": ["Rigid planning ritual"] },
+    "expected": { "driftDetected": true, "newSuggestedPersona": "Altruist" }
+  },
+  {
+    "id": "drift-explorer-to-architect",
+    "description": "Novelty-seeker settling into structure.",
+    "currentPersona": "Explorer",
+    "baselineBreakdown": { "Achievement": 10, "Growth": 15, "Connection": 5, "Exploration": 65, "Purpose": 3, "Structure": 2 },
+    "aiCurrentBreakdown": { "Achievement": 10, "Growth": 12, "Connection": 5, "Exploration": 13, "Purpose": 5, "Structure": 55 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.8, "activeStreak": 7, "completedHabits": ["Fixed morning routine", "Scheduled study"], "skippedHabits": ["Spontaneous activities"] },
+    "expected": { "driftDetected": true, "newSuggestedPersona": "Architect" }
+  },
+  {
+    "id": "drift-socializer-to-achiever",
+    "description": "Connection-driven user turns results-focused.",
+    "currentPersona": "Socializer",
+    "baselineBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 65, "Exploration": 5, "Purpose": 5, "Structure": 5 },
+    "aiCurrentBreakdown": { "Achievement": 62, "Growth": 12, "Connection": 15, "Exploration": 5, "Purpose": 3, "Structure": 3 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.88, "activeStreak": 9, "completedHabits": ["PR attempts", "Metric tracking"], "skippedHabits": ["Group meetups"] },
+    "expected": { "driftDetected": true, "newSuggestedPersona": "Achiever" }
+  },
+  {
+    "id": "drift-altruist-to-grower",
+    "description": "Purpose-driven user shifts to self-improvement focus.",
+    "currentPersona": "Altruist",
+    "baselineBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 10, "Exploration": 5, "Purpose": 60, "Structure": 5 },
+    "aiCurrentBreakdown": { "Achievement": 12, "Growth": 58, "Connection": 8, "Exploration": 8, "Purpose": 9, "Structure": 5 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.6, "activeStreak": 3, "completedHabits": ["Skill practice", "Course modules"], "skippedHabits": ["Volunteering shift"] },
+    "expected": { "driftDetected": true, "newSuggestedPersona": "Grower" }
+  },
+  {
+    "id": "drift-detected-same-persona-still-dominant",
+    "description": "Large shift crosses threshold but Achievement is still the top pillar; drift flagged, no new persona.",
+    "currentPersona": "Achiever",
+    "baselineBreakdown": { "Achievement": 95, "Growth": 2, "Connection": 1, "Exploration": 1, "Purpose": 0, "Structure": 1 },
+    "aiCurrentBreakdown": { "Achievement": 45, "Growth": 40, "Connection": 5, "Exploration": 5, "Purpose": 3, "Structure": 2 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.62, "activeStreak": 2, "completedHabits": ["Skill drills", "Timed test"], "skippedHabits": [] },
+    "expected": { "driftDetected": true, "newSuggestedPersona": null }
+  },
+  {
+    "id": "no-drift-low-completion-but-consistent-profile",
+    "description": "Completion dropped but the motivational profile is unchanged; no drift.",
+    "currentPersona": "Grower",
+    "baselineBreakdown": { "Achievement": 15, "Growth": 60, "Connection": 10, "Exploration": 10, "Purpose": 3, "Structure": 2 },
+    "aiCurrentBreakdown": { "Achievement": 15, "Growth": 60, "Connection": 10, "Exploration": 10, "Purpose": 3, "Structure": 2 },
+    "behaviorSnapshot": { "observationWindowDays": 7, "recentCompletionRate": 0.3, "activeStreak": 0, "completedHabits": ["Reading"], "skippedHabits": ["Practice", "Journaling", "Course"] },
+    "expected": { "driftDetected": false, "newSuggestedPersona": null }
+  }
+]
