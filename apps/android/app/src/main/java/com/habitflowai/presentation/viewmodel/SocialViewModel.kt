@@ -2,73 +2,84 @@ package com.habitflowai.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.Post
+import com.habitflowai.domain.repository.SocialRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
+import javax.inject.Inject
 
 data class SocialUiState(
     val posts: List<Post> = emptyList(),
+    val comments: Map<Int, List<Comment>> = emptyMap(),
     val isLoading: Boolean = false,
-    val isRefreshing: Boolean = false
+    val isLoadingComments: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val canLoadMore: Boolean = true,
+    val page: Int = 0
 )
 
-class SocialViewModel : ViewModel() {
+@HiltViewModel
+class SocialViewModel @Inject constructor(
+    private val repository: SocialRepository
+) : ViewModel() {
+
     private val _uiState = MutableStateFlow(SocialUiState())
     val uiState: StateFlow<SocialUiState> = _uiState.asStateFlow()
 
-    init {
-        loadPosts()
-    }
+    private val pageSize = 10
 
-    fun loadPosts() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            delay(1000)
-            val initialPosts = listOf(
-                Post(1, "Alex", "Just completely crushed my deep work block! 🚀", true, likeCount = 14),
-                Post(2, "Mia", "Woke up at 5am today. The sunrise was totally worth it.", false, likeCount = 5),
-                Post(3, "Sam", "Hit a 10 day streak on fitness goals! Consistency pays off.", true, likeCount = 22)
-            )
-            _uiState.value = _uiState.value.copy(posts = initialPosts, isLoading = false)
-        }
+    init {
+        loadMorePosts()
     }
 
     fun loadMorePosts() {
-        if (_uiState.value.isLoading) return
+        if (_uiState.value.isLoading || !_uiState.value.canLoadMore) return
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            delay(1000)
-            val currentSize = _uiState.value.posts.size
-            val morePosts = (1..5).map { i ->
-                Post(
-                    id = currentSize + i,
-                    author = "User ${currentSize + i}",
-                    content = "Keep pushing forward! Personal growth is a marathon. Post #${currentSize + i}",
-                    hasPhoto = i % 2 == 0,
-                    likeCount = (0..50).random()
+            repository.getPosts(_uiState.value.page, pageSize).collectLatest { newPosts ->
+                _uiState.value = _uiState.value.copy(
+                    posts = _uiState.value.posts + newPosts,
+                    isLoading = false,
+                    page = _uiState.value.page + 1,
+                    canLoadMore = newPosts.size == pageSize
                 )
             }
-            _uiState.value = _uiState.value.copy(
-                posts = _uiState.value.posts + morePosts,
-                isLoading = false
-            )
         }
     }
 
-    fun createPost(content: String, imageUri: String?) {
-        val newPost = Post(
-            id = (_uiState.value.posts.maxByOrNull { it.id }?.id ?: 0) + 1,
-            author = "Me",
-            content = content,
-            hasPhoto = imageUri != null,
-            imageUri = imageUri,
-            likeCount = 0
-        )
-        _uiState.value = _uiState.value.copy(posts = listOf(newPost) + _uiState.value.posts)
+    fun loadComments(postId: Int) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingComments = true)
+            repository.getComments(postId).collectLatest { comments ->
+                val updatedComments = _uiState.value.comments.toMutableMap().apply {
+                    put(postId, comments)
+                }
+                _uiState.value = _uiState.value.copy(
+                    comments = updatedComments,
+                    isLoadingComments = false
+                )
+            }
+        }
+    }
+
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isRefreshing = true, page = 0, canLoadMore = true)
+            repository.getPosts(0, pageSize).collectLatest { newPosts ->
+                _uiState.value = _uiState.value.copy(
+                    posts = newPosts,
+                    isRefreshing = false,
+                    page = 1,
+                    canLoadMore = newPosts.size == pageSize
+                )
+            }
+        }
     }
 
     fun toggleLike(postId: Int) {
@@ -81,5 +92,43 @@ class SocialViewModel : ViewModel() {
             } else post
         }
         _uiState.value = _uiState.value.copy(posts = updatedPosts)
+    }
+
+    fun addPost(content: String, imageUri: String?) {
+        val newPost = Post(
+            id = (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
+            author = "Me",
+            content = content,
+            hasPhoto = imageUri != null,
+            imageUri = imageUri,
+            likeCount = 0,
+            isLiked = false
+        )
+        _uiState.value = _uiState.value.copy(posts = listOf(newPost) + _uiState.value.posts)
+    }
+
+    fun addComment(postId: Int, content: String) {
+        val newComment = Comment(
+            id = (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
+            postId = postId,
+            author = "Me",
+            content = content
+        )
+        
+        val currentComments = _uiState.value.comments[postId] ?: emptyList()
+        val updatedCommentsMap = _uiState.value.comments.toMutableMap().apply {
+            put(postId, currentComments + newComment)
+        }
+        
+        val updatedPosts = _uiState.value.posts.map { post ->
+            if (post.id == postId) {
+                post.copy(commentCount = post.commentCount + 1)
+            } else post
+        }
+        
+        _uiState.value = _uiState.value.copy(
+            comments = updatedCommentsMap,
+            posts = updatedPosts
+        )
     }
 }

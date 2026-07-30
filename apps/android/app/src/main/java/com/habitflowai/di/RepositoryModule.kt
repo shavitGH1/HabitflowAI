@@ -5,11 +5,13 @@ import com.habitflowai.data.repository.GoalsRepositoryImpl
 import com.habitflowai.data.repository.HabitsRepositoryImpl
 import com.habitflowai.data.repository.LocationRepositoryImpl
 import com.habitflowai.data.repository.PersonaRepositoryImpl
+import com.habitflowai.data.repository.SocialRepositoryImpl
 import com.habitflowai.domain.repository.AuthRepository
 import com.habitflowai.domain.repository.GoalsRepository
 import com.habitflowai.domain.repository.HabitsRepository
 import com.habitflowai.domain.repository.LocationRepository
 import com.habitflowai.domain.repository.PersonaRepository
+import com.habitflowai.domain.repository.SocialRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -49,4 +51,10 @@ abstract class RepositoryModule {
     abstract fun bindLocationRepository(
         impl: LocationRepositoryImpl
     ): LocationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSocialRepository(
+        impl: SocialRepositoryImpl
+    ): SocialRepository
 }
