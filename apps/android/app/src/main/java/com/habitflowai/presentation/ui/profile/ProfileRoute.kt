@@ -18,11 +18,15 @@ import com.habitflowai.data.model.ClassifyPersonaResponse
 import com.habitflowai.presentation.ui.persona.*
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.habitflowai.presentation.viewmodel.OnboardingUiState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Book
+import androidx.compose.material.icons.rounded.ChevronRight
 
 @Composable
 fun ProfileRoute(
     viewModel: OnboardingViewModel,
     onRetakeAssessment: () -> Unit,
+    onNavigateToSuccessJournal: () -> Unit,
     onLogout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -30,6 +34,7 @@ fun ProfileRoute(
     ProfileContent(
         uiState = uiState,
         onRetakeAssessment = onRetakeAssessment,
+        onNavigateToSuccessJournal = onNavigateToSuccessJournal,
         onLogout = onLogout
     )
 }
@@ -38,6 +43,7 @@ fun ProfileRoute(
 fun ProfileContent(
     uiState: OnboardingUiState,
     onRetakeAssessment: () -> Unit,
+    onNavigateToSuccessJournal: () -> Unit,
     onLogout: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -75,6 +81,45 @@ fun ProfileContent(
             message = personaResult.motivationalMessage,
             details = details
         )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            onClick = onNavigateToSuccessJournal
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Rounded.Book,
+                    contentDescription = null,
+                    tint = details.endColor
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Success Journal",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Review your growth and milestones",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.Rounded.ChevronRight,
+                    contentDescription = null,
+                    tint = Color.Gray
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -123,6 +168,7 @@ fun ProfilePreview() {
             )
         ),
         onRetakeAssessment = {},
+        onNavigateToSuccessJournal = {},
         onLogout = {}
     )
 }
