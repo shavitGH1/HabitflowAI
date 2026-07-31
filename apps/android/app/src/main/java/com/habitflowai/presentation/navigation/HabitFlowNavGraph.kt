@@ -27,6 +27,7 @@ import com.habitflowai.presentation.ui.auth.RegisterCredentialsRoute
 import com.habitflowai.presentation.ui.profile.ProfileRoute
 import com.habitflowai.presentation.ui.map.MapRoute
 import com.habitflowai.presentation.ui.drift.DriftCheckRoute
+import com.habitflowai.presentation.ui.drift.DriftReassessmentRoute
 import com.habitflowai.presentation.ui.persona.ProfileRevealRoute
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
@@ -160,7 +161,10 @@ fun HabitFlowNavGraph(
             composable(NavRoute.Home.route) {
                 HomeRoute(
                     personaResult = uiState.personaResult,
-                    userId = uiState.personaResult?.userId ?: uiState.personaResult?.id ?: ""
+                    userId = uiState.personaResult?.userId ?: uiState.personaResult?.id ?: "",
+                    onNavigateToReassessment = {
+                        navController.navigate(NavRoute.DriftReassessment.route)
+                    }
                 )
             }
             composable(NavRoute.Habits.route) {
@@ -213,6 +217,13 @@ fun HabitFlowNavGraph(
             }
             composable(NavRoute.DriftCheck.route) {
                 DriftCheckRoute()
+            }
+            composable(NavRoute.DriftReassessment.route) {
+                DriftReassessmentRoute(
+                    onFinished = {
+                        navController.popBackStack()
+                    }
+                )
             }
         }
     }
