@@ -11,7 +11,9 @@ import javax.inject.Inject
 
 data class MapUiState(
     val markers: List<HabitMarker> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val searchQuery: String = "",
+    val searchResult: LatLng? = null
 )
 
 @HiltViewModel
@@ -22,6 +24,24 @@ class MapViewModel @Inject constructor() : ViewModel() {
 
     init {
         loadMarkers()
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
+    }
+
+    fun onSearch() {
+        // In a real app, use Geocoder or Places API here.
+        // For now, if searching for "Tel Aviv", return its coordinates.
+        if (_uiState.value.searchQuery.contains("Tel Aviv", ignoreCase = true)) {
+            _uiState.value = _uiState.value.copy(searchResult = LatLng(32.0853, 34.7818))
+        } else if (_uiState.value.searchQuery.contains("Haifa", ignoreCase = true)) {
+            _uiState.value = _uiState.value.copy(searchResult = LatLng(32.7940, 34.9896))
+        }
+    }
+
+    fun onCameraMoved() {
+        _uiState.value = _uiState.value.copy(searchResult = null)
     }
 
     private fun loadMarkers() {

@@ -1,6 +1,5 @@
 package com.habitflowai.presentation.ui.map
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,16 +35,33 @@ fun MapRoute(
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    MapContent(uiState = uiState)
+    MapContent(
+        uiState = uiState,
+        onSearchQueryChange = viewModel::onSearchQueryChange,
+        onSearch = viewModel::onSearch,
+        onCameraMoved = viewModel::onCameraMoved
+    )
 }
 
 @Composable
 fun MapContent(
-    uiState: MapUiState
+    uiState: MapUiState,
+    onSearchQueryChange: (String) -> Unit = {},
+    onSearch: () -> Unit = {},
+    onCameraMoved: () -> Unit = {}
 ) {
     val telAviv = LatLng(32.0853, 34.7818)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(telAviv, 13f)
+    }
+
+    LaunchedEffect(uiState.searchResult) {
+        uiState.searchResult?.let { latLng ->
+            cameraPositionState.animate(
+                com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(latLng, 13f)
+            )
+            onCameraMoved()
+        }
     }
 
     var selectedCategory by remember { mutableStateOf("All") }
@@ -94,7 +111,7 @@ fun MapContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Habit Flow Map",
                                 style = MaterialTheme.typography.headlineSmall,
@@ -107,21 +124,39 @@ fun MapContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Rounded.Search,
-                                contentDescription = "Search",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
                     }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    TextField(
+                        value = uiState.searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        placeholder = { Text("Search location...") },
+                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (uiState.searchQuery.isNotEmpty()) {
+                                IconButton(onClick = onSearch) {
+                                    Text("Go", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent
+                        ),
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            imeAction = ImeAction.Search
+                        ),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                            onSearch = { onSearch() }
+                        )
+                    )
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
