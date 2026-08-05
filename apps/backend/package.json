@@ -14,9 +14,17 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
+    "testTimeout": 60000,
     "roots": [
       "<rootDir>/src"
+    ],
+    "setupFiles": [
+      "<rootDir>/src/e2e/jest.setup.ts"
     ]
+  },
+  "mongodbMemoryServer": {
+    "downloadDir": "../../node_modules/.cache/mongodb-memory-server",
+    "MD5_CHECK": false
   },
   "keywords": [],
   "author": "",
