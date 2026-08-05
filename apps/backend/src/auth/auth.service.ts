@@ -120,6 +120,18 @@ export class AuthService {
     return { message: 'FCM token updated', success: true };
   }
 
+  async handleGoogleAuth({ email }: { email: string }) {
+    const user = await this.userRepository.findUserByEmail(email);
+    if (!user) throw new UnauthorizedException('No account found for this Google account. Please register first.');
+
+    const accessToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_SECRET')!, { expiresIn: this.config.get<string>('JWT_ACCESS_EXPIRATION') });
+    const refreshToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_REFRESH_SECRET')!, { expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRATION') });
+    await this.userRepository.updateUserRefreshToken(user.id, refreshToken);
+
+    logger.info({ userId: user.id }, 'user authenticated via Google');
+    return { accessToken, refreshToken, success: true };
+  }
+
   async logout(userId: string) {
     await this.userRepository.updateUserRefreshToken(userId, undefined);
     return { message: 'Successfully logged out', success: true };
