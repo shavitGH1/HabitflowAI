@@ -155,6 +155,26 @@ fun RegisterCredentialsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            HorizontalDivider(modifier = Modifier.weight(1f))
+            Text(
+                text = "OR",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.Gray
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        GoogleSignInButton(
+            onClick = { /* TODO: Google Sign-In */ },
+            text = "Register with Google"
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         TextButton(onClick = onNavigateBack) {
             Text("Already have an account? Login", color = Color(0xFF1E88E5))
         }

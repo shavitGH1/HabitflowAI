@@ -112,7 +112,7 @@ fun HabitsContent(
                 ) {
                     items(
                         items = uiState.habits,
-                        key = { it.id }
+                        key = { habit -> habit.id }
                     ) { habit ->
                         HabitItem(
                             habit = habit,
@@ -356,8 +356,8 @@ fun HabitsAchieverPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    HabitEntity("1", "Workout", "Gym session", "DAILY", "", false),
-                    HabitEntity("2", "Beat PR", "Run faster", "WEEKLY", "", false)
+                    HabitEntity("1", "Workout", "Gym session", "DAILY", "user1", false),
+                    HabitEntity("2", "Beat PR", "Run faster", "WEEKLY", "user1", false)
                 )
             ),
             personaType = "Achiever",
@@ -376,8 +376,8 @@ fun HabitsGrowerPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    HabitEntity("1", "Meditation", "10 mins daily", "DAILY", "", false),
-                    HabitEntity("2", "Journaling", "Reflect on day", "DAILY", "", false)
+                    HabitEntity("1", "Meditation", "10 mins daily", "DAILY", "user1", false),
+                    HabitEntity("2", "Journaling", "Reflect on day", "DAILY", "user1", false)
                 )
             ),
             personaType = "Grower",
@@ -396,8 +396,8 @@ fun HabitsRegulatorPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    HabitEntity("1", "Morning Routine", "Follow schedule", "DAILY", "", false),
-                    HabitEntity("2", "Deep Work", "Block time", "DAILY", "", false)
+                    HabitEntity("1", "Morning Routine", "Follow schedule", "DAILY", "user1", false),
+                    HabitEntity("2", "Deep Work", "Block time", "DAILY", "user1", false)
                 )
             ),
             personaType = "Regulator",
@@ -416,8 +416,8 @@ fun HabitsSocializerPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    HabitEntity("1", "Call Friend", "Stay connected", "WEEKLY", "", false),
-                    HabitEntity("2", "Group Class", "Fitness with others", "WEEKLY", "", false)
+                    HabitEntity("1", "Call Friend", "Stay connected", "WEEKLY", "user1", false),
+                    HabitEntity("2", "Group Class", "Fitness with others", "WEEKLY", "user1", false)
                 )
             ),
             personaType = "Socializer",
@@ -436,8 +436,8 @@ fun HabitsExplorerPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    HabitEntity("1", "Try New Food", "Explore cuisine", "WEEKLY", "", false),
-                    HabitEntity("2", "Random Walk", "Discover paths", "DAILY", "", false)
+                    HabitEntity("1", "Try New Food", "Explore cuisine", "WEEKLY", "user1", false),
+                    HabitEntity("2", "Random Walk", "Discover paths", "DAILY", "user1", false)
                 )
             ),
             personaType = "Explorer",
@@ -456,8 +456,8 @@ fun HabitsAltruistPreview() {
         HabitsContent(
             uiState = HabitsUiState(
                 habits = listOf(
-                    HabitEntity("1", "Volunteer", "Community help", "MONTHLY", "", false),
-                    HabitEntity("2", "Help Neighbor", "Small acts", "WEEKLY", "", false)
+                    HabitEntity("1", "Volunteer", "Community help", "MONTHLY", "user1", false),
+                    HabitEntity("2", "Help Neighbor", "Small acts", "WEEKLY", "user1", false)
                 )
             ),
             personaType = "Altruist",

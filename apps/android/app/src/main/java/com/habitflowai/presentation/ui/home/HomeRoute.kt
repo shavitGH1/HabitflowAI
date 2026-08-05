@@ -39,13 +39,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.habitflowai.presentation.viewmodel.HomeViewModel
 import com.habitflowai.data.model.HomeGoalTask
+import androidx.compose.material.icons.rounded.Close
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 
 import com.habitflowai.presentation.viewmodel.HomeUiState
 import com.habitflowai.data.model.HomeResponse
 
 @Composable
-fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
+fun HomeRoute(
+    personaResult: ClassifyPersonaResponse?,
+    userId: String,
+    onNavigateToReassessment: () -> Unit
+) {
     val viewModel: HomeViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
 
@@ -56,7 +61,9 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
     HomeScreen(
         uiState = uiState,
         personaResult = personaResult,
-        onCompleteTask = { viewModel.completeTask(it) }
+        onCompleteTask = { viewModel.completeTask(it) },
+        onDismissDriftBanner = { viewModel.dismissDriftBanner() },
+        onStartReassessment = onNavigateToReassessment
     )
 }
 
@@ -64,7 +71,9 @@ fun HomeRoute(personaResult: ClassifyPersonaResponse?, userId: String) {
 fun HomeScreen(
     uiState: HomeUiState,
     personaResult: ClassifyPersonaResponse?,
-    onCompleteTask: (String) -> Unit
+    onCompleteTask: (String) -> Unit,
+    onDismissDriftBanner: () -> Unit,
+    onStartReassessment: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val today = remember { LocalDate.now() }
@@ -145,6 +154,15 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(24.dp))
+
+        if (uiState.isDriftDetected && !uiState.isDriftBannerDismissed) {
+            DriftCheckBanner(
+                rationale = uiState.driftRationale ?: "We've detected a shift in your habit patterns.",
+                onDismiss = onDismissDriftBanner,
+                onAction = onStartReassessment
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         Box(
             modifier = Modifier
@@ -725,6 +743,67 @@ fun ComponentGalleryPreview() {
 }
 
 @Composable
+fun DriftCheckBanner(
+    rationale: String,
+    onDismiss: () -> Unit,
+    onAction: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Rounded.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Habit Drift Detected",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = "Dismiss",
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = rationale,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onAction,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text("Start Reassessment")
+            }
+        }
+    }
+}
+
+@Composable
 private fun HomePersonaPreview(personaType: String) {
     val article = if (listOf('A', 'E', 'I', 'O', 'U').contains(personaType.firstOrNull()?.uppercaseChar())) "an" else "a"
     val samplePersona = ClassifyPersonaResponse(
@@ -750,7 +829,9 @@ private fun HomePersonaPreview(personaType: String) {
         HomeScreen(
             uiState = uiState,
             personaResult = samplePersona,
-            onCompleteTask = {}
+            onCompleteTask = {},
+            onDismissDriftBanner = {},
+            onStartReassessment = {}
         )
     }
 }
