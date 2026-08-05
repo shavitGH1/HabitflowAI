@@ -19,7 +19,10 @@ data class HomeUiState(
     val portfolioSummary: String? = null,
     val tips: List<String>? = null,
     val failurePatterns: List<String>? = null,
-    val confidenceScore: Double? = null
+    val confidenceScore: Double? = null,
+    val isDriftDetected: Boolean = false,
+    val driftRationale: String? = null,
+    val isDriftBannerDismissed: Boolean = false
 )
 
 @HiltViewModel
@@ -73,12 +76,17 @@ class HomeViewModel @Inject constructor(
                     portfolioSummary = data.portfolioSummary,
                     tips = data.tips,
                     failurePatterns = data.failurePatterns,
-                    confidenceScore = data.confidenceScore
+                    confidenceScore = data.confidenceScore,
+                    isDriftDetected = data.driftDetected,
+                    driftRationale = data.driftRationale
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message)
             }
         }
     }
-}
 
+    fun dismissDriftBanner() {
+        _uiState.value = _uiState.value.copy(isDriftBannerDismissed = true)
+    }
+}

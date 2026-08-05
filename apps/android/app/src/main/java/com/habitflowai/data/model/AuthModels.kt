@@ -56,5 +56,7 @@ data class HomeResponse(
     @SerializedName("portfolioSummary") val portfolioSummary: String? = null,
     @SerializedName("tips") val tips: List<String>? = null,
     @SerializedName("failurePatterns") val failurePatterns: List<String>? = null,
-    @SerializedName("confidenceScore") val confidenceScore: Double? = null
+    @SerializedName("confidenceScore") val confidenceScore: Double? = null,
+    @SerializedName("driftDetected") val driftDetected: Boolean = false,
+    @SerializedName("driftRationale") val driftRationale: String? = null
 )
