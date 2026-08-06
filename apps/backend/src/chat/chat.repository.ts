@@ -10,6 +10,10 @@ export interface ChatData {
   participantIds: string[];
   isGroup: boolean;
   name?: string;
+  admins: string[];
+  owner?: string;
+  description?: string;
+  imageUrl?: string;
   createdAt: string;
 }
 
@@ -26,6 +30,17 @@ export interface CreateChatInput {
   participantIds: string[];
   isGroup: boolean;
   name?: string;
+  admins?: string[];
+  owner?: string;
+}
+
+export interface UpdateChatInput {
+  name?: string;
+  description?: string;
+  imageUrl?: string;
+  participantIds?: string[];
+  admins?: string[];
+  owner?: string;
 }
 
 export interface CreateMessageInput {
@@ -70,6 +85,16 @@ export class ChatRepository {
     return docs.map(d => this.toChatData(d));
   }
 
+  async updateChat(chatId: string, updates: UpdateChatInput): Promise<ChatData | null> {
+    const doc = await this.chatModel.findByIdAndUpdate(chatId, updates, { returnDocument: 'after' });
+    return doc ? this.toChatData(doc) : null;
+  }
+
+  async deleteChat(chatId: string): Promise<void> {
+    await this.messageModel.deleteMany({ chatId });
+    await this.chatModel.findByIdAndDelete(chatId);
+  }
+
   async addMessage(input: CreateMessageInput): Promise<MessageData> {
     const doc = await this.messageModel.create(input);
     return this.toMessageData(doc);
@@ -91,6 +116,10 @@ export class ChatRepository {
       participantIds: doc.participantIds,
       isGroup: doc.isGroup,
       name: doc.name,
+      admins: doc.admins,
+      owner: doc.owner,
+      description: doc.description,
+      imageUrl: doc.imageUrl,
       createdAt: (doc as unknown as { createdAt: Date }).createdAt?.toISOString() ?? '',
     };
   }
