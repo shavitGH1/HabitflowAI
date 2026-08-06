@@ -51,11 +51,39 @@ export class ChatService {
   }
 
   async postMessage(userId: string, chatId: string, text?: string, imageUrl?: string): Promise<MessageData> {
-    await this.assertParticipant(userId, chatId);
+    const chat = await this.assertParticipant(userId, chatId);
     if (!text && !imageUrl) {
       throw new BadRequestException('Message must have text or an image');
     }
-    return this.chatRepository.addMessage({ chatId, senderId: userId, text, imageUrl });
+
+    const message = await this.chatRepository.addMessage({ chatId, senderId: userId, text, imageUrl });
+
+    const unreadCount = { ...chat.unreadCount };
+    for (const participantId of chat.participantIds) {
+      if (participantId === userId) continue;
+      unreadCount[participantId] = (unreadCount[participantId] ?? 0) + 1;
+    }
+    await this.chatRepository.updateChat(chatId, { lastMessage: message.id, unreadCount });
+
+    return message;
+  }
+
+  async markAsRead(userId: string, chatId: string): Promise<ChatData> {
+    const chat = await this.assertParticipant(userId, chatId);
+    const unreadCount = { ...chat.unreadCount, [userId]: 0 };
+    return (await this.chatRepository.updateChat(chatId, { unreadCount }))!;
+  }
+
+  async toggleMessageLike(userId: string, chatId: string, messageId: string): Promise<MessageData> {
+    await this.assertParticipant(userId, chatId);
+    const message = await this.chatRepository.findMessageById(chatId, messageId);
+    if (!message) throw new NotFoundException('Message not found');
+
+    const likes = message.likes.includes(userId)
+      ? message.likes.filter(id => id !== userId)
+      : [...message.likes, userId];
+
+    return this.chatRepository.setMessageLikes(messageId, likes);
   }
 
   async assertParticipant(userId: string, chatId: string): Promise<ChatData> {

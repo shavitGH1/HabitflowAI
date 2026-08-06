@@ -23,6 +23,12 @@ export class Chat {
 
   @Prop()
   imageUrl?: string;
+
+  @Prop()
+  lastMessage?: string;
+
+  @Prop({ type: Map, of: Number, default: {} })
+  unreadCount: Map<string, number>;
 }
 
 export const ChatSchema = SchemaFactory.createForClass(Chat);

@@ -115,6 +115,46 @@ describe('Chat (e2e)', () => {
     expect(history.body.some((m: { text: string }) => m.text === 'hey, still on for the run?')).toBe(true);
   });
 
+  it('tracks unread count for the recipient, resets it on read, and supports message likes', async () => {
+    const chatsForB = await agent(app)
+      .get('/api/v1/chats')
+      .set('Authorization', `Bearer ${userBToken}`)
+      .expect(200);
+    const chatForB = chatsForB.body.find((c: { id: string }) => c.id === chatId);
+    expect(chatForB.unreadCount[userBId]).toBe(1);
+    expect(chatForB.lastMessage).toBeDefined();
+
+    await agent(app)
+      .post(`/api/v1/chats/${chatId}/read`)
+      .set('Authorization', `Bearer ${userBToken}`)
+      .expect(201);
+
+    const chatsForBAfterRead = await agent(app)
+      .get('/api/v1/chats')
+      .set('Authorization', `Bearer ${userBToken}`)
+      .expect(200);
+    const chatForBAfterRead = chatsForBAfterRead.body.find((c: { id: string }) => c.id === chatId);
+    expect(chatForBAfterRead.unreadCount[userBId]).toBe(0);
+
+    const history = await agent(app)
+      .get(`/api/v1/chats/${chatId}/messages`)
+      .set('Authorization', `Bearer ${userAToken}`)
+      .expect(200);
+    const messageId = history.body[0].id;
+
+    const liked = await agent(app)
+      .post(`/api/v1/chats/${chatId}/messages/${messageId}/like`)
+      .set('Authorization', `Bearer ${userBToken}`)
+      .expect(201);
+    expect(liked.body.likes).toContain(userBId);
+
+    const unliked = await agent(app)
+      .post(`/api/v1/chats/${chatId}/messages/${messageId}/like`)
+      .set('Authorization', `Bearer ${userBToken}`)
+      .expect(201);
+    expect(unliked.body.likes).not.toContain(userBId);
+  });
+
   it('does not let an outsider read the chat history', async () => {
     await agent(app)
       .get(`/api/v1/chats/${chatId}/messages`)
