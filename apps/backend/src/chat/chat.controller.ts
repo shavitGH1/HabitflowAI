@@ -82,6 +82,29 @@ export class ChatController {
     return this.chatService.getMessages(req.user.id, chatId, Number(page), Number(limit));
   }
 
+  @Post(':chatId/read')
+  @ApiOperation({ summary: "Mark a chat as read, resetting the caller's unread count to 0" })
+  @ApiResponse({ status: 201, description: 'Marked as read' })
+  @ApiResponse({ status: 403, description: 'Not a participant in this chat' })
+  markAsRead(@Req() req: { user: { id: string } }, @Param('chatId') chatId: string) {
+    return this.chatService.markAsRead(req.user.id, chatId);
+  }
+
+  @Post(':chatId/messages/:messageId/like')
+  @ApiOperation({ summary: 'Toggle a like on a message' })
+  @ApiResponse({ status: 201, description: 'Like toggled' })
+  @ApiResponse({ status: 403, description: 'Not a participant in this chat' })
+  @ApiResponse({ status: 404, description: 'Message not found' })
+  async toggleMessageLike(
+    @Req() req: { user: { id: string } },
+    @Param('chatId') chatId: string,
+    @Param('messageId') messageId: string,
+  ) {
+    const message = await this.chatService.toggleMessageLike(req.user.id, chatId, messageId);
+    this.chatGateway.emitToRoom(chatId, 'messageLiked', { chatId, messageId, likes: message.likes });
+    return message;
+  }
+
   @Post(':chatId/members')
   @UseGuards(ChatAdminGuard)
   @ApiOperation({ summary: 'Add members to a group chat (admin only)' })

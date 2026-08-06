@@ -12,6 +12,8 @@ const mockChatRepository = {
   findByParticipantId: jest.fn(),
   addMessage: jest.fn(),
   findMessagesPaginated: jest.fn(),
+  findMessageById: jest.fn(),
+  setMessageLikes: jest.fn(),
   updateChat: jest.fn(),
   deleteChat: jest.fn(),
 };
@@ -37,6 +39,7 @@ const makeChat = (overrides: Partial<ChatData> = {}): ChatData => ({
   participantIds: [USER_ID, OTHER_USER_ID],
   isGroup: false,
   admins: [],
+  unreadCount: {},
   createdAt: new Date().toISOString(),
   ...overrides,
 });
@@ -48,6 +51,7 @@ const makeGroupChat = (overrides: Partial<ChatData> = {}): ChatData => ({
   name: 'Marathon Crew',
   owner: USER_ID,
   admins: [USER_ID],
+  unreadCount: {},
   createdAt: new Date().toISOString(),
   ...overrides,
 });
@@ -152,7 +156,7 @@ describe('ChatService', () => {
     it('returns paginated messages for a participant', async () => {
       mockChatRepository.findById.mockResolvedValue(makeChat());
       const messages: MessageData[] = [
-        { id: 'm1', chatId: CHAT_ID, senderId: USER_ID, text: 'hey', sentAt: new Date().toISOString() },
+        { id: 'm1', chatId: CHAT_ID, senderId: USER_ID, text: 'hey', likes: [], sentAt: new Date().toISOString() },
       ];
       mockChatRepository.findMessagesPaginated.mockResolvedValue(messages);
 
@@ -178,6 +182,7 @@ describe('ChatService', () => {
         chatId: CHAT_ID,
         senderId: USER_ID,
         text: 'hello',
+        likes: [],
         sentAt: new Date().toISOString(),
       };
       mockChatRepository.addMessage.mockResolvedValue(saved);
@@ -191,6 +196,84 @@ describe('ChatService', () => {
         imageUrl: undefined,
       });
       expect(result).toEqual(saved);
+    });
+
+    it('increments unread count for every other participant, not the sender, and sets lastMessage', async () => {
+      const chat = makeGroupChat({ unreadCount: { [OTHER_USER_ID]: 2 } });
+      mockChatRepository.findById.mockResolvedValue(chat);
+      const saved: MessageData = {
+        id: 'm2',
+        chatId: GROUP_CHAT_ID,
+        senderId: USER_ID,
+        text: 'hi all',
+        likes: [],
+        sentAt: new Date().toISOString(),
+      };
+      mockChatRepository.addMessage.mockResolvedValue(saved);
+
+      await service.postMessage(USER_ID, GROUP_CHAT_ID, 'hi all');
+
+      expect(mockChatRepository.updateChat).toHaveBeenCalledWith(GROUP_CHAT_ID, {
+        lastMessage: 'm2',
+        unreadCount: { [OTHER_USER_ID]: 3, [THIRD_USER_ID]: 1 },
+      });
+    });
+  });
+
+  describe('markAsRead()', () => {
+    it('resets only the caller unread count, leaving other participants untouched', async () => {
+      const chat = makeGroupChat({ unreadCount: { [USER_ID]: 5, [OTHER_USER_ID]: 2 } });
+      mockChatRepository.findById.mockResolvedValue(chat);
+      mockChatRepository.updateChat.mockResolvedValue(chat);
+
+      await service.markAsRead(USER_ID, GROUP_CHAT_ID);
+
+      expect(mockChatRepository.updateChat).toHaveBeenCalledWith(GROUP_CHAT_ID, {
+        unreadCount: { [USER_ID]: 0, [OTHER_USER_ID]: 2 },
+      });
+    });
+  });
+
+  describe('toggleMessageLike()', () => {
+    const MESSAGE_ID = 'm1';
+
+    it('throws NotFoundException for a missing message', async () => {
+      mockChatRepository.findById.mockResolvedValue(makeChat());
+      mockChatRepository.findMessageById.mockResolvedValue(null);
+
+      await expect(service.toggleMessageLike(USER_ID, CHAT_ID, MESSAGE_ID)).rejects.toThrow(NotFoundException);
+    });
+
+    it('adds the caller to likes when not already liked', async () => {
+      mockChatRepository.findById.mockResolvedValue(makeChat());
+      mockChatRepository.findMessageById.mockResolvedValue({
+        id: MESSAGE_ID,
+        chatId: CHAT_ID,
+        senderId: OTHER_USER_ID,
+        text: 'hey',
+        likes: [],
+        sentAt: new Date().toISOString(),
+      });
+
+      await service.toggleMessageLike(USER_ID, CHAT_ID, MESSAGE_ID);
+
+      expect(mockChatRepository.setMessageLikes).toHaveBeenCalledWith(MESSAGE_ID, [USER_ID]);
+    });
+
+    it('removes the caller from likes when already liked', async () => {
+      mockChatRepository.findById.mockResolvedValue(makeChat());
+      mockChatRepository.findMessageById.mockResolvedValue({
+        id: MESSAGE_ID,
+        chatId: CHAT_ID,
+        senderId: OTHER_USER_ID,
+        text: 'hey',
+        likes: [USER_ID, OTHER_USER_ID],
+        sentAt: new Date().toISOString(),
+      });
+
+      await service.toggleMessageLike(USER_ID, CHAT_ID, MESSAGE_ID);
+
+      expect(mockChatRepository.setMessageLikes).toHaveBeenCalledWith(MESSAGE_ID, [OTHER_USER_ID]);
     });
   });
 

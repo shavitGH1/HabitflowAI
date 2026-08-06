@@ -14,6 +14,9 @@ export class Message {
 
   @Prop()
   imageUrl?: string;
+
+  @Prop({ type: [String], default: [] })
+  likes: string[];
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);

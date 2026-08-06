@@ -14,6 +14,8 @@ export interface ChatData {
   owner?: string;
   description?: string;
   imageUrl?: string;
+  lastMessage?: string;
+  unreadCount: Record<string, number>;
   createdAt: string;
 }
 
@@ -23,6 +25,7 @@ export interface MessageData {
   senderId: string;
   text?: string;
   imageUrl?: string;
+  likes: string[];
   sentAt: string;
 }
 
@@ -41,6 +44,8 @@ export interface UpdateChatInput {
   participantIds?: string[];
   admins?: string[];
   owner?: string;
+  lastMessage?: string;
+  unreadCount?: Record<string, number>;
 }
 
 export interface CreateMessageInput {
@@ -81,7 +86,7 @@ export class ChatRepository {
   }
 
   async findByParticipantId(userId: string): Promise<ChatData[]> {
-    const docs = await this.chatModel.find({ participantIds: userId }).sort({ createdAt: -1 });
+    const docs = await this.chatModel.find({ participantIds: userId }).sort({ updatedAt: -1 });
     return docs.map(d => this.toChatData(d));
   }
 
@@ -110,6 +115,16 @@ export class ChatRepository {
     return docs.map(d => this.toMessageData(d));
   }
 
+  async findMessageById(chatId: string, messageId: string): Promise<MessageData | null> {
+    const doc = await this.messageModel.findOne({ _id: messageId, chatId });
+    return doc ? this.toMessageData(doc) : null;
+  }
+
+  async setMessageLikes(messageId: string, likes: string[]): Promise<MessageData> {
+    const doc = await this.messageModel.findByIdAndUpdate(messageId, { likes }, { returnDocument: 'after' });
+    return this.toMessageData(doc!);
+  }
+
   private toChatData(doc: ChatDocument): ChatData {
     return {
       id: doc._id.toString(),
@@ -120,6 +135,8 @@ export class ChatRepository {
       owner: doc.owner,
       description: doc.description,
       imageUrl: doc.imageUrl,
+      lastMessage: doc.lastMessage,
+      unreadCount: Object.fromEntries(doc.unreadCount ?? new Map()),
       createdAt: (doc as unknown as { createdAt: Date }).createdAt?.toISOString() ?? '',
     };
   }
@@ -131,6 +148,7 @@ export class ChatRepository {
       senderId: doc.senderId,
       text: doc.text,
       imageUrl: doc.imageUrl,
+      likes: doc.likes,
       sentAt: (doc as unknown as { createdAt: Date }).createdAt?.toISOString() ?? '',
     };
   }
