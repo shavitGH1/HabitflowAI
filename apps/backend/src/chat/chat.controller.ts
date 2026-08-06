@@ -1,15 +1,46 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
+import { AddMembersDto } from './dto/add-members.dto';
 import { CreateChatDto } from './dto/create-chat.dto';
+import { RenameGroupDto } from './dto/rename-group.dto';
+import { TargetUserDto } from './dto/target-user.dto';
+import { UpdateDescriptionDto } from './dto/update-description.dto';
+import { ChatAdminGuard } from './guards/chat-admin.guard';
 
 @ApiTags('chat')
 @Controller('chats')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   @Post()
   @ApiOperation({
@@ -49,5 +80,108 @@ export class ChatController {
     @Query('limit') limit = '30',
   ) {
     return this.chatService.getMessages(req.user.id, chatId, Number(page), Number(limit));
+  }
+
+  @Post(':chatId/members')
+  @UseGuards(ChatAdminGuard)
+  @ApiOperation({ summary: 'Add members to a group chat (admin only)' })
+  @ApiResponse({ status: 201, description: 'Members added' })
+  @ApiResponse({ status: 403, description: 'Not a group admin' })
+  async addMembers(@Param('chatId') chatId: string, @Body() dto: AddMembersDto) {
+    const chat = await this.chatService.addMembers(chatId, dto.userIds);
+    this.chatGateway.emitToRoom(chatId, 'memberAdded', { chatId, userIds: dto.userIds });
+    return chat;
+  }
+
+  @Delete(':chatId/members')
+  @UseGuards(ChatAdminGuard)
+  @ApiOperation({ summary: 'Remove a member from a group chat (admin only)' })
+  @ApiResponse({ status: 200, description: 'Member removed' })
+  @ApiResponse({ status: 403, description: 'Not a group admin, or target is the owner' })
+  async removeMember(@Param('chatId') chatId: string, @Body() dto: TargetUserDto) {
+    const chat = await this.chatService.removeMember(chatId, dto.userId);
+    this.chatGateway.emitToRoom(chatId, 'memberRemoved', { chatId, userId: dto.userId });
+    return chat;
+  }
+
+  @Post(':chatId/leave')
+  @ApiOperation({ summary: 'Leave a group chat' })
+  @ApiResponse({ status: 201, description: 'Left the group; ownership/admin reassigned if needed' })
+  @ApiResponse({ status: 403, description: 'Not a participant in this chat' })
+  async leave(@Req() req: { user: { id: string } }, @Param('chatId') chatId: string) {
+    const chat = await this.chatService.leaveGroup(req.user.id, chatId);
+    this.chatGateway.emitToRoom(chatId, 'memberLeft', { chatId, userId: req.user.id });
+    return chat ?? { message: 'Group deleted — no members remaining' };
+  }
+
+  @Patch(':chatId/name')
+  @UseGuards(ChatAdminGuard)
+  @ApiOperation({ summary: 'Rename a group chat (admin only)' })
+  @ApiResponse({ status: 200, description: 'Group renamed' })
+  @ApiResponse({ status: 403, description: 'Not a group admin' })
+  async rename(@Param('chatId') chatId: string, @Body() dto: RenameGroupDto) {
+    const chat = await this.chatService.renameGroup(chatId, dto.name);
+    this.chatGateway.emitToRoom(chatId, 'groupRenamed', { chatId, name: dto.name });
+    return chat;
+  }
+
+  @Patch(':chatId/description')
+  @UseGuards(ChatAdminGuard)
+  @ApiOperation({ summary: 'Update group description (admin only)' })
+  @ApiResponse({ status: 200, description: 'Description updated' })
+  @ApiResponse({ status: 403, description: 'Not a group admin' })
+  async updateDescription(@Param('chatId') chatId: string, @Body() dto: UpdateDescriptionDto) {
+    const chat = await this.chatService.updateDescription(chatId, dto.description);
+    this.chatGateway.emitToRoom(chatId, 'groupUpdated', { chatId, description: dto.description });
+    return chat;
+  }
+
+  @Patch(':chatId/admins')
+  @UseGuards(ChatAdminGuard)
+  @ApiOperation({ summary: 'Promote a member to group admin (admin only)' })
+  @ApiResponse({ status: 200, description: 'Admin added' })
+  @ApiResponse({ status: 400, description: 'Target is not a member of the group' })
+  @ApiResponse({ status: 403, description: 'Not a group admin' })
+  async addAdmin(@Param('chatId') chatId: string, @Body() dto: TargetUserDto) {
+    const chat = await this.chatService.addAdmin(chatId, dto.userId);
+    this.chatGateway.emitToRoom(chatId, 'adminAdded', { chatId, userId: dto.userId });
+    return chat;
+  }
+
+  @Delete(':chatId/admins')
+  @UseGuards(ChatAdminGuard)
+  @ApiOperation({ summary: 'Demote a group admin back to a regular member (admin only)' })
+  @ApiResponse({ status: 200, description: 'Admin removed' })
+  @ApiResponse({ status: 400, description: 'Target is not an admin, or is the last remaining admin' })
+  @ApiResponse({ status: 403, description: 'Not a group admin' })
+  async removeAdmin(@Param('chatId') chatId: string, @Body() dto: TargetUserDto) {
+    const chat = await this.chatService.removeAdmin(chatId, dto.userId);
+    this.chatGateway.emitToRoom(chatId, 'adminRemoved', { chatId, userId: dto.userId });
+    return chat;
+  }
+
+  @Post(':chatId/image')
+  @UseGuards(ChatAdminGuard)
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { image: { type: 'string', format: 'binary' } } } })
+  @ApiOperation({ summary: 'Upload a group chat photo (admin only)' })
+  @ApiResponse({ status: 201, description: 'Group photo uploaded' })
+  @ApiResponse({ status: 403, description: 'Not a group admin' })
+  async uploadImage(@Param('chatId') chatId: string, @UploadedFile() file: Express.Multer.File) {
+    const chat = await this.chatService.uploadGroupImage(chatId, file);
+    this.chatGateway.emitToRoom(chatId, 'groupUpdated', { chatId, imageUrl: chat.imageUrl });
+    return chat;
+  }
+
+  @Delete(':chatId')
+  @UseGuards(ChatAdminGuard)
+  @ApiOperation({ summary: 'Delete a group chat and all its messages (admin only)' })
+  @ApiResponse({ status: 200, description: 'Group deleted' })
+  @ApiResponse({ status: 403, description: 'Not a group admin' })
+  async deleteGroup(@Param('chatId') chatId: string) {
+    this.chatGateway.emitToRoom(chatId, 'groupDeleted', { chatId });
+    await this.chatService.deleteGroup(chatId);
+    return { message: 'Group deleted' };
   }
 }

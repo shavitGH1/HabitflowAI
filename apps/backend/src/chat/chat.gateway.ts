@@ -63,6 +63,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(dto.chatId).emit('newMessage', message);
   }
 
+  emitToRoom(chatId: string, event: string, payload: Record<string, unknown>): void {
+    this.server.to(chatId).emit(event, payload);
+  }
+
   private authenticate(client: Socket): string | null {
     const token = this.extractToken(client);
     if (!token) return null;

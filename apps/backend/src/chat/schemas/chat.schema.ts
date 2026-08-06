@@ -11,6 +11,18 @@ export class Chat {
 
   @Prop()
   name?: string;
+
+  @Prop({ type: [String], default: [] })
+  admins: string[];
+
+  @Prop()
+  owner?: string;
+
+  @Prop()
+  description?: string;
+
+  @Prop()
+  imageUrl?: string;
 }
 
 export const ChatSchema = SchemaFactory.createForClass(Chat);
