@@ -15,7 +15,11 @@ import { logger } from '../logger';
 import { ChatService } from './chat.service';
 import { ChatRoomDto } from './dto/chat-room.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import { TypingDto } from './dto/typing.dto';
+import { ChatEvent } from './enums/chat-event.enum';
 import { WsExceptionFilter } from './filters/ws-exception.filter';
+
+const userRoom = (userId: string): string => `user:${userId}`;
 
 @WebSocketGateway({ cors: { origin: '*' } })
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
@@ -37,6 +41,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     client.data.userId = userId;
+    client.join(userRoom(userId));
     logger.info({ userId, socketId: client.id }, 'chat socket connected');
   }
 
@@ -44,27 +49,40 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     logger.info({ socketId: client.id }, 'chat socket disconnected');
   }
 
-  @SubscribeMessage('joinChat')
+  @SubscribeMessage(ChatEvent.JOIN_CHAT)
   async joinChat(@ConnectedSocket() client: Socket, @MessageBody() dto: ChatRoomDto): Promise<void> {
     const userId = client.data.userId as string;
     await this.chatService.assertParticipant(userId, dto.chatId);
     await client.join(dto.chatId);
+    client.to(dto.chatId).emit(ChatEvent.USER_JOINED, { chatId: dto.chatId, userId });
   }
 
-  @SubscribeMessage('leaveChat')
+  @SubscribeMessage(ChatEvent.LEAVE_CHAT)
   async leaveChat(@ConnectedSocket() client: Socket, @MessageBody() dto: ChatRoomDto): Promise<void> {
+    const userId = client.data.userId as string;
     await client.leave(dto.chatId);
+    client.to(dto.chatId).emit(ChatEvent.USER_LEFT, { chatId: dto.chatId, userId });
   }
 
-  @SubscribeMessage('sendMessage')
+  @SubscribeMessage(ChatEvent.SEND_MESSAGE)
   async sendMessage(@ConnectedSocket() client: Socket, @MessageBody() dto: SendMessageDto): Promise<void> {
     const userId = client.data.userId as string;
     const message = await this.chatService.postMessage(userId, dto.chatId, dto.text, dto.imageUrl);
-    this.server.to(dto.chatId).emit('newMessage', message);
+    this.server.to(dto.chatId).emit(ChatEvent.NEW_MESSAGE, message);
+  }
+
+  @SubscribeMessage(ChatEvent.TYPING)
+  handleTyping(@ConnectedSocket() client: Socket, @MessageBody() dto: TypingDto): void {
+    const userId = client.data.userId as string;
+    client.to(dto.chatId).emit(ChatEvent.TYPING, { userId, isTyping: dto.isTyping });
   }
 
   emitToRoom(chatId: string, event: string, payload: Record<string, unknown>): void {
     this.server.to(chatId).emit(event, payload);
+  }
+
+  emitToUser(userId: string, event: string, payload: Record<string, unknown>): void {
+    this.server.to(userRoom(userId)).emit(event, payload);
   }
 
   private authenticate(client: Socket): string | null {
