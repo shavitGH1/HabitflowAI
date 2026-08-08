@@ -5,6 +5,7 @@ import { PortfolioGeneratorFeature } from './features/portfolio-generator.featur
 import { DailyMotivationFeature } from './features/daily-motivation.feature';
 import { PersonaDriftDetectorFeature } from './features/persona-drift-detector.feature';
 import { HabitInsightsFeature } from './features/habit-insights.feature';
+import { CoachPhrasingFeature } from './features/coach-phrasing.feature';
 import { MotivationFeedbackStore } from './feedback/motivation-feedback.store';
 import { GeminiClient } from './gemini.client';
 
@@ -17,6 +18,7 @@ import { GeminiClient } from './gemini.client';
     DailyMotivationFeature,
     PersonaDriftDetectorFeature,
     HabitInsightsFeature,
+    CoachPhrasingFeature,
     MotivationFeedbackStore,
   ],
   exports: [
@@ -26,6 +28,7 @@ import { GeminiClient } from './gemini.client';
     DailyMotivationFeature,
     PersonaDriftDetectorFeature,
     HabitInsightsFeature,
+    CoachPhrasingFeature,
   ],
 })
 export class AiModule {}
