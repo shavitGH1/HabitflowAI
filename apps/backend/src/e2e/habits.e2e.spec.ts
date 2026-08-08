@@ -66,6 +66,8 @@ describe('Habits (e2e)', () => {
 
     expect(res.body.streak).toBe(1);
     expect(res.body.completionHistory).toHaveLength(1);
+    expect(res.body.consistencyScore).toBeGreaterThan(0);
+    expect(res.body.implementedAt).toBeUndefined();
   });
 
   it('DELETE /habits/:id — soft-deletes the habit', async () => {
