@@ -12,6 +12,7 @@ import {
   DriftResult,
 } from './features/persona-drift-detector.feature';
 import { HabitInsightsFeature, HabitInsightsInput } from './features/habit-insights.feature';
+import { CoachPhrasingFeature, CoachPhrasingInput } from './features/coach-phrasing.feature';
 import {
   MotivationFeedbackStore,
   MotivationVote,
@@ -34,6 +35,7 @@ export class AiService {
     private readonly dailyMotivation: DailyMotivationFeature,
     private readonly driftDetector: PersonaDriftDetectorFeature,
     private readonly habitInsights: HabitInsightsFeature,
+    private readonly coachPhrasing: CoachPhrasingFeature,
     private readonly feedbackStore: MotivationFeedbackStore,
   ) {}
 
@@ -67,6 +69,10 @@ export class AiService {
 
   getWeeklyInsights(input: HabitInsightsInput): Promise<HabitInsightsOutput> {
     return this.habitInsights.generate(input);
+  }
+
+  phraseCoachMessage(input: CoachPhrasingInput): Promise<string> {
+    return this.coachPhrasing.phrase(input);
   }
 
   recordMotivationFeedback(userId: string, vote: MotivationVote): FeedbackTally {
