@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGu
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CompleteHabitDto } from './dto/complete-habit.dto';
 import { CreateHabitDto } from './dto/create-habit.dto';
 import { UpdateHabitDto } from './dto/update-habit.dto';
 import { HabitsService } from './habits.service';
@@ -72,13 +73,19 @@ export class HabitsController {
 
   @Patch(':id/complete')
   @HttpCode(200)
-  @ApiOperation({ summary: "Mark a habit as complete for today — appends today's date and recalculates streak" })
+  @UseGuards(ThrottlerGuard)
+  @ApiOperation({
+    summary: "Mark a habit as complete for today — appends today's date and recalculates streak",
+    description:
+      'An optional note ("what did you do?") is checked for plausibility against the habit — on a ' +
+      'mismatch the response includes a verificationWarning but completion still succeeds (soft warning, never blocks).',
+  })
   @ApiResponse({ status: 200, description: 'Habit completed; returns updated streak and completionHistory' })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 403, description: 'Habit belongs to a different user' })
   @ApiResponse({ status: 404, description: 'Habit not found' })
-  complete(@Req() req: { user: { id: string } }, @Param('id') id: string) {
-    return this.habitsService.completeHabit(req.user.id, id);
+  complete(@Req() req: { user: { id: string } }, @Param('id') id: string, @Body() dto: CompleteHabitDto) {
+    return this.habitsService.completeHabit(req.user.id, id, dto.note);
   }
 
   @Get(':id/stats')

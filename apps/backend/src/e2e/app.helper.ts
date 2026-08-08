@@ -49,6 +49,7 @@ const mockAiService = {
     rationale: 'Behavior is stable.',
   }),
   getWeeklyInsights: jest.fn().mockResolvedValue({ summary: 'Great week overall.' }),
+  checkTaskVerification: jest.fn().mockResolvedValue({ isPlausible: true, reason: '' }),
   recordMotivationFeedback: jest.fn().mockReturnValue({ positiveFeedbackCount: 1, negativeFeedbackCount: 0 }),
   getFeedbackTally: jest.fn().mockReturnValue({ positiveFeedbackCount: 0, negativeFeedbackCount: 0 }),
   classifyPersona: jest.fn(),

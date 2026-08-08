@@ -18,6 +18,7 @@ const habit = (overrides: Partial<HabitData> = {}): HabitData => ({
   persona: 'Achiever',
   isArchived: false,
   consistencyScore: 0,
+  completionNotes: [],
   createdAt: NOW.toISOString(),
   ...overrides,
 });

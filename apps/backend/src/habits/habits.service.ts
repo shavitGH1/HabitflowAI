@@ -9,7 +9,7 @@ import { daysBetween } from './utils/consistency.utils';
 export const MAX_HABITS_PER_GOAL = 3;
 export const MAX_STANDALONE_HABITS = 2;
 
-export type HabitWithWarning = HabitData & { relevanceWarning?: string };
+export type HabitWithWarning = HabitData & { relevanceWarning?: string; verificationWarning?: string };
 
 export interface HabitStats {
   habitId: string;
@@ -89,11 +89,16 @@ export class HabitsService {
     return (await this.habitRepository.deleteHabit(id))!;
   }
 
-  async completeHabit(userId: string, id: string): Promise<HabitData> {
+  async completeHabit(userId: string, id: string, note?: string): Promise<HabitWithWarning> {
     const habit = await this.habitRepository.findById(id);
     if (!habit) throw new NotFoundException('Habit not found');
     if (habit.userId !== userId) throw new ForbiddenException('You do not own this habit');
-    return (await this.habitRepository.completeHabit(id))!;
+
+    const completed = (await this.habitRepository.completeHabit(id, note))!;
+    if (!note) return completed;
+
+    const verification = await this.ai.checkTaskVerification({ habitTitle: habit.title, note });
+    return verification.isPlausible ? completed : { ...completed, verificationWarning: verification.reason };
   }
 
   async getStats(userId: string, id: string): Promise<HabitStats> {

@@ -220,3 +220,78 @@ if (!db.users.findOne({ _id: COACH_ID })) {
   });
 }
 
+const demoUserIds = {};
+db.users.find({ email: { $in: users.map(u => u.email) } }, { email: 1 }).forEach(u => {
+  demoUserIds[u.email] = u._id.toString();
+});
+
+const alexId = demoUserIds['demo.alex@habitflow.ai'];
+const mayaId = demoUserIds['demo.maya@habitflow.ai'];
+const benId = demoUserIds['demo.ben@habitflow.ai'];
+const saraId = demoUserIds['demo.sara@habitflow.ai'];
+
+if (alexId && mayaId && !db.chats.findOne({ isGroup: false, participantIds: { $all: [alexId, mayaId], $size: 2 } })) {
+  const directChatId = db.chats.insertOne({
+    participantIds: [alexId, mayaId],
+    isGroup: false,
+    admins: [],
+    unreadCount: {},
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).insertedId;
+
+  db.messages.insertOne({
+    chatId: directChatId.toString(),
+    senderId: alexId,
+    text: 'Hey! Saw your streak — nice work this week.',
+    likes: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const directLastMsgId = db.messages.insertOne({
+    chatId: directChatId.toString(),
+    senderId: mayaId,
+    text: 'Thanks! Trying to keep it going through the weekend.',
+    likes: [alexId],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).insertedId;
+
+  db.chats.updateOne({ _id: directChatId }, { $set: { lastMessage: directLastMsgId.toString() } });
+}
+
+if (alexId && mayaId && benId && saraId && !db.chats.findOne({ isGroup: true, name: 'Habit Squad' })) {
+  const groupChatId = db.chats.insertOne({
+    participantIds: [alexId, mayaId, benId, saraId],
+    isGroup: true,
+    name: 'Habit Squad',
+    admins: [alexId],
+    owner: alexId,
+    description: 'Keeping each other accountable.',
+    unreadCount: {},
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).insertedId;
+
+  db.messages.insertOne({
+    chatId: groupChatId.toString(),
+    senderId: alexId,
+    text: "Let's crush this week!",
+    likes: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const groupLastMsgId = db.messages.insertOne({
+    chatId: groupChatId.toString(),
+    senderId: saraId,
+    text: "I'm in — checking off my morning routine now.",
+    likes: [alexId, mayaId, benId],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).insertedId;
+
+  db.chats.updateOne({ _id: groupChatId }, { $set: { lastMessage: groupLastMsgId.toString() } });
+}
+

@@ -17,6 +17,7 @@ import {
   HabitGoalRelevanceFeature,
   HabitGoalRelevanceInput,
 } from './features/habit-goal-relevance.feature';
+import { TaskVerificationFeature, TaskVerificationInput } from './features/task-verification.feature';
 import {
   MotivationFeedbackStore,
   MotivationVote,
@@ -27,6 +28,7 @@ import { PortfolioGeneratorOutput } from './schemas/portfolio-generator.schema';
 import { DailyMotivationOutput } from './schemas/daily-motivation.schema';
 import { HabitInsightsOutput } from './schemas/habit-insights.schema';
 import { HabitGoalRelevanceOutput } from './schemas/habit-goal-relevance.schema';
+import { TaskVerificationOutput } from './schemas/task-verification.schema';
 import { GeminiClient } from './gemini.client';
 
 type GoalInput = Pick<UserData, 'goal' | 'personaType' | 'email'>;
@@ -42,6 +44,7 @@ export class AiService {
     private readonly habitInsights: HabitInsightsFeature,
     private readonly coachPhrasing: CoachPhrasingFeature,
     private readonly habitGoalRelevance: HabitGoalRelevanceFeature,
+    private readonly taskVerification: TaskVerificationFeature,
     private readonly feedbackStore: MotivationFeedbackStore,
   ) {}
 
@@ -83,6 +86,10 @@ export class AiService {
 
   checkHabitGoalRelevance(input: HabitGoalRelevanceInput): Promise<HabitGoalRelevanceOutput> {
     return this.habitGoalRelevance.check(input);
+  }
+
+  checkTaskVerification(input: TaskVerificationInput): Promise<TaskVerificationOutput> {
+    return this.taskVerification.check(input);
   }
 
   recordMotivationFeedback(userId: string, vote: MotivationVote): FeedbackTally {
