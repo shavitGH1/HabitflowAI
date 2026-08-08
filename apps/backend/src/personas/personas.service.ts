@@ -6,6 +6,7 @@ import { BehaviorSnapshot } from '../ai/prompts/persona-drift-detector.prompt';
 import { DriftResult } from '../ai/features/persona-drift-detector.feature';
 import { FIREBASE_MESSAGING } from '../notifications/firebase.module';
 import { DriftFlagRepository } from '../notifications/drift-flag.repository';
+import { HabitData, HabitRepository } from '../habits/habit.repository';
 import { UserData, UserRepository } from '../users/user.repository';
 import { DriftCheckDto } from './dto/drift-check.dto';
 import { ReclassifyDto } from './dto/reclassify.dto';
@@ -15,6 +16,7 @@ import { Messaging } from 'firebase-admin/messaging';
 export class PersonasService {
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly habitRepository: HabitRepository,
     private readonly ai: AiService,
     private readonly driftFlagRepository: DriftFlagRepository,
     @Inject(FIREBASE_MESSAGING) private readonly messaging: Messaging,
@@ -88,7 +90,7 @@ export class PersonasService {
     return this.ai.detectDrift({
       currentPersona,
       baselineBreakdown: this.buildBaseline(user),
-      behaviorSnapshot: this.buildSnapshot(user, overrides),
+      behaviorSnapshot: await this.buildSnapshot(user, overrides),
     });
   }
 
@@ -101,22 +103,27 @@ export class PersonasService {
     return baseline;
   }
 
-  private buildSnapshot(user: UserData, overrides?: DriftCheckDto): BehaviorSnapshot {
+  private async buildSnapshot(user: UserData, overrides?: DriftCheckDto): Promise<BehaviorSnapshot> {
     const tasks = [...user.coreGoals, ...user.dailyVariations];
     const completed = tasks.filter((t) => t.completed);
     const skipped = tasks.filter((t) => !t.completed);
     const derivedRate = tasks.length ? completed.length / tasks.length : 0;
     const tally = this.ai.getFeedbackTally(user.id);
+    const habits = await this.habitRepository.findByUserId(user.id);
 
     return {
       observationWindowDays: 7,
       recentCompletionRate: overrides?.recentCompletionRate ?? derivedRate,
-      activeStreak: overrides?.activeStreak ?? 0,
+      activeStreak: overrides?.activeStreak ?? this.activeStreak(habits),
       completedHabits: overrides?.completedHabits ?? completed.map((t) => t.description),
       skippedHabits: overrides?.skippedHabits ?? skipped.map((t) => t.description),
       positiveFeedbackCount: tally.positiveFeedbackCount,
       negativeFeedbackCount: tally.negativeFeedbackCount,
     };
+  }
+
+  private activeStreak(habits: HabitData[]): number {
+    return habits.reduce((max, h) => Math.max(max, h.streak), 0);
   }
 
   private toPersonaType(value: string): PersonaType | null {
