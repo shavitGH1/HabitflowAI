@@ -107,6 +107,7 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.maps.compose.utils)
     implementation(libs.coil.compose)
+    implementation(libs.socket.io.client)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

@@ -71,8 +71,8 @@ object PersonaUiData {
             )
             "Explorer" -> PersonaDetails(
                 type = "Explorer",
-                startColor = Color(0xFFFFB74D),
-                endColor = Color(0xFFE57373),
+                startColor = Color(0xFFFF8A80), // Soft Coral
+                endColor = Color(0xFFFF5252),   // Vibrant Coral/Red
                 tips = listOf(
                     "Change your environment frequently to stay fresh.",
                     "Gamify your most boring tasks.",
