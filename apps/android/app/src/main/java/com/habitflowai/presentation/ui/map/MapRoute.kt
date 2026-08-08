@@ -33,29 +33,49 @@ import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.MapUiState
 import com.habitflowai.presentation.viewmodel.MapViewModel
+import com.habitflowai.presentation.viewmodel.ChatViewModel
 
 @Composable
 fun MapRoute(
     personaType: String,
-    viewModel: MapViewModel = hiltViewModel()
+    viewModel: MapViewModel = hiltViewModel(),
+    chatViewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    MapContent(
-        uiState = uiState,
-        personaType = personaType,
-        onSearchQueryChange = viewModel::onSearchQueryChange,
-        onSearch = viewModel::onSearch,
-        onCameraMoved = viewModel::onCameraMoved
-    )
+    val chatUiState by chatViewModel.uiState.collectAsState()
+
+    LaunchedEffect(personaType) {
+        chatViewModel.setPersonaType(personaType)
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        MapContent(
+            uiState = uiState,
+            personaType = personaType,
+            onSearchQueryChange = viewModel::onSearchQueryChange,
+            onSearch = viewModel::onSearch,
+            onCameraMoved = viewModel::onCameraMoved,
+            onToggleChat = { chatViewModel.toggleChat() }
+        )
+
+        ChatOverlay(
+            uiState = chatUiState,
+            onToggleChat = chatViewModel::toggleChat,
+            onInputChanged = chatViewModel::onInputChanged,
+            onSendMessage = chatViewModel::sendMessage
+        )
+    }
 }
 
+@OptIn(MapsComposeExperimentalApi::class)
 @Composable
 fun MapContent(
     uiState: MapUiState,
     personaType: String = "Regulator",
     onSearchQueryChange: (String) -> Unit = {},
     onSearch: () -> Unit = {},
-    onCameraMoved: () -> Unit = {}
+    onCameraMoved: () -> Unit = {},
+    onToggleChat: () -> Unit = {}
 ) {
     val telAviv = LatLng(32.0853, 34.7818)
     val cameraPositionState = rememberCameraPositionState {
@@ -96,7 +116,7 @@ fun MapContent(
         ) {
             Clustering(
                 items = filteredMarkers,
-                onClusterItemClick = { marker ->
+                onClusterItemClick = {
                     false // Return false to show default info window
                 }
             )
@@ -120,7 +140,18 @@ fun MapContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        IconButton(
+                            onClick = onToggleChat,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Search,
+                                contentDescription = "AI Assistant",
+                                tint = personaDetails.endColor
+                            )
+                        }
+                        
+                        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
                             Text(
                                 text = "Habit Flow Map",
                                 style = MaterialTheme.typography.headlineSmall,
