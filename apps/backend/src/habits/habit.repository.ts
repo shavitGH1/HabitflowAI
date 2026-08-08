@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Habit, HabitDocument } from './schemas/habit.schema';
 import { calculateStreak } from './utils/streak.utils';
+import { calculateConsistencyScore, isImplemented } from './utils/consistency.utils';
 import { logger } from '../logger';
 
 export interface HabitData {
@@ -84,6 +85,14 @@ export class HabitRepository {
     }
 
     doc.streak = calculateStreak(doc.completionHistory);
+
+    const createdAt = (doc as unknown as { createdAt: Date }).createdAt.toISOString().split('T')[0];
+    doc.consistencyScore = calculateConsistencyScore(doc.completionHistory, createdAt, today);
+
+    if (!doc.implementedAt && isImplemented(doc.consistencyScore, createdAt, today)) {
+      doc.implementedAt = new Date();
+    }
+
     const saved = await doc.save();
     return this.toHabitData(saved);
   }
