@@ -24,5 +24,6 @@ import { ChatMemberGuard } from './guards/chat-member.guard';
   ],
   providers: [ChatRepository, ChatService, ChatGateway, ChatAdminGuard, ChatMemberGuard],
   controllers: [ChatController],
+  exports: [ChatService, ChatGateway],
 })
 export class ChatModule {}

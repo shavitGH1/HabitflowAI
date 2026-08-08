@@ -201,3 +201,22 @@ const toInsert = users.filter(u => !existingEmails.includes(u.email));
 if (toInsert.length > 0) {
   db.users.insertMany(toInsert);
 }
+
+// Fixed id — must stay in sync with COACH_USER_ID in apps/backend/src/coach/coach.templates.ts
+const COACH_ID = ObjectId('000000000000000000000c0a');
+if (!db.users.findOne({ _id: COACH_ID })) {
+  db.users.insertOne({
+    _id: COACH_ID,
+    email: 'coach@habitflow.ai',
+    password: DEMO_PASSWORD,
+    goal: 'Help every user keep their habits',
+    personaType: 'Architect',
+    motivationalMessage: 'Small steps, every day.',
+    coreGoals: [],
+    dailyVariations: [],
+    tasksLastGeneratedDate: today,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+}
+
