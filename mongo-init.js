@@ -295,3 +295,41 @@ if (alexId && mayaId && benId && saraId && !db.chats.findOne({ isGroup: true, na
   db.chats.updateOne({ _id: groupChatId }, { $set: { lastMessage: groupLastMsgId.toString() } });
 }
 
+if (alexId && mayaId && benId && saraId && db.posts.countDocuments() === 0) {
+  const postDefs = [
+    { authorId: alexId, habitName: '5km morning run', completionNote: 'New personal best today!', likes: [mayaId, benId] },
+    { authorId: mayaId, habitName: 'Daily meditation (15 min)', completionNote: 'Stayed calm through a stressful day.', likes: [alexId, benId] },
+    { authorId: benId, habitName: 'Group workout session', completionNote: 'Got the whole crew moving today.', likes: [alexId, mayaId, saraId] },
+    { authorId: saraId, habitName: 'Join a community challenge', completionNote: 'Signed up for the 30-day challenge!', likes: [mayaId] },
+  ];
+
+  const postIds = postDefs.map(def => db.posts.insertOne({
+    ...def,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).insertedId);
+
+  // Mix of interaction types across the 8 seeded likes: 5 liked-only (Ben/post0,
+  // Alex+Ben/post1, Alex+Maya/post2), 3 liked-and-commented (Maya/post0, Sara/post2,
+  // Maya/post3), 2 commented-without-liking (Sara/post0, Alex/post3) - not everyone
+  // who liked a post commented on it too.
+  const commentDefs = [
+    { postId: postIds[0].toString(), userId: mayaId, text: 'Incredible pace!' },
+    { postId: postIds[0].toString(), userId: saraId, text: 'Beat your own record next!' },
+    { postId: postIds[2].toString(), userId: saraId, text: 'Count me in next week.' },
+    { postId: postIds[3].toString(), userId: mayaId, text: 'So proud of you for stepping up!' },
+    { postId: postIds[3].toString(), userId: alexId, text: "Which challenge? I'm interested!" },
+  ];
+  commentDefs.forEach(def => db.comments.insertOne({ ...def, createdAt: new Date(), updatedAt: new Date() }));
+}
+
+if (alexId && mayaId && benId && saraId && db.follows.countDocuments() === 0) {
+  const followDefs = [
+    { followerId: mayaId, followingId: alexId },
+    { followerId: benId, followingId: alexId },
+    { followerId: saraId, followingId: mayaId },
+    { followerId: alexId, followingId: saraId },
+  ];
+  followDefs.forEach(def => db.follows.insertOne({ ...def, createdAt: new Date(), updatedAt: new Date() }));
+}
+
