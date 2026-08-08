@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class LocationDto {
   @IsOptional()
@@ -21,4 +21,14 @@ export class LocationDto {
   @IsNumber()
   @ApiPropertyOptional({ description: 'Unix timestamp in ms' })
   timestamp?: number;
+
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional({ description: "User's persona type at time of completion" })
+  personaType?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiPropertyOptional({ description: 'Whether this location is visible on the public map', default: true })
+  isPublic?: boolean;
 }

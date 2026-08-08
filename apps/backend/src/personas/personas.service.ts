@@ -1,18 +1,23 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { AiService } from '../ai/ai.service';
 import { logger } from '../logger';
 import { PERSONA_TYPES, PILLARS, Pillar, PersonaType } from '../ai/pillars';
 import { BehaviorSnapshot } from '../ai/prompts/persona-drift-detector.prompt';
 import { DriftResult } from '../ai/features/persona-drift-detector.feature';
+import { FIREBASE_MESSAGING } from '../notifications/firebase.module';
+import { DriftFlagRepository } from '../notifications/drift-flag.repository';
 import { UserData, UserRepository } from '../users/user.repository';
 import { DriftCheckDto } from './dto/drift-check.dto';
 import { ReclassifyDto } from './dto/reclassify.dto';
+import { Messaging } from 'firebase-admin/messaging';
 
 @Injectable()
 export class PersonasService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly ai: AiService,
+    private readonly driftFlagRepository: DriftFlagRepository,
+    @Inject(FIREBASE_MESSAGING) private readonly messaging: Messaging,
   ) {}
 
   async reclassify(userId: string, { openAnswers }: ReclassifyDto) {
@@ -55,6 +60,18 @@ export class PersonasService {
             { userId: user.id, driftScore: result.driftScore, suggested: result.newSuggestedPersona },
             'persona drift detected',
           );
+          await this.driftFlagRepository.create({
+            userId: user.id,
+            detectedAt: new Date(),
+            driftScore: result.driftScore,
+            suggestedPersona: result.newSuggestedPersona ?? '',
+          });
+          if (user.fcmToken) {
+            await this.messaging.send({
+              token: user.fcmToken,
+              notification: { body: 'Your habit style may be shifting — tap to check' },
+            });
+          }
         }
       } catch (error) {
         logger.error({ userId: user.id, err: error }, 'drift evaluation failed for user');
