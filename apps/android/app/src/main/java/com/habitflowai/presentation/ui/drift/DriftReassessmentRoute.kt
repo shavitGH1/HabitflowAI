@@ -21,6 +21,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.habitflowai.data.model.ChatUiState
+import com.habitflowai.presentation.ui.chat.ChatOverlay
+import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.DriftViewModel
 import com.habitflowai.presentation.viewmodel.ReassessmentQuestion
 
@@ -181,6 +184,31 @@ fun SuccessScreen(onFinished: () -> Unit) {
             shape = RoundedCornerShape(16.dp)
         ) {
             Text("Back to Dashboard", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Reassessment with Chat FAB")
+@Composable
+fun ReassessmentWithChatPreview() {
+    HabitFlowTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ReassessmentContent(
+                questions = listOf(
+                    ReassessmentQuestion("1", "Is the morning routine working?", listOf("Yes", "No")),
+                    ReassessmentQuestion("2", "Want more social habits?", listOf("Yes", "Maybe", "No"))
+                ),
+                answers = mapOf("1" to "Yes"),
+                isSubmitting = false,
+                onAnswer = { _, _ -> },
+                onSubmit = {}
+            )
+            ChatOverlay(
+                uiState = ChatUiState(personaType = "Regulator"),
+                onToggleChat = {},
+                onInputChanged = {},
+                onSendMessage = {}
+            )
         }
     }
 }

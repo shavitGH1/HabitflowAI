@@ -22,7 +22,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.habitflowai.data.model.ClassifyPersonaResponse
 import androidx.compose.foundation.lazy.LazyRow
@@ -32,14 +31,13 @@ import androidx.compose.material.icons.rounded.Info
 import java.time.LocalDate
 import java.time.DayOfWeek
 import java.time.format.DateTimeFormatter
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.foundation.layout.Box
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.habitflowai.presentation.viewmodel.HomeViewModel
 import com.habitflowai.data.model.HomeGoalTask
 import androidx.compose.material.icons.rounded.Close
+import com.habitflowai.presentation.ui.chat.ChatOverlay
+import com.habitflowai.data.model.ChatUiState
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 
 import com.habitflowai.presentation.viewmodel.HomeUiState
@@ -67,6 +65,7 @@ fun HomeRoute(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     uiState: HomeUiState,
@@ -132,136 +131,151 @@ fun HomeScreen(
         "Grower" -> Color(0xFFAED581) to Color(0xFF4DB6AC)
         "Regulator", "Architect" -> Color(0xFF64B5F6) to Color(0xFF1E88E5)
         "Socializer" -> Color(0xFFBA68C8) to Color(0xFFF06292)
-        "Explorer" -> Color(0xFFFFB74D) to Color(0xFFE57373)
+        "Explorer" -> Color(0xFFFF8A80) to Color(0xFFFF5252)
         "Altruist" -> Color(0xFFF48FB1) to Color(0xFFCE93D8)
         else -> Color(0xFF81D4FA) to Color(0xFFCE93D8)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        startColor.copy(alpha = 0.4f),
-                        endColor.copy(alpha = 0.1f),
-                        Color.White
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("HabitFlow AI", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color(0xFF37474F)
+                )
+            )
+        },
+        containerColor = Color.Transparent
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            startColor.copy(alpha = 0.4f),
+                            endColor.copy(alpha = 0.1f),
+                            Color.White
+                        )
                     )
                 )
-            )
-            .verticalScroll(scrollState)
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(24.dp))
-
-        if (uiState.isDriftDetected && !uiState.isDriftBannerDismissed) {
-            DriftCheckBanner(
-                rationale = uiState.driftRationale ?: "We've detected a shift in your habit patterns.",
-                onDismiss = onDismissDriftBanner,
-                onAction = onStartReassessment
-            )
+                .padding(paddingValues)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Spacer(modifier = Modifier.height(16.dp))
-        }
 
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(startColor, endColor))),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Face,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(60.dp)
-            )
-        }
+            if (uiState.isDriftDetected && !uiState.isDriftBannerDismissed) {
+                DriftCheckBanner(
+                    rationale = uiState.driftRationale ?: "We've detected a shift in your habit patterns.",
+                    onDismiss = onDismissDriftBanner,
+                    onAction = onStartReassessment
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Welcome, $actualPersonaType!",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF37474F)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Your tailored dashboard is ready.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color(0xFF546E7A),
-            fontWeight = FontWeight.Medium
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            if (homeData != null) {
-                Text(
-                    text = homeData.motivationalMessage,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.DarkGray,
-                    modifier = Modifier.padding(24.dp)
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(startColor, endColor))),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Face,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(60.dp)
                 )
             }
 
-            when (actualPersonaType) {
-                "Achiever" -> AchieverHome()
-                "Grower" -> GrowerHome()
-                "Socializer" -> SocializerHome()
-                "Explorer" -> ExplorerHome()
-                "Altruist" -> AltruistHome()
-                "Regulator" -> RegulatorHome()
-                "Architect" -> ArchitectHome()
-                else -> RegulatorHome()
-            }
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Welcome, $actualPersonaType!",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF37474F)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Your tailored dashboard is ready.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color(0xFF546E7A),
+                fontWeight = FontWeight.Medium
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                GoalPlanSection(
-                    goals = goalsForSelectedDate,
-                    selectedDate = selectedDate,
-                    today = today,
-                    checkedGoals = checklistState,
-                    onGoalToggled = { taskId, isChecked ->
-                        if (isChecked) {
-                            val newState = checklistState.toMutableMap()
-                            newState[taskId] = true
-                            checklistState = newState
-                            onCompleteTask(taskId)
-                        }
-                    },
-                    personaType = actualPersonaType
-                )
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                elevation = CardDefaults.cardElevation(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                if (homeData != null) {
+                    Text(
+                        text = homeData.motivationalMessage,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.DarkGray,
+                        modifier = Modifier.padding(24.dp)
+                    )
+                }
+
+                when (actualPersonaType) {
+                    "Achiever" -> AchieverHome()
+                    "Grower" -> GrowerHome()
+                    "Socializer" -> SocializerHome()
+                    "Explorer" -> ExplorerHome()
+                    "Altruist" -> AltruistHome()
+                    "Regulator" -> RegulatorHome()
+                    "Architect" -> ArchitectHome()
+                    else -> RegulatorHome()
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                HistoryCalendarSection(
-                    today = today,
-                    selectedDate = selectedDate,
-                    onDateSelected = { selectedDate = it },
-                    checkedCount = checklistState.values.count { it },
-                    totalCount = goalsForSelectedDate.size
-                )
+                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    GoalPlanSection(
+                        goals = goalsForSelectedDate,
+                        selectedDate = selectedDate,
+                        today = today,
+                        checkedGoals = checklistState,
+                        onGoalToggled = { taskId, isChecked ->
+                            if (isChecked) {
+                                val newState = checklistState.toMutableMap()
+                                newState[taskId] = true
+                                checklistState = newState
+                                onCompleteTask(taskId)
+                            }
+                        },
+                        personaType = actualPersonaType
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    HistoryCalendarSection(
+                        today = today,
+                        selectedDate = selectedDate,
+                        onDateSelected = { selectedDate = it },
+                        checkedCount = checklistState.values.count { it },
+                        totalCount = goalsForSelectedDate.size
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    ProgressPhaseSection(actualPersonaType)
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    PlanExplanationSection(actualPersonaType)
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
-
-                ProgressPhaseSection(actualPersonaType)
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                PlanExplanationSection(actualPersonaType)
             }
-
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
@@ -292,7 +306,7 @@ fun Modifier.shimmerEffect(): Modifier = this.then(
 )
 
 @Composable
-private fun GoalPlanSection(
+fun GoalPlanSection(
     goals: List<HomeGoalTask>,
     selectedDate: LocalDate,
     today: LocalDate,
@@ -324,7 +338,7 @@ private fun GoalPlanSection(
 }
 
 @Composable
-private fun HistoryCalendarSection(
+fun HistoryCalendarSection(
     today: LocalDate,
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
@@ -396,7 +410,7 @@ private fun HistoryCalendarSection(
 }
 
 @Composable
-private fun ProgressPhaseSection(personaType: String) {
+fun ProgressPhaseSection(personaType: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -433,7 +447,7 @@ private fun ProgressPhaseSection(personaType: String) {
 }
 
 @Composable
-private fun PlanExplanationSection(personaType: String) {
+fun PlanExplanationSection(personaType: String) {
     val dailyExpl = "Your daily focus is consistency. Complete your scheduled core habits. Failure is okay; the goal is to show up."
     val monthlyExpl = "By day 30, the $personaType template will transition you into automatic pilot. You will have built neural pathways making these habits effortless."
 
@@ -468,7 +482,7 @@ private fun PlanExplanationSection(personaType: String) {
 }
 
 @Composable
-private fun InteractiveGoalItem(
+fun InteractiveGoalItem(
     goalText: String,
     score: Int,
     isChecked: Boolean,
@@ -521,7 +535,7 @@ private fun InteractiveGoalItem(
 }
 
 @Composable
-private fun RegulatorHome() {
+fun RegulatorHome() {
         Column(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -559,7 +573,7 @@ private fun RegulatorHome() {
 }
 
 @Composable
-private fun TimeSlotCard(time: String, activity: String) {
+fun TimeSlotCard(time: String, activity: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -574,7 +588,7 @@ private fun TimeSlotCard(time: String, activity: String) {
 }
 
 @Composable
-private fun AchieverHome() {
+fun AchieverHome() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -610,7 +624,7 @@ private fun AchieverHome() {
 }
 
 @Composable
-private fun LeaderboardRow(rank: Int, name: String, score: Int, highlight: Boolean) {
+fun LeaderboardRow(rank: Int, name: String, score: Int, highlight: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -626,7 +640,7 @@ private fun LeaderboardRow(rank: Int, name: String, score: Int, highlight: Boole
 }
 
 @Composable
-private fun GrowerHome() {
+fun GrowerHome() {
     BaseTemplate(
         title = "GROWER TEMPLATE",
         lines = listOf("🌱 Daily Reflection Log", "📚 Skills Acquired", "📈 Effort Graph")
@@ -634,7 +648,7 @@ private fun GrowerHome() {
 }
 
 @Composable
-private fun SocializerHome() {
+fun SocializerHome() {
     BaseTemplate(
         title = "SOCIALIZER TEMPLATE",
         lines = listOf("👥 Team Challenges", "🗣️ Community Feed", "🙌 Supportive Cheers Sent: 12")
@@ -642,7 +656,7 @@ private fun SocializerHome() {
 }
 
 @Composable
-private fun ExplorerHome() {
+fun ExplorerHome() {
     BaseTemplate(
         title = "EXPLORER TEMPLATE",
         lines = listOf("🧭 New Habits Discovered", "🗺️ Unknown Territory Unlocked", "🚀 Curiosity Quests")
@@ -650,7 +664,7 @@ private fun ExplorerHome() {
 }
 
 @Composable
-private fun AltruistHome() {
+fun AltruistHome() {
     BaseTemplate(
         title = "ALTRUIST TEMPLATE",
         lines = listOf("🤝 Points Donated to Charity", "❤️ Friends Assisted", "🌟 Community Impact Score")
@@ -658,7 +672,7 @@ private fun AltruistHome() {
 }
 
 @Composable
-private fun ArchitectHome() {
+fun ArchitectHome() {
     BaseTemplate(
         title = "ARCHITECT TEMPLATE",
         lines = listOf("🏗️ Foundation Habits", "📐 Daily Blueprint", "☑️ Checklists")
@@ -666,7 +680,7 @@ private fun ArchitectHome() {
 }
 
 @Composable
-private fun BaseTemplate(title: String, lines: List<String>) {
+fun BaseTemplate(title: String, lines: List<String>) {
     Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Star, contentDescription = null, tint = Color(0xFFFF9800), modifier = Modifier.size(28.dp))
@@ -803,8 +817,44 @@ fun DriftCheckBanner(
     }
 }
 
+@Preview(showBackground = true, name = "Home with Chat FAB")
 @Composable
-private fun HomePersonaPreview(personaType: String) {
+fun HomeWithChatPreview() {
+    val personaType = "Achiever"
+    val sampleHomeData = HomeResponse(
+        goal = "Master my routine",
+        motivationalMessage = "You are making incredible progress as an Achiever!",
+        coreGoals = listOf(
+            HomeGoalTask("Daily habit one", 10, "1", false),
+            HomeGoalTask("Daily habit two", 5, "2", true)
+        ),
+        dailyVariations = emptyList(),
+        success = true,
+        personaType = personaType
+    )
+    val uiState = HomeUiState(homeData = sampleHomeData, isLoading = false)
+    
+    HabitFlowTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            HomeScreen(
+                uiState = uiState,
+                personaResult = null,
+                onCompleteTask = {},
+                onDismissDriftBanner = {},
+                onStartReassessment = {}
+            )
+            ChatOverlay(
+                uiState = ChatUiState(personaType = personaType),
+                onToggleChat = {},
+                onInputChanged = {},
+                onSendMessage = {}
+            )
+        }
+    }
+}
+
+@Composable
+fun HomePersonaPreview(personaType: String) {
     val article = if (listOf('A', 'E', 'I', 'O', 'U').contains(personaType.firstOrNull()?.uppercaseChar())) "an" else "a"
     val samplePersona = ClassifyPersonaResponse(
         id = "1",

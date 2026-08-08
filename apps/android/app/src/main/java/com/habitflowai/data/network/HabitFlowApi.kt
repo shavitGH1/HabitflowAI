@@ -28,6 +28,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface HabitFlowApi {
     @POST("api/v1/auth/check-email")
@@ -74,4 +75,30 @@ interface HabitFlowApi {
 
     @POST("api/v1/locations")
     suspend fun recordLocation(@Body request: LocationSyncRequest): Response<Unit>
+
+    // Chat
+    @GET("api/v1/chats")
+    suspend fun getChats(): List<com.habitflowai.data.model.ChatResponse>
+
+    @POST("api/v1/chats")
+    suspend fun createChat(@Body request: com.habitflowai.data.model.CreateChatRequest): com.habitflowai.data.model.ChatResponse
+
+    @POST("api/v1/chats/{chatId}/members")
+    suspend fun addMembers(
+        @Path("chatId") chatId: String,
+        @Body request: com.habitflowai.data.model.AddMembersRequest
+    ): com.habitflowai.data.model.ChatResponse
+
+    @POST("api/v1/chats/{chatId}/messages/{messageId}/like")
+    suspend fun toggleMessageLike(
+        @Path("chatId") chatId: String,
+        @Path("messageId") messageId: String
+    ): com.habitflowai.data.model.MessageResponse
+
+    @GET("api/v1/chats/{chatId}/messages")
+    suspend fun getMessages(
+        @Path("chatId") chatId: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 30
+    ): List<com.habitflowai.data.model.MessageResponse>
 }

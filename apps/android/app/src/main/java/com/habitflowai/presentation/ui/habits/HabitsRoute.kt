@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.sp
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.data.model.HabitFrequency
+import com.habitflowai.data.model.ChatUiState
+import com.habitflowai.presentation.ui.chat.ChatOverlay
 import com.habitflowai.presentation.ui.persona.PersonaDetails
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
@@ -344,6 +346,35 @@ fun HabitCreateBottomSheet(
             ) {
                 Text("Create Habit", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, name = "Habits with Chat FAB")
+@Composable
+fun HabitsWithChatPreview() {
+    val personaType = "Grower"
+    HabitFlowTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            HabitsContent(
+                uiState = HabitsUiState(
+                    habits = listOf(
+                        HabitEntity("1", "Meditation", "10 mins daily", "DAILY", "user1", false),
+                        HabitEntity("2", "Journaling", "Reflect on day", "DAILY", "user1", false)
+                    )
+                ),
+                personaType = personaType,
+                onHabitClick = {},
+                onAddHabit = { _, _, _ -> },
+                onDeleteHabit = {}
+            )
+            ChatOverlay(
+                uiState = ChatUiState(personaType = personaType),
+                onToggleChat = {},
+                onInputChanged = {},
+                onSendMessage = {}
+            )
         }
     }
 }
