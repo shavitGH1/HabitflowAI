@@ -1,0 +1,13 @@
+process.env['MONGOMS_MD5_CHECK'] = '0';
+process.env['MONGO_URI'] = 'mongodb://localhost:27017/placeholder';
+process.env['GEMINI_API_KEY'] = 'test-gemini-key';
+process.env['JWT_SECRET'] = 'e2e-jwt-secret-key';
+process.env['JWT_REFRESH_SECRET'] = 'e2e-jwt-refresh-secret-key';
+process.env['JWT_ACCESS_EXPIRATION'] = '15m';
+process.env['JWT_REFRESH_EXPIRATION'] = '7d';
+process.env['GOOGLE_CLIENT_ID'] = 'test-client-id.apps.googleusercontent.com';
+process.env['GOOGLE_CLIENT_SECRET'] = 'test-google-secret';
+process.env['GOOGLE_CALLBACK_URL'] = 'http://localhost:3000/api/v1/auth/google/callback';
+process.env['FIREBASE_PROJECT_ID'] = 'test-firebase-project';
+process.env['FIREBASE_PRIVATE_KEY'] = 'test-firebase-key';
+process.env['FIREBASE_CLIENT_EMAIL'] = 'test@test-project.iam.gserviceaccount.com';
