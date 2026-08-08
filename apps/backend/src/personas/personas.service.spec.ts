@@ -2,6 +2,8 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AiService } from '../ai/ai.service';
 import { HabitData, HabitRepository } from '../habits/habit.repository';
+import { GoalData, GoalRepository } from '../goals/goal.repository';
+import { GoalsService } from '../goals/goals.service';
 import { DriftFlagRepository } from '../notifications/drift-flag.repository';
 import { FIREBASE_MESSAGING } from '../notifications/firebase.module';
 import { UserData, UserRepository } from '../users/user.repository';
@@ -9,15 +11,27 @@ import { PersonasService } from './personas.service';
 
 const mockUserRepository = {
   findUserById: jest.fn(),
+  updateUserPersona: jest.fn(),
+  updateUserDailyTasks: jest.fn(),
 };
 
 const mockHabitRepository = {
   findByUserId: jest.fn(),
 };
 
+const mockGoalRepository = {
+  findActiveByUserId: jest.fn(),
+};
+
+const mockGoalsService = {
+  forfeitGoal: jest.fn(),
+};
+
 const mockAiService = {
   detectDrift: jest.fn(),
   getFeedbackTally: jest.fn(),
+  coachChat: jest.fn(),
+  generateDailyVariations: jest.fn(),
 };
 
 const mockDriftFlagRepository = {
@@ -29,6 +43,7 @@ const mockMessaging = {
 };
 
 const USER_ID = 'user-123';
+const GOAL_ID = 'goal-123';
 
 const makeUser = (overrides: Partial<UserData> = {}): UserData => ({
   id: USER_ID,
@@ -60,6 +75,16 @@ const makeHabit = (overrides: Partial<HabitData> = {}): HabitData => ({
   ...overrides,
 });
 
+const makeGoal = (overrides: Partial<GoalData> = {}): GoalData => ({
+  id: GOAL_ID,
+  userId: USER_ID,
+  title: 'Run a marathon',
+  targetDate: '2026-12-31',
+  status: 'active',
+  createdAt: new Date().toISOString(),
+  ...overrides,
+});
+
 describe('PersonasService', () => {
   let service: PersonasService;
 
@@ -69,6 +94,8 @@ describe('PersonasService', () => {
         PersonasService,
         { provide: UserRepository, useValue: mockUserRepository },
         { provide: HabitRepository, useValue: mockHabitRepository },
+        { provide: GoalRepository, useValue: mockGoalRepository },
+        { provide: GoalsService, useValue: mockGoalsService },
         { provide: AiService, useValue: mockAiService },
         { provide: DriftFlagRepository, useValue: mockDriftFlagRepository },
         { provide: FIREBASE_MESSAGING, useValue: mockMessaging },
@@ -112,6 +139,120 @@ describe('PersonasService', () => {
       expect(mockAiService.detectDrift).toHaveBeenCalledWith(
         expect.objectContaining({ behaviorSnapshot: expect.objectContaining({ activeStreak: 2 }) }),
       );
+    });
+  });
+
+  describe('coachChat()', () => {
+    it('throws NotFoundException when user does not exist', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(null);
+
+      await expect(service.coachChat(USER_ID, { message: 'hi' })).rejects.toThrow(NotFoundException);
+    });
+
+    it('forwards goal/habit context and passes through the AI reply when there is no proposed change', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser());
+      mockHabitRepository.findByUserId.mockResolvedValue([makeHabit({ goalId: GOAL_ID })]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(makeGoal());
+      mockAiService.detectDrift.mockResolvedValue({ driftDetected: false, newSuggestedPersona: null });
+      mockAiService.coachChat.mockResolvedValue({ reply: 'Keep going!', proposedChange: null });
+
+      const result = await service.coachChat(USER_ID, { message: 'How am I doing?' });
+
+      expect(mockAiService.coachChat).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'How am I doing?',
+          personaType: 'Achiever',
+          activeGoal: expect.objectContaining({ id: GOAL_ID }),
+          habits: [expect.objectContaining({ goalId: GOAL_ID })],
+        }),
+      );
+      expect(result).toEqual({ reply: 'Keep going!', proposedChange: null });
+    });
+
+    it('drops a forfeitGoal proposal whose goalId does not match the active goal (never trusts raw AI output)', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser());
+      mockHabitRepository.findByUserId.mockResolvedValue([]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(makeGoal({ id: GOAL_ID }));
+      mockAiService.detectDrift.mockResolvedValue({ driftDetected: false, newSuggestedPersona: null });
+      mockAiService.coachChat.mockResolvedValue({
+        reply: 'Maybe forfeit?',
+        proposedChange: { type: 'forfeitGoal', rationale: 'hallucinated', goalId: 'not-the-real-goal' },
+      });
+
+      const result = await service.coachChat(USER_ID, { message: 'Should I quit?' });
+
+      expect(result.proposedChange).toBeNull();
+    });
+
+    it('keeps a forfeitGoal proposal whose goalId matches the active goal', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser());
+      mockHabitRepository.findByUserId.mockResolvedValue([]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(makeGoal({ id: GOAL_ID }));
+      mockAiService.detectDrift.mockResolvedValue({ driftDetected: false, newSuggestedPersona: null });
+      const proposedChange = { type: 'forfeitGoal' as const, rationale: 'consistent misses', goalId: GOAL_ID };
+      mockAiService.coachChat.mockResolvedValue({ reply: 'Maybe forfeit?', proposedChange });
+
+      const result = await service.coachChat(USER_ID, { message: 'Should I quit?' });
+
+      expect(result.proposedChange).toEqual(proposedChange);
+    });
+
+    it('skips the drift lookup (and never proposes personaSwitch context) when the user has an unknown persona', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser({ personaType: 'not-a-real-persona' }));
+      mockHabitRepository.findByUserId.mockResolvedValue([]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+      mockAiService.coachChat.mockResolvedValue({ reply: 'Hi!', proposedChange: null });
+
+      await service.coachChat(USER_ID, { message: 'hi' });
+
+      expect(mockAiService.detectDrift).not.toHaveBeenCalled();
+      expect(mockAiService.coachChat).toHaveBeenCalledWith(
+        expect.objectContaining({ personaType: null, driftSuggestedPersona: null }),
+      );
+    });
+  });
+
+  describe('confirmCoachChange()', () => {
+    it('personaSwitch: updates the user persona directly', async () => {
+      mockUserRepository.updateUserPersona.mockResolvedValue(makeUser({ personaType: 'Grower' }));
+
+      const result = await service.confirmCoachChange(USER_ID, {
+        type: 'personaSwitch',
+        suggestedPersona: 'Grower',
+      });
+
+      expect(mockUserRepository.updateUserPersona).toHaveBeenCalledWith(USER_ID, { personaType: 'Grower' });
+      expect(result).toEqual({ type: 'personaSwitch', personaType: 'Grower' });
+    });
+
+    it('adjustDifficulty: regenerates daily variations with the bias and persists them', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser());
+      mockAiService.generateDailyVariations.mockResolvedValue([{ description: 'Harder run', points: 40 }]);
+      mockUserRepository.updateUserDailyTasks.mockResolvedValue(makeUser());
+
+      const result = await service.confirmCoachChange(USER_ID, { type: 'adjustDifficulty', direction: 'increase' });
+
+      expect(mockAiService.generateDailyVariations).toHaveBeenCalledWith(
+        expect.objectContaining({ id: USER_ID }),
+        expect.any(Number),
+        'increase',
+      );
+      expect(result.type).toBe('adjustDifficulty');
+      if (result.type === 'adjustDifficulty') {
+        expect(result.dailyVariations).toEqual([
+          expect.objectContaining({ description: 'Harder run', points: 40, completed: false }),
+        ]);
+      }
+    });
+
+    it('forfeitGoal: delegates to GoalsService.forfeitGoal', async () => {
+      const forfeitedGoal = makeGoal({ status: 'forfeited' });
+      mockGoalsService.forfeitGoal.mockResolvedValue(forfeitedGoal);
+
+      const result = await service.confirmCoachChange(USER_ID, { type: 'forfeitGoal', goalId: GOAL_ID });
+
+      expect(mockGoalsService.forfeitGoal).toHaveBeenCalledWith(USER_ID, GOAL_ID);
+      expect(result).toEqual({ type: 'forfeitGoal', goal: forfeitedGoal });
     });
   });
 });
