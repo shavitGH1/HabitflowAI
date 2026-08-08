@@ -97,10 +97,6 @@ class ChatViewModel @Inject constructor(
         _uiState.update { it.copy(personaType = type) }
     }
 
-    fun updateFabPosition(x: Float, y: Float) {
-        _uiState.update { it.copy(fabOffsetX = x, fabOffsetY = y) }
-    }
-
     fun sendMessage() {
         val text = _uiState.value.inputText.trim()
         if (text.isEmpty()) return

@@ -35,8 +35,7 @@ import coil.compose.AsyncImage
 import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.Post
 import com.habitflowai.data.model.ChatResponse
-import com.habitflowai.data.model.ChatUiState
-import com.habitflowai.presentation.ui.chat.ChatOverlay
+import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.SocialUiState
@@ -48,7 +47,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun SocialRoute(
     viewModel: SocialViewModel = hiltViewModel(),
-    onboardingViewModel: OnboardingViewModel = hiltViewModel()
+    onboardingViewModel: OnboardingViewModel = hiltViewModel(),
+    onToggleChat: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val onboardingState by onboardingViewModel.uiState.collectAsState()
@@ -97,6 +97,15 @@ fun SocialRoute(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text("Social Feed", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onToggleChat) {
+                            Icon(
+                                Icons.Rounded.SmartToy,
+                                contentDescription = "AI Assistant",
+                                tint = personaDetails.endColor
+                            )
+                        }
+                    },
                     actions = {
                         IconButton(onClick = { 
                             viewModel.loadGroupChats()
@@ -122,18 +131,19 @@ fun SocialRoute(
                 }
             }
         ) { paddingValues ->
-            SocialContent(
-                uiState = uiState,
-                personaColor = personaDetails.endColor,
-                modifier = Modifier.padding(paddingValues),
-                onLikeClick = viewModel::toggleLike,
-                onLoadMore = viewModel::loadMorePosts,
-                onPostClick = { post ->
-                    selectedPostForComments = post
-                    viewModel.loadComments(post.id)
-                },
-                onLikeMessage = { messageId -> /* Handle if needed from feed, though usually in dialog */ }
-            )
+            Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+                SocialContent(
+                    uiState = uiState,
+                    personaColor = personaDetails.endColor,
+                    modifier = Modifier.fillMaxSize(),
+                    onLikeClick = viewModel::toggleLike,
+                    onLoadMore = viewModel::loadMorePosts,
+                    onPostClick = { post ->
+                        selectedPostForComments = post
+                        viewModel.loadComments(post.id)
+                    }
+                )
+            }
         }
     }
 
@@ -311,7 +321,7 @@ fun GroupChatsDrawerContent(
 @Composable
 fun ChatGroupDetailDialog(
     chat: ChatResponse,
-    messages: List<com.habitflowai.data.model.ChatMessage>,
+    messages: List<ChatMessage>,
     personaColor: Color,
     onDismiss: () -> Unit,
     onSendMessage: (String) -> Unit,
@@ -357,7 +367,6 @@ fun ChatGroupDetailDialog(
                 // Chat Content
                 Box(modifier = Modifier.weight(1f)) {
                     ChatGroupDetailContent(
-                        chat = chat, 
                         messages = messages, 
                         personaColor = personaColor,
                         onLikeMessage = onLikeMessage
@@ -434,8 +443,7 @@ fun ChatGroupDetailHeader(
 
 @Composable
 fun ChatGroupDetailContent(
-    chat: ChatResponse,
-    messages: List<com.habitflowai.data.model.ChatMessage>,
+    messages: List<ChatMessage>,
     personaColor: Color,
     onLikeMessage: (String) -> Unit
 ) {
@@ -486,7 +494,7 @@ fun ChatGroupDetailContent(
 
 @Composable
 fun ChatMessageBubble(
-    message: com.habitflowai.data.model.ChatMessage,
+    message: ChatMessage,
     personaColor: Color,
     onLikeClick: (String) -> Unit
 ) {
@@ -748,8 +756,7 @@ fun SocialContent(
     modifier: Modifier = Modifier,
     onLikeClick: (Int) -> Unit,
     onLoadMore: () -> Unit,
-    onPostClick: (Post) -> Unit,
-    onLikeMessage: (String) -> Unit
+    onPostClick: (Post) -> Unit
 ) {
     val listState = rememberLazyListState()
 
@@ -1139,7 +1146,6 @@ fun PreviewChatDetailV2() {
                 // Chat Content
                 Box(modifier = Modifier.weight(1f)) {
                     ChatGroupDetailContent(
-                        chat = ChatResponse("1", "Mountain Climbers", true, "Who's hiking Sunday?"),
                         messages = emptyList(),
                         personaColor = personaColor,
                         onLikeMessage = {}
@@ -1259,21 +1265,14 @@ fun PreviewSocialFeedV2() {
                     SocialContent(
                         uiState = SocialUiState(
                             posts = listOf(
-                                Post(1, "Alex", "Just completely crushed my deep work block! 🚀", true, likeCount = 14),
+                                Post(1, "Alex", "Just completely crushed my deep work block! \ud83d\ude80", true, likeCount = 14),
                                 Post(2, "Mia", "Woke up at 5am today. The sunrise was totally worth it.", false, likeCount = 5)
                             )
                         ),
                         personaColor = personaDetails.endColor,
                         onLikeClick = {},
                         onLoadMore = {},
-                        onPostClick = {},
-                        onLikeMessage = {}
-                    )
-                    ChatOverlay(
-                        uiState = ChatUiState(personaType = "Socializer"),
-                        onToggleChat = {},
-                        onInputChanged = {},
-                        onSendMessage = {}
+                        onPostClick = {}
                     )
                 }
             }
@@ -1287,14 +1286,13 @@ fun SocialRoutePreview() {
     SocialContent(
         uiState = SocialUiState(
             posts = listOf(
-                Post(1, "Alex", "Just completely crushed my deep work block! 🚀", true, likeCount = 14),
+                Post(1, "Alex", "Just completely crushed my deep work block! \ud83d\ude80", true, likeCount = 14),
                 Post(2, "Mia", "Woke up at 5am today. The sunrise was totally worth it.", false, likeCount = 5)
             )
         ),
         personaColor = Color(0xFF64B5F6),
         onLikeClick = {},
         onLoadMore = {},
-        onPostClick = {},
-        onLikeMessage = {}
+        onPostClick = {}
     )
 }
