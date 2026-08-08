@@ -146,21 +146,13 @@ describe('ChatService', () => {
   });
 
   describe('getMessages()', () => {
-    it('rejects a non-participant before hitting the repository', async () => {
-      mockChatRepository.findById.mockResolvedValue(makeChat());
-
-      await expect(service.getMessages(OUTSIDER_ID, CHAT_ID, 1, 30)).rejects.toThrow(ForbiddenException);
-      expect(mockChatRepository.findMessagesPaginated).not.toHaveBeenCalled();
-    });
-
-    it('returns paginated messages for a participant', async () => {
-      mockChatRepository.findById.mockResolvedValue(makeChat());
+    it('delegates pagination straight to the repository (authorization is ChatMemberGuard\'s job)', async () => {
       const messages: MessageData[] = [
         { id: 'm1', chatId: CHAT_ID, senderId: USER_ID, text: 'hey', likes: [], sentAt: new Date().toISOString() },
       ];
       mockChatRepository.findMessagesPaginated.mockResolvedValue(messages);
 
-      const result = await service.getMessages(USER_ID, CHAT_ID, 1, 30);
+      const result = await service.getMessages(CHAT_ID, 1, 30);
 
       expect(mockChatRepository.findMessagesPaginated).toHaveBeenCalledWith(CHAT_ID, 1, 30);
       expect(result).toEqual(messages);
@@ -223,10 +215,9 @@ describe('ChatService', () => {
   describe('markAsRead()', () => {
     it('resets only the caller unread count, leaving other participants untouched', async () => {
       const chat = makeGroupChat({ unreadCount: { [USER_ID]: 5, [OTHER_USER_ID]: 2 } });
-      mockChatRepository.findById.mockResolvedValue(chat);
       mockChatRepository.updateChat.mockResolvedValue(chat);
 
-      await service.markAsRead(USER_ID, GROUP_CHAT_ID);
+      await service.markAsRead(USER_ID, chat);
 
       expect(mockChatRepository.updateChat).toHaveBeenCalledWith(GROUP_CHAT_ID, {
         unreadCount: { [USER_ID]: 0, [OTHER_USER_ID]: 2 },
@@ -238,14 +229,12 @@ describe('ChatService', () => {
     const MESSAGE_ID = 'm1';
 
     it('throws NotFoundException for a missing message', async () => {
-      mockChatRepository.findById.mockResolvedValue(makeChat());
       mockChatRepository.findMessageById.mockResolvedValue(null);
 
       await expect(service.toggleMessageLike(USER_ID, CHAT_ID, MESSAGE_ID)).rejects.toThrow(NotFoundException);
     });
 
     it('adds the caller to likes when not already liked', async () => {
-      mockChatRepository.findById.mockResolvedValue(makeChat());
       mockChatRepository.findMessageById.mockResolvedValue({
         id: MESSAGE_ID,
         chatId: CHAT_ID,
@@ -261,7 +250,6 @@ describe('ChatService', () => {
     });
 
     it('removes the caller from likes when already liked', async () => {
-      mockChatRepository.findById.mockResolvedValue(makeChat());
       mockChatRepository.findMessageById.mockResolvedValue({
         id: MESSAGE_ID,
         chatId: CHAT_ID,

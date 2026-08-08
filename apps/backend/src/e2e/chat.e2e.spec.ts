@@ -200,6 +200,24 @@ describe('Chat (e2e)', () => {
       .expect(403);
   });
 
+  it('ChatMemberGuard blocks an outsider from read and like too, not just history', async () => {
+    const history = await agent(app)
+      .get(`/api/v1/chats/${chatId}/messages`)
+      .set('Authorization', `Bearer ${userAToken}`)
+      .expect(200);
+    const messageId = history.body[0].id;
+
+    await agent(app)
+      .post(`/api/v1/chats/${chatId}/read`)
+      .set('Authorization', `Bearer ${userCToken}`)
+      .expect(403);
+
+    await agent(app)
+      .post(`/api/v1/chats/${chatId}/messages/${messageId}/like`)
+      .set('Authorization', `Bearer ${userCToken}`)
+      .expect(403);
+  });
+
   describe('Group chat lifecycle', () => {
     let groupId: string;
 

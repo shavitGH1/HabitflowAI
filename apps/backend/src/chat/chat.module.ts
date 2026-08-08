@@ -10,6 +10,7 @@ import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { ChatAdminGuard } from './guards/chat-admin.guard';
+import { ChatMemberGuard } from './guards/chat-member.guard';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { ChatAdminGuard } from './guards/chat-admin.guard';
     DatabaseModule,
     StorageModule,
   ],
-  providers: [ChatRepository, ChatService, ChatGateway, ChatAdminGuard],
+  providers: [ChatRepository, ChatService, ChatGateway, ChatAdminGuard, ChatMemberGuard],
   controllers: [ChatController],
 })
 export class ChatModule {}
