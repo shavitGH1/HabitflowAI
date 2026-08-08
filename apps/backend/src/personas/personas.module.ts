@@ -12,5 +12,6 @@ import { PersonasService } from './personas.service';
   imports: [AuthModule, DatabaseModule, AiModule, NotificationsModule, HabitsModule],
   providers: [PersonasService, PersonaDriftScheduler],
   controllers: [PersonasController],
+  exports: [PersonasService],
 })
 export class PersonasModule {}
