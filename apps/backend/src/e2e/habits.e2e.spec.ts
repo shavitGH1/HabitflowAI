@@ -62,12 +62,16 @@ describe('Habits (e2e)', () => {
     const res = await agent(app)
       .patch(`/api/v1/habits/${habitId}/complete`)
       .set('Authorization', `Bearer ${accessToken}`)
+      .send({ note: 'Ran 5km along the river this morning' })
       .expect(200);
 
     expect(res.body.streak).toBe(1);
     expect(res.body.completionHistory).toHaveLength(1);
     expect(res.body.consistencyScore).toBeGreaterThan(0);
     expect(res.body.implementedAt).toBeUndefined();
+    expect(res.body.completionNotes).toEqual([
+      expect.objectContaining({ note: 'Ran 5km along the river this morning' }),
+    ]);
   });
 
   it('DELETE /habits/:id — soft-deletes the habit', async () => {

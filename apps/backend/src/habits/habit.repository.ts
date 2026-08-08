@@ -6,6 +6,11 @@ import { calculateStreak } from './utils/streak.utils';
 import { calculateConsistencyScore, isImplemented } from './utils/consistency.utils';
 import { logger } from '../logger';
 
+export interface CompletionNote {
+  date: string;
+  note: string;
+}
+
 export interface HabitData {
   id: string;
   userId: string;
@@ -20,6 +25,7 @@ export interface HabitData {
   goalId?: string;
   consistencyScore: number;
   implementedAt?: string;
+  completionNotes: CompletionNote[];
   createdAt: string;
 }
 
@@ -75,13 +81,16 @@ export class HabitRepository {
     return doc ? this.toHabitData(doc) : null;
   }
 
-  async completeHabit(id: string): Promise<HabitData | null> {
+  async completeHabit(id: string, note?: string): Promise<HabitData | null> {
     const today = new Date().toISOString().split('T')[0];
     const doc = await this.habitModel.findById(id);
     if (!doc) return null;
 
     if (!doc.completionHistory.includes(today)) {
       doc.completionHistory.push(today);
+    }
+    if (note) {
+      doc.completionNotes.push({ date: today, note });
     }
 
     doc.streak = calculateStreak(doc.completionHistory);
@@ -112,6 +121,7 @@ export class HabitRepository {
       goalId: doc.goalId ?? undefined,
       consistencyScore: doc.consistencyScore,
       implementedAt: doc.implementedAt?.toISOString(),
+      completionNotes: doc.completionNotes ?? [],
       createdAt: (doc as unknown as { createdAt: Date }).createdAt?.toISOString() ?? '',
     };
   }

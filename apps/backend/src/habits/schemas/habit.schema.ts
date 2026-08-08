@@ -1,6 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
+@Schema({ _id: false })
+class CompletionNote {
+  @Prop({ required: true })
+  date: string;
+
+  @Prop({ required: true })
+  note: string;
+}
+
+const CompletionNoteSchema = SchemaFactory.createForClass(CompletionNote);
+
 @Schema({ timestamps: true })
 export class Habit {
   @Prop({ required: true })
@@ -38,6 +49,9 @@ export class Habit {
 
   @Prop()
   implementedAt?: Date;
+
+  @Prop({ type: [CompletionNoteSchema], default: [] })
+  completionNotes: CompletionNote[];
 }
 
 export const HabitSchema = SchemaFactory.createForClass(Habit);

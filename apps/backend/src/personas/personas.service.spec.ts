@@ -55,6 +55,7 @@ const makeHabit = (overrides: Partial<HabitData> = {}): HabitData => ({
   persona: '',
   isArchived: false,
   consistencyScore: 0,
+  completionNotes: [],
   createdAt: new Date().toISOString(),
   ...overrides,
 });
