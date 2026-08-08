@@ -16,6 +16,9 @@ export interface HabitData {
   completionHistory: string[];
   persona: string;
   isArchived: boolean;
+  goalId?: string;
+  consistencyScore: number;
+  implementedAt?: string;
   createdAt: string;
 }
 
@@ -26,6 +29,7 @@ export interface CreateHabitInput {
   frequency: 'daily' | 'weekly';
   targetCount?: number;
   persona?: string;
+  goalId?: string;
 }
 
 export interface UpdateHabitInput {
@@ -33,6 +37,7 @@ export interface UpdateHabitInput {
   description?: string;
   frequency?: 'daily' | 'weekly';
   targetCount?: number;
+  goalId?: string | null;
 }
 
 @Injectable()
@@ -95,6 +100,9 @@ export class HabitRepository {
       completionHistory: doc.completionHistory,
       persona: doc.persona,
       isArchived: doc.isArchived,
+      goalId: doc.goalId ?? undefined,
+      consistencyScore: doc.consistencyScore,
+      implementedAt: doc.implementedAt?.toISOString(),
       createdAt: (doc as unknown as { createdAt: Date }).createdAt?.toISOString() ?? '',
     };
   }
