@@ -31,7 +31,7 @@ export const isImplemented = (
   return daysBetween(createdAt, today) >= IMPLEMENTED_MIN_DAYS && consistencyScore >= IMPLEMENTED_MIN_SCORE;
 };
 
-const daysBetween = (from: string, to: string): number => {
+export const daysBetween = (from: string, to: string): number => {
   const fromDate = new Date(from + 'T00:00:00.000Z');
   const toDate = new Date(to + 'T00:00:00.000Z');
   return Math.round((toDate.getTime() - fromDate.getTime()) / 86_400_000);

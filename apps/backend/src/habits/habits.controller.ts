@@ -80,4 +80,14 @@ export class HabitsController {
   complete(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.habitsService.completeHabit(req.user.id, id);
   }
+
+  @Get(':id/stats')
+  @ApiOperation({ summary: 'Completion stats for a habit, derived from its completion history' })
+  @ApiResponse({ status: 200, description: 'Aggregate completion stats' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'Habit belongs to a different user' })
+  @ApiResponse({ status: 404, description: 'Habit not found' })
+  getStats(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.habitsService.getStats(req.user.id, id);
+  }
 }
