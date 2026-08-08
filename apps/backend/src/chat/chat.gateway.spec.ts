@@ -28,6 +28,7 @@ const makeSocket = (overrides: Partial<{ auth: Record<string, unknown>; headers:
   disconnect: jest.fn(),
   join: jest.fn(),
   leave: jest.fn(),
+  to: jest.fn().mockReturnValue({ emit: jest.fn() }),
 });
 
 describe('ChatGateway', () => {
@@ -56,6 +57,15 @@ describe('ChatGateway', () => {
 
       expect(client.data.userId).toBe(USER_ID);
       expect(client.disconnect).not.toHaveBeenCalled();
+    });
+
+    it('joins the personal per-user room on a successful connection', () => {
+      const token = jwt.sign({ id: USER_ID }, JWT_SECRET);
+      const client = makeSocket({ auth: { token } });
+
+      gateway.handleConnection(client as never);
+
+      expect(client.join).toHaveBeenCalledWith(`user:${USER_ID}`);
     });
 
     it('accepts a token from the Authorization header as a fallback', () => {
@@ -113,6 +123,60 @@ describe('ChatGateway', () => {
 
       await expect(gateway.joinChat(client as never, { chatId: CHAT_ID })).rejects.toThrow('forbidden');
       expect(client.join).not.toHaveBeenCalled();
+    });
+
+    it('broadcasts userJoined to the rest of the room, not back to the joiner', async () => {
+      const client = makeSocket();
+      client.data.userId = USER_ID;
+      mockChatService.assertParticipant.mockResolvedValue(undefined);
+      const emit = jest.fn();
+      client.to.mockReturnValue({ emit });
+
+      await gateway.joinChat(client as never, { chatId: CHAT_ID });
+
+      expect(client.to).toHaveBeenCalledWith(CHAT_ID);
+      expect(emit).toHaveBeenCalledWith('userJoined', { chatId: CHAT_ID, userId: USER_ID });
+    });
+  });
+
+  describe('leaveChat()', () => {
+    it('leaves the room and broadcasts userLeft to the rest of the room', async () => {
+      const client = makeSocket();
+      client.data.userId = USER_ID;
+      const emit = jest.fn();
+      client.to.mockReturnValue({ emit });
+
+      await gateway.leaveChat(client as never, { chatId: CHAT_ID });
+
+      expect(client.leave).toHaveBeenCalledWith(CHAT_ID);
+      expect(client.to).toHaveBeenCalledWith(CHAT_ID);
+      expect(emit).toHaveBeenCalledWith('userLeft', { chatId: CHAT_ID, userId: USER_ID });
+    });
+  });
+
+  describe('handleTyping()', () => {
+    it('broadcasts typing state to the rest of the room, not back to the sender', () => {
+      const client = makeSocket();
+      client.data.userId = USER_ID;
+      const emit = jest.fn();
+      client.to.mockReturnValue({ emit });
+
+      gateway.handleTyping(client as never, { chatId: CHAT_ID, isTyping: true });
+
+      expect(client.to).toHaveBeenCalledWith(CHAT_ID);
+      expect(emit).toHaveBeenCalledWith('typing', { userId: USER_ID, isTyping: true });
+    });
+  });
+
+  describe('emitToUser()', () => {
+    it('emits to the target user personal room, not a chat room', () => {
+      const emit = jest.fn();
+      gateway.server = { to: jest.fn().mockReturnValue({ emit }) } as never;
+
+      gateway.emitToUser(USER_ID, 'memberAdded', { chatId: CHAT_ID });
+
+      expect(gateway.server.to).toHaveBeenCalledWith(`user:${USER_ID}`);
+      expect(emit).toHaveBeenCalledWith('memberAdded', { chatId: CHAT_ID });
     });
   });
 

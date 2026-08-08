@@ -113,6 +113,9 @@ export class ChatController {
   async addMembers(@Param('chatId') chatId: string, @Body() dto: AddMembersDto) {
     const chat = await this.chatService.addMembers(chatId, dto.userIds);
     this.chatGateway.emitToRoom(chatId, 'memberAdded', { chatId, userIds: dto.userIds });
+    for (const userId of dto.userIds) {
+      this.chatGateway.emitToUser(userId, 'memberAdded', { chatId, userIds: dto.userIds });
+    }
     return chat;
   }
 

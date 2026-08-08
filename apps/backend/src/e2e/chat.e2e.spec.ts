@@ -16,6 +16,7 @@ describe('Chat (e2e)', () => {
   let userCId: string;
   let userCToken: string;
   let userDId: string;
+  let userDToken: string;
   let chatId: string;
 
   const openSocket = (token: string): Promise<Socket> =>
@@ -62,6 +63,10 @@ describe('Chat (e2e)', () => {
       .post('/api/v1/auth/register')
       .send({ email: 'e2e-chat-d@test.com', password: 'Password123', openAnswers: OPEN_ANSWERS });
     userDId = registerD.body.userId;
+    const loginD = await agent(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'e2e-chat-d@test.com', password: 'Password123' });
+    userDToken = loginD.body.accessToken;
   });
 
   afterAll(async () => {
@@ -113,6 +118,39 @@ describe('Chat (e2e)', () => {
       .expect(200);
 
     expect(history.body.some((m: { text: string }) => m.text === 'hey, still on for the run?')).toBe(true);
+  });
+
+  it('broadcasts presence and typing to the rest of the room, but never back to the actor', async () => {
+    const socketA = await openSocket(userAToken);
+    const socketB = await openSocket(userBToken);
+
+    socketB.emit('joinChat', { chatId });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    let sawOwnJoin = false;
+    socketA.on('userJoined', () => {
+      sawOwnJoin = true;
+    });
+    const userJoined = new Promise<{ chatId: string; userId: string }>((resolve) => {
+      socketB.on('userJoined', resolve);
+    });
+
+    socketA.emit('joinChat', { chatId });
+    const joinedEvent = await userJoined;
+    expect(joinedEvent).toEqual({ chatId, userId: userAId });
+
+    const typingReceived = new Promise<{ userId: string; isTyping: boolean }>((resolve) => {
+      socketB.on('typing', resolve);
+    });
+    socketA.emit('typing', { chatId, isTyping: true });
+    const typingEvent = await typingReceived;
+    expect(typingEvent).toEqual({ userId: userAId, isTyping: true });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(sawOwnJoin).toBe(false);
+
+    socketA.disconnect();
+    socketB.disconnect();
   });
 
   it('tracks unread count for the recipient, resets it on read, and supports message likes', async () => {
@@ -195,7 +233,12 @@ describe('Chat (e2e)', () => {
       expect(res.body.name).toBe('Marathon Crew 2026');
     });
 
-    it('lets the owner add a new member', async () => {
+    it('lets the owner add a new member, notifying them via their personal socket room', async () => {
+      const socketD = await openSocket(userDToken);
+      const notified = new Promise<{ chatId: string; userIds: string[] }>((resolve) => {
+        socketD.on('memberAdded', resolve);
+      });
+
       const res = await agent(app)
         .post(`/api/v1/chats/${groupId}/members`)
         .set('Authorization', `Bearer ${userAToken}`)
@@ -203,6 +246,12 @@ describe('Chat (e2e)', () => {
         .expect(201);
 
       expect(res.body.participantIds).toContain(userDId);
+
+      const notification = await notified;
+      expect(notification.chatId).toBe(groupId);
+      expect(notification.userIds).toContain(userDId);
+
+      socketD.disconnect();
     });
 
     it('lets the owner promote B to admin', async () => {
