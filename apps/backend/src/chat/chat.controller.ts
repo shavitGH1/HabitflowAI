@@ -31,6 +31,7 @@ import { RenameGroupDto } from './dto/rename-group.dto';
 import { TargetUserDto } from './dto/target-user.dto';
 import { UpdateDescriptionDto } from './dto/update-description.dto';
 import { ChatAdminGuard } from './guards/chat-admin.guard';
+import { ChatMemberGuard, ChatMemberRequest } from './guards/chat-member.guard';
 
 @ApiTags('chat')
 @Controller('chats')
@@ -63,6 +64,7 @@ export class ChatController {
   }
 
   @Get(':chatId/messages')
+  @UseGuards(ChatMemberGuard)
   @ApiOperation({
     summary: 'Paginated message history for a chat, most recent first',
     description: 'Used for initial screen load and offline catch-up; live messages arrive over the WebSocket gateway',
@@ -73,30 +75,27 @@ export class ChatController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 403, description: 'Not a participant in this chat' })
   @ApiResponse({ status: 404, description: 'Chat not found' })
-  getMessages(
-    @Req() req: { user: { id: string } },
-    @Param('chatId') chatId: string,
-    @Query('page') page = '1',
-    @Query('limit') limit = '30',
-  ) {
-    return this.chatService.getMessages(req.user.id, chatId, Number(page), Number(limit));
+  getMessages(@Param('chatId') chatId: string, @Query('page') page = '1', @Query('limit') limit = '30') {
+    return this.chatService.getMessages(chatId, Number(page), Number(limit));
   }
 
   @Post(':chatId/read')
+  @UseGuards(ChatMemberGuard)
   @ApiOperation({ summary: "Mark a chat as read, resetting the caller's unread count to 0" })
   @ApiResponse({ status: 201, description: 'Marked as read' })
   @ApiResponse({ status: 403, description: 'Not a participant in this chat' })
-  markAsRead(@Req() req: { user: { id: string } }, @Param('chatId') chatId: string) {
-    return this.chatService.markAsRead(req.user.id, chatId);
+  markAsRead(@Req() req: ChatMemberRequest) {
+    return this.chatService.markAsRead(req.user.id, req.chat);
   }
 
   @Post(':chatId/messages/:messageId/like')
+  @UseGuards(ChatMemberGuard)
   @ApiOperation({ summary: 'Toggle a like on a message' })
   @ApiResponse({ status: 201, description: 'Like toggled' })
   @ApiResponse({ status: 403, description: 'Not a participant in this chat' })
   @ApiResponse({ status: 404, description: 'Message not found' })
   async toggleMessageLike(
-    @Req() req: { user: { id: string } },
+    @Req() req: ChatMemberRequest,
     @Param('chatId') chatId: string,
     @Param('messageId') messageId: string,
   ) {

@@ -45,8 +45,7 @@ export class ChatService {
     return this.chatRepository.findByParticipantId(userId);
   }
 
-  async getMessages(userId: string, chatId: string, page: number, limit: number): Promise<MessageData[]> {
-    await this.assertParticipant(userId, chatId);
+  async getMessages(chatId: string, page: number, limit: number): Promise<MessageData[]> {
     return this.chatRepository.findMessagesPaginated(chatId, page, limit);
   }
 
@@ -68,14 +67,12 @@ export class ChatService {
     return message;
   }
 
-  async markAsRead(userId: string, chatId: string): Promise<ChatData> {
-    const chat = await this.assertParticipant(userId, chatId);
+  async markAsRead(userId: string, chat: ChatData): Promise<ChatData> {
     const unreadCount = { ...chat.unreadCount, [userId]: 0 };
-    return (await this.chatRepository.updateChat(chatId, { unreadCount }))!;
+    return (await this.chatRepository.updateChat(chat.id, { unreadCount }))!;
   }
 
   async toggleMessageLike(userId: string, chatId: string, messageId: string): Promise<MessageData> {
-    await this.assertParticipant(userId, chatId);
     const message = await this.chatRepository.findMessageById(chatId, messageId);
     if (!message) throw new NotFoundException('Message not found');
 
