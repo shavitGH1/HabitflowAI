@@ -1,10 +1,13 @@
 package com.habitflowai.presentation.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -29,9 +32,11 @@ import com.habitflowai.presentation.ui.map.MapRoute
 import com.habitflowai.presentation.ui.drift.DriftCheckRoute
 import com.habitflowai.presentation.ui.drift.DriftReassessmentRoute
 import com.habitflowai.presentation.ui.persona.ProfileRevealRoute
+import com.habitflowai.presentation.ui.chat.ChatOverlay
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
 import com.habitflowai.presentation.viewmodel.LoginViewModel
+import com.habitflowai.presentation.viewmodel.ChatViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +46,15 @@ fun HabitFlowNavGraph(
     val onboardingViewModel: OnboardingViewModel = hiltViewModel()
     val loginViewModel: LoginViewModel = hiltViewModel()
     val habitsViewModel: HabitsViewModel = hiltViewModel()
+    val chatViewModel: ChatViewModel = hiltViewModel()
     val uiState by onboardingViewModel.uiState.collectAsState()
+    val chatUiState by chatViewModel.uiState.collectAsState()
+
+    LaunchedEffect(uiState.personaResult) {
+        uiState.personaResult?.personaType?.let {
+            chatViewModel.setPersonaType(it)
+        }
+    }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -52,19 +65,6 @@ fun HabitFlowNavGraph(
                     currentRoute != NavRoute.ProfileReveal.route
 
     Scaffold(
-        topBar = {
-            if (isFullApp) {
-                CenterAlignedTopAppBar(
-                    title = { Text("HabitFlow AI", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
-                    actions = {
-                        IconButton(onClick = { /* Could navigate to notification or search */ }) {
-                            Icon(Icons.Rounded.Notifications, contentDescription = "Notifications", tint = MaterialTheme.colorScheme.primary)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-                )
-            }
-        },
         bottomBar = {
             if (isFullApp) {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
@@ -102,127 +102,141 @@ fun HabitFlowNavGraph(
             }
         }
     ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = NavRoute.Login.route,
-            modifier = Modifier.padding(paddingValues)
-        ) {
-            composable(NavRoute.Login.route) {
-                LoginRoute(
-                    viewModel = loginViewModel,
-                    onLoginSuccess = {
-                        onboardingViewModel.fetchProfile()
-                        navController.navigate(NavRoute.Home.route) {
-                            popUpTo(NavRoute.Login.route) { inclusive = true }
-                        }
-                    },
-                    onNavigateToRegister = {
-                        navController.navigate(NavRoute.RegisterCredentials.route)
-                    }
-                )
-            }
-            composable(NavRoute.RegisterCredentials.route) {
-                RegisterCredentialsRoute(
-                    viewModel = onboardingViewModel,
-                    onNext = {
-                        navController.navigate(NavRoute.Onboarding.route)
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable(NavRoute.Onboarding.route) {
-                OnboardingRoute(
-                    uiState = uiState,
-                    onGoalChange = onboardingViewModel::onGoalChange,
-                    onQuizAnswerChange = onboardingViewModel::onQuizAnswerChange,
-                    onSubmit = onboardingViewModel::registerUser,
-                    onPersonaClassified = {
-                        navController.navigate(NavRoute.ProfileReveal.route) {
-                            popUpTo(NavRoute.Login.route) { inclusive = true }
-                        }
-                    },
-                    onNavigationHandled = onboardingViewModel::onHomeNavigated
-                )
-            }
-            composable(NavRoute.ProfileReveal.route) {
-                uiState.personaResult?.let { result ->
-                    ProfileRevealRoute(
-                        personaResponse = result,
-                        onStartJourney = {
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(
+                navController = navController,
+                startDestination = NavRoute.Login.route,
+                modifier = Modifier.padding(paddingValues)
+            ) {
+                composable(NavRoute.Login.route) {
+                    LoginRoute(
+                        viewModel = loginViewModel,
+                        onLoginSuccess = {
+                            onboardingViewModel.fetchProfile()
                             navController.navigate(NavRoute.Home.route) {
-                                popUpTo(NavRoute.ProfileReveal.route) { inclusive = true }
+                                popUpTo(NavRoute.Login.route) { inclusive = true }
+                            }
+                        },
+                        onNavigateToRegister = {
+                            navController.navigate(NavRoute.RegisterCredentials.route)
+                        }
+                    )
+                }
+                composable(NavRoute.RegisterCredentials.route) {
+                    RegisterCredentialsRoute(
+                        viewModel = onboardingViewModel,
+                        onNext = {
+                            navController.navigate(NavRoute.Onboarding.route)
+                        },
+                        onNavigateBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+                composable(NavRoute.Onboarding.route) {
+                    OnboardingRoute(
+                        uiState = uiState,
+                        onGoalChange = onboardingViewModel::onGoalChange,
+                        onQuizAnswerChange = onboardingViewModel::onQuizAnswerChange,
+                        onSubmit = onboardingViewModel::registerUser,
+                        onPersonaClassified = {
+                            navController.navigate(NavRoute.ProfileReveal.route) {
+                                popUpTo(NavRoute.Login.route) { inclusive = true }
+                            }
+                        },
+                        onNavigationHandled = onboardingViewModel::onHomeNavigated
+                    )
+                }
+                composable(NavRoute.ProfileReveal.route) {
+                    uiState.personaResult?.let { result ->
+                        ProfileRevealRoute(
+                            personaResponse = result,
+                            onStartJourney = {
+                                navController.navigate(NavRoute.Home.route) {
+                                    popUpTo(NavRoute.ProfileReveal.route) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                }
+                composable(NavRoute.Home.route) {
+                    HomeRoute(
+                        personaResult = uiState.personaResult,
+                        userId = uiState.personaResult?.userId ?: uiState.personaResult?.id ?: "",
+                        onNavigateToReassessment = {
+                            navController.navigate(NavRoute.DriftReassessment.route)
+                        }
+                    )
+                }
+                composable(NavRoute.Habits.route) {
+                    HabitsRoute(
+                        viewModel = habitsViewModel,
+                        personaType = uiState.personaResult?.personaType ?: "Regulator",
+                        onHabitClick = { habitId ->
+                            navController.navigate(NavRoute.HabitDetail.createRoute(habitId))
+                        }
+                    )
+                }
+                composable(NavRoute.HabitDetail.route) { backStackEntry ->
+                    val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
+                    HabitDetailRoute(
+                        habitId = habitId,
+                        viewModel = habitsViewModel,
+                        personaType = uiState.personaResult?.personaType ?: "Regulator",
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                composable(NavRoute.Social.route) {
+                    SocialRoute()
+                }
+                composable(NavRoute.SuccessJournal.route) {
+                    SuccessJournalRoute(
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                composable(NavRoute.Profile.route) {
+                    ProfileRoute(
+                        viewModel = onboardingViewModel,
+                        onRetakeAssessment = {
+                            navController.navigate(NavRoute.Onboarding.route) {
+                                popUpTo(NavRoute.Home.route) { inclusive = true }
+                            }
+                        },
+                        onNavigateToSuccessJournal = {
+                            navController.navigate(NavRoute.SuccessJournal.route)
+                        },
+                        onLogout = {
+                            onboardingViewModel.logout()
+                            navController.navigate(NavRoute.Login.route) {
+                                popUpTo(0) { inclusive = true }
                             }
                         }
                     )
                 }
-            }
-            composable(NavRoute.Home.route) {
-                HomeRoute(
-                    personaResult = uiState.personaResult,
-                    userId = uiState.personaResult?.userId ?: uiState.personaResult?.id ?: "",
-                    onNavigateToReassessment = {
-                        navController.navigate(NavRoute.DriftReassessment.route)
-                    }
-                )
-            }
-            composable(NavRoute.Habits.route) {
-                HabitsRoute(
-                    viewModel = habitsViewModel,
-                    personaType = uiState.personaResult?.personaType ?: "Regulator",
-                    onHabitClick = { habitId ->
-                        navController.navigate(NavRoute.HabitDetail.createRoute(habitId))
-                    }
-                )
-            }
-            composable(NavRoute.HabitDetail.route) { backStackEntry ->
-                val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
-                HabitDetailRoute(
-                    habitId = habitId,
-                    viewModel = habitsViewModel,
-                    personaType = uiState.personaResult?.personaType ?: "Regulator",
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            composable(NavRoute.Social.route) {
-                SocialRoute()
-            }
-            composable(NavRoute.SuccessJournal.route) {
-                SuccessJournalRoute(
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            composable(NavRoute.Profile.route) {
-                ProfileRoute(
-                    viewModel = onboardingViewModel,
-                    onRetakeAssessment = {
-                        navController.navigate(NavRoute.Onboarding.route) {
-                            popUpTo(NavRoute.Home.route) { inclusive = true }
+                composable(NavRoute.Map.route) {
+                    MapRoute(
+                        personaType = uiState.personaResult?.personaType ?: "Regulator"
+                    )
+                }
+                composable(NavRoute.DriftCheck.route) {
+                    DriftCheckRoute()
+                }
+                composable(NavRoute.DriftReassessment.route) {
+                    DriftReassessmentRoute(
+                        onFinished = {
+                            navController.popBackStack()
                         }
-                    },
-                    onNavigateToSuccessJournal = {
-                        navController.navigate(NavRoute.SuccessJournal.route)
-                    },
-                    onLogout = {
-                        onboardingViewModel.logout()
-                        navController.navigate(NavRoute.Login.route) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    }
-                )
+                    )
+                }
             }
-            composable(NavRoute.Map.route) {
-                MapRoute()
-            }
-            composable(NavRoute.DriftCheck.route) {
-                DriftCheckRoute()
-            }
-            composable(NavRoute.DriftReassessment.route) {
-                DriftReassessmentRoute(
-                    onFinished = {
-                        navController.popBackStack()
-                    }
+
+            if (isFullApp) {
+                ChatOverlay(
+                    uiState = chatUiState,
+                    onToggleChat = chatViewModel::toggleChat,
+                    onInputChanged = chatViewModel::onInputChanged,
+                    onSendMessage = chatViewModel::sendMessage,
+                    onUpdateFabPosition = chatViewModel::updateFabPosition
                 )
             }
         }

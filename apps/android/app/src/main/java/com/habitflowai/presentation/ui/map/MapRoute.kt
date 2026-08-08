@@ -1,5 +1,6 @@
 package com.habitflowai.presentation.ui.map
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -21,22 +22,27 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.habitflowai.data.model.ChatUiState
+import com.habitflowai.presentation.ui.chat.ChatOverlay
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import com.google.maps.android.compose.clustering.Clustering
 import com.habitflowai.data.model.HabitMarker
+import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.MapUiState
 import com.habitflowai.presentation.viewmodel.MapViewModel
 
 @Composable
 fun MapRoute(
+    personaType: String,
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     MapContent(
         uiState = uiState,
+        personaType = personaType,
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onSearch = viewModel::onSearch,
         onCameraMoved = viewModel::onCameraMoved
@@ -46,6 +52,7 @@ fun MapRoute(
 @Composable
 fun MapContent(
     uiState: MapUiState,
+    personaType: String = "Regulator",
     onSearchQueryChange: (String) -> Unit = {},
     onSearch: () -> Unit = {},
     onCameraMoved: () -> Unit = {}
@@ -54,6 +61,8 @@ fun MapContent(
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(telAviv, 13f)
     }
+
+    val personaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
 
     LaunchedEffect(uiState.searchResult) {
         uiState.searchResult?.let { latLng ->
@@ -116,7 +125,7 @@ fun MapContent(
                                 text = "Habit Flow Map",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = personaDetails.endColor
                             )
                             Text(
                                 text = "Discover collective growth nearby",
@@ -135,11 +144,11 @@ fun MapContent(
                             .fillMaxWidth()
                             .height(52.dp),
                         placeholder = { Text("Search location...") },
-                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = personaDetails.endColor) },
                         trailingIcon = {
                             if (uiState.searchQuery.isNotEmpty()) {
                                 IconButton(onClick = onSearch) {
-                                    Text("Go", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                    Text("Go", color = personaDetails.endColor, fontWeight = FontWeight.Bold)
                                 }
                             }
                         },
@@ -147,7 +156,9 @@ fun MapContent(
                         colors = TextFieldDefaults.colors(
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent
+                            disabledIndicatorColor = Color.Transparent,
+                            focusedContainerColor = personaDetails.startColor.copy(alpha = 0.1f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                         ),
                         singleLine = true,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -177,6 +188,7 @@ fun MapContent(
                             FilterChip(
                                 isSelected = isSelected,
                                 text = category,
+                                personaColor = personaDetails.endColor,
                                 onClick = { selectedCategory = category }
                             )
                         }
@@ -193,7 +205,7 @@ fun MapContent(
         ) {
             Surface(
                 shape = RoundedCornerShape(32.dp),
-                color = MaterialTheme.colorScheme.primary,
+                color = personaDetails.endColor,
                 shadowElevation = 6.dp
             ) {
                 Row(
@@ -216,12 +228,13 @@ fun MapContent(
 fun FilterChip(
     isSelected: Boolean,
     text: String,
+    personaColor: Color,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier.clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        color = if (isSelected) personaColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
     ) {
         Text(
@@ -234,17 +247,117 @@ fun FilterChip(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Map - Achiever")
 @Composable
-fun MapRoutePreview() {
+fun MapAchieverPreview() {
     HabitFlowTheme {
-        MapContent(
-            uiState = MapUiState(
-                markers = listOf(
-                    HabitMarker("1", "Morning Run", "🏃", "Physical", LatLng(32.0853, 34.7818)),
-                    HabitMarker("2", "Meditation", "🧘", "Mental", LatLng(32.0860, 34.7825))
-                )
+        Box(modifier = Modifier.fillMaxSize()) {
+            MapContent(
+                uiState = MapUiState(
+                    markers = listOf(
+                        HabitMarker("1", "Morning Run", "🏃", "Physical", LatLng(32.0853, 34.7818))
+                    )
+                ),
+                personaType = "Achiever"
             )
-        )
+            ChatOverlay(
+                uiState = ChatUiState(personaType = "Achiever"),
+                onToggleChat = {},
+                onInputChanged = {},
+                onSendMessage = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Map - Grower")
+@Composable
+fun MapGrowerPreview() {
+    HabitFlowTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            MapContent(
+                uiState = MapUiState(
+                    markers = listOf(
+                        HabitMarker("1", "Meditation", "🧘", "Mental", LatLng(32.0853, 34.7818))
+                    )
+                ),
+                personaType = "Grower"
+            )
+            ChatOverlay(
+                uiState = ChatUiState(personaType = "Grower"),
+                onToggleChat = {},
+                onInputChanged = {},
+                onSendMessage = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Map - Regulator")
+@Composable
+fun MapRegulatorPreview() {
+    HabitFlowTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            MapContent(
+                uiState = MapUiState(
+                    markers = listOf(
+                        HabitMarker("1", "Daily Review", "📅", "Productivity", LatLng(32.0853, 34.7818))
+                    )
+                ),
+                personaType = "Regulator"
+            )
+            ChatOverlay(
+                uiState = ChatUiState(personaType = "Regulator"),
+                onToggleChat = {},
+                onInputChanged = {},
+                onSendMessage = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Map - Socializer")
+@Composable
+fun MapSocializerPreview() {
+    HabitFlowTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            MapContent(
+                uiState = MapUiState(
+                    markers = listOf(
+                        HabitMarker("1", "Community Walk", "🚶‍♂️", "Social", LatLng(32.0853, 34.7818))
+                    )
+                ),
+                personaType = "Socializer"
+            )
+            ChatOverlay(
+                uiState = ChatUiState(personaType = "Socializer"),
+                onToggleChat = {},
+                onInputChanged = {},
+                onSendMessage = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Map - Explorer")
+@Composable
+fun MapExplorerPreview() {
+    HabitFlowTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            MapContent(
+                uiState = MapUiState(
+                    markers = listOf(
+                        HabitMarker("1", "New Trail", "🗺️", "Growth", LatLng(32.0853, 34.7818))
+                    )
+                ),
+                personaType = "Explorer"
+            )
+            ChatOverlay(
+                uiState = ChatUiState(personaType = "Explorer"),
+                onToggleChat = {},
+                onInputChanged = {},
+                onSendMessage = {}
+            )
+        }
     }
 }

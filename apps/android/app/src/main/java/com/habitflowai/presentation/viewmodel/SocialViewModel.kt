@@ -4,20 +4,27 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.Post
+import com.habitflowai.data.model.ChatResponse
 import com.habitflowai.domain.repository.SocialRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class SocialUiState(
     val posts: List<Post> = emptyList(),
     val comments: Map<Int, List<Comment>> = emptyMap(),
+    val groupChats: List<ChatResponse> = emptyList(),
+    val chatMessages: Map<String, List<com.habitflowai.data.model.ChatMessage>> = emptyMap(),
+    val appUsers: List<String> = emptyList(), // Mock user list
     val isLoading: Boolean = false,
     val isLoadingComments: Boolean = false,
+    val isLoadingChats: Boolean = false,
+    val isLoadingMessages: Boolean = false,
     val isRefreshing: Boolean = false,
     val canLoadMore: Boolean = true,
     val page: Int = 0
@@ -130,5 +137,101 @@ class SocialViewModel @Inject constructor(
             comments = updatedCommentsMap,
             posts = updatedPosts
         )
+    }
+
+    fun loadGroupChats() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingChats = true) }
+            val chats = repository.getGroupChats()
+            _uiState.update { it.copy(groupChats = chats, isLoadingChats = false) }
+        }
+    }
+
+    fun loadMessages(chatId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMessages = true) }
+            val messages = repository.getMessages(chatId)
+            val updatedMap = _uiState.value.chatMessages.toMutableMap().apply {
+                put(chatId, messages)
+            }
+            _uiState.update { 
+                it.copy(
+                    chatMessages = updatedMap,
+                    isLoadingMessages = false
+                )
+            }
+        }
+    }
+
+    fun createGroup(name: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingChats = true) }
+            val newChat = repository.createGroup(name)
+            _uiState.update { 
+                it.copy(
+                    groupChats = it.groupChats + newChat,
+                    isLoadingChats = false
+                )
+            }
+        }
+    }
+
+    fun joinGroup(chatId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingChats = true) }
+            val success = repository.joinGroup(chatId)
+            if (success) {
+                loadGroupChats()
+            } else {
+                _uiState.update { it.copy(isLoadingChats = false) }
+            }
+        }
+    }
+
+    fun addMember(chatId: String, name: String) {
+        viewModelScope.launch {
+            repository.addMember(chatId, name)
+            // Just a mock success feedback
+        }
+    }
+
+    fun sendMessage(chatId: String, content: String) {
+        val newMessage = com.habitflowai.data.model.ChatMessage(
+            text = content,
+            senderId = "Me",
+            isFromBot = false
+        )
+        val currentMessages = _uiState.value.chatMessages[chatId] ?: emptyList()
+        val updatedMap = _uiState.value.chatMessages.toMutableMap().apply {
+            put(chatId, currentMessages + newMessage)
+        }
+        _uiState.update { it.copy(chatMessages = updatedMap) }
+        
+        // Also update the last message in the group list
+        val updatedGroups = _uiState.value.groupChats.map { 
+            if (it.id == chatId) it.copy(lastMessage = content) else it 
+        }
+        _uiState.update { it.copy(groupChats = updatedGroups) }
+    }
+
+    fun toggleMessageLike(chatId: String, messageId: String) {
+        viewModelScope.launch {
+            val updatedMessage = repository.toggleMessageLike(chatId, messageId) ?: return@launch
+            val currentMessages = _uiState.value.chatMessages[chatId] ?: return@launch
+            val updatedMessages = currentMessages.map {
+                if (it.id == messageId) updatedMessage else it
+            }
+            val updatedMap = _uiState.value.chatMessages.toMutableMap().apply {
+                put(chatId, updatedMessages)
+            }
+            _uiState.update { it.copy(chatMessages = updatedMap) }
+        }
+    }
+
+    fun loadUsers() {
+        // Mocking a list of users for search
+        _uiState.update { 
+            it.copy(appUsers = listOf("alex_achiever", "mia_grower", "sam_spirit", "jordan_habit", "taylor_flow", "casey_altruist"))
+        }
     }
 }
