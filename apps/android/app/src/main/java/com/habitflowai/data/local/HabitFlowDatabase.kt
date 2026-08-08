@@ -16,7 +16,7 @@ import com.habitflowai.data.local.entity.UserEntity
 
 @Database(
     entities = [UserEntity::class, HabitEntity::class, LocationEntity::class, DriftCheckEntity::class],
-    version = 3
+    version = 4
 )
 @TypeConverters(Converters::class)
 abstract class HabitFlowDatabase : RoomDatabase() {
@@ -54,6 +54,14 @@ abstract class HabitFlowDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `locations` ADD COLUMN `taskTitle` TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE `locations` ADD COLUMN `placeName` TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE `locations` ADD COLUMN `address` TEXT DEFAULT NULL")
             }
         }
     }

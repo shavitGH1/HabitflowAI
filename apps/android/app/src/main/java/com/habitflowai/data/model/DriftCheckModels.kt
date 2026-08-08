@@ -23,6 +23,7 @@ data class FcmTokenUpdateRequest(
 
 data class LocationSyncRequest(
     @SerializedName("habitId") val habitId: String?,
+    @SerializedName("taskTitle") val taskTitle: String? = null,
     @SerializedName("latitude") val latitude: Double,
     @SerializedName("longitude") val longitude: Double,
     @SerializedName("timestamp") val timestamp: Long

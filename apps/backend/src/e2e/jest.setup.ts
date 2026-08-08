@@ -8,6 +8,7 @@ process.env['JWT_REFRESH_EXPIRATION'] = '7d';
 process.env['GOOGLE_CLIENT_ID'] = 'test-client-id.apps.googleusercontent.com';
 process.env['GOOGLE_CLIENT_SECRET'] = 'test-google-secret';
 process.env['GOOGLE_CALLBACK_URL'] = 'http://localhost:3000/api/v1/auth/google/callback';
+process.env['GOOGLE_MAPS_API_KEY'] = 'test-maps-key';
 process.env['FIREBASE_PROJECT_ID'] = 'test-firebase-project';
 process.env['FIREBASE_PRIVATE_KEY'] = 'test-firebase-key';
 process.env['FIREBASE_CLIENT_EMAIL'] = 'test@test-project.iam.gserviceaccount.com';

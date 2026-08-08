@@ -39,7 +39,11 @@ class HomeViewModel @Inject constructor(
             try {
                 val success = goalsRepository.completeTask(taskId)
                 if (success) {
-                    locationRepository.captureAndSaveLocation(taskId)
+                    val taskTitle = _uiState.value.homeData?.let { currentData ->
+                        currentData.coreGoals.firstOrNull { it.id == taskId }?.description
+                            ?: currentData.dailyVariations.firstOrNull { it.id == taskId }?.description
+                    }
+                    locationRepository.captureAndSaveLocation(taskId, taskTitle)
                     _uiState.value.homeData?.let { currentData ->
                         val updatedCoreGoals = currentData.coreGoals.map {
                             if (it.id == taskId) it.copy(completed = true) else it

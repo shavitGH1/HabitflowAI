@@ -25,6 +25,7 @@ class LocationSyncWorker @AssistedInject constructor(
                 try {
                     val request = com.habitflowai.data.model.LocationSyncRequest(
                         habitId = location.habitId,
+                        taskTitle = location.taskTitle,
                         latitude = location.latitude,
                         longitude = location.longitude,
                         timestamp = location.timestamp

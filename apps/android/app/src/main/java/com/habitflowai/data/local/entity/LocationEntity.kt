@@ -11,5 +11,8 @@ data class LocationEntity(
     val latitude: Double,
     val longitude: Double,
     val timestamp: Long = System.currentTimeMillis(),
+    val taskTitle: String? = null,
+    val placeName: String? = null,
+    val address: String? = null,
     val syncStatus: SyncStatus = SyncStatus.PENDING_CREATE
 )

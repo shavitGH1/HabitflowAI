@@ -7,6 +7,9 @@ export interface LocationData {
   id: string;
   userId: string;
   habitId?: string;
+  taskTitle?: string;
+  placeName?: string;
+  address?: string;
   latitude: number;
   longitude: number;
   timestamp: number;
@@ -18,6 +21,7 @@ export interface LocationData {
 export interface CreateLocationInput {
   userId: string;
   habitId?: string;
+  taskTitle?: string;
   latitude: number;
   longitude: number;
   timestamp?: number;
@@ -35,6 +39,18 @@ export class LocationRepository {
   async create(input: CreateLocationInput): Promise<LocationData> {
     const doc = await new this.locationModel(input).save();
     return this.toLocationData(doc);
+  }
+
+  async findByUser(userId: string): Promise<LocationData[]> {
+    const docs = await this.locationModel
+      .find({ userId })
+      .sort({ timestamp: -1 })
+      .exec();
+    return docs.map(doc => this.toLocationData(doc));
+  }
+
+  async updatePlaceName(id: string, placeName?: string, address?: string): Promise<void> {
+    await this.locationModel.updateOne({ _id: id }, { $set: { placeName, address } });
   }
 
   async findByBbox(
@@ -59,6 +75,9 @@ export class LocationRepository {
       id: (doc._id as { toString(): string }).toString(),
       userId: doc.userId,
       habitId: doc.habitId,
+      taskTitle: doc.taskTitle,
+      placeName: doc.placeName,
+      address: doc.address,
       latitude: doc.latitude,
       longitude: doc.longitude,
       timestamp: doc.timestamp,

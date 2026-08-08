@@ -20,6 +20,14 @@ export class LocationsController {
     return this.locationsService.recordLocation(req.user.id, dto);
   }
 
+  @Get('me')
+  @ApiOperation({ summary: 'Get the authenticated user completed-task locations' })
+  @ApiResponse({ status: 200, description: 'The user locations, newest first' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  getMyLocations(@Req() req: { user: { id: string } }) {
+    return this.locationsService.getMyLocations(req.user.id);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get public locations within a bounding box for the Activity Map' })
   @ApiQuery({ name: 'minLat', type: Number, example: 31.0 })

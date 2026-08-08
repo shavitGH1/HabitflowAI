@@ -12,6 +12,7 @@ import com.habitflowai.data.model.GenerateGoalsResponse
 import com.habitflowai.data.model.HabitRequest
 import com.habitflowai.data.model.HabitResponse
 import com.habitflowai.data.model.HomeResponse
+import com.habitflowai.data.model.LocationResponse
 import com.habitflowai.data.model.LocationSyncRequest
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.model.LoginResponse
@@ -75,6 +76,9 @@ interface HabitFlowApi {
 
     @POST("api/v1/locations")
     suspend fun recordLocation(@Body request: LocationSyncRequest): Response<Unit>
+
+    @GET("api/v1/locations/me")
+    suspend fun getMyLocations(): List<LocationResponse>
 
     // Chat
     @GET("api/v1/chats")

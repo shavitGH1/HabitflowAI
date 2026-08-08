@@ -11,6 +11,15 @@ export class LocationRecord {
   @Prop()
   habitId?: string;
 
+  @Prop({ default: '' })
+  taskTitle?: string;
+
+  @Prop({ default: '' })
+  placeName?: string;
+
+  @Prop({ default: '' })
+  address?: string;
+
   @Prop({ required: true })
   latitude: number;
 
@@ -23,7 +32,7 @@ export class LocationRecord {
   @Prop({ default: '' })
   personaType: string;
 
-  @Prop({ default: true })
+  @Prop({ default: false })
   isPublic: boolean;
 }
 
