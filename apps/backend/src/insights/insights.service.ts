@@ -3,12 +3,14 @@ import { AiService } from '../ai/ai.service';
 import { PERSONA_TYPES, PersonaType } from '../ai/pillars';
 import { HabitInsightsOutput } from '../ai/schemas/habit-insights.schema';
 import { FeedbackTally, MotivationVote } from '../ai/feedback/motivation-feedback.store';
+import { HabitRepository } from '../habits/habit.repository';
 import { UserRepository } from '../users/user.repository';
 
 @Injectable()
 export class InsightsService {
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly habitRepository: HabitRepository,
     private readonly ai: AiService,
   ) {}
 
@@ -24,12 +26,13 @@ export class InsightsService {
     const tasks = [...user.coreGoals, ...user.dailyVariations];
     const completed = tasks.filter((t) => t.completed);
     const missed = tasks.filter((t) => !t.completed);
+    const habits = await this.habitRepository.findByUserId(userId);
 
     return this.ai.getWeeklyInsights({
       userId: user.id,
       personaType,
       weekCompletionRate: tasks.length ? completed.length / tasks.length : 0,
-      currentStreak: 0,
+      currentStreak: this.currentStreak(habits),
       completedHabits: completed.map((t) => t.description),
       missedHabits: missed.map((t) => t.description),
     });
@@ -43,5 +46,9 @@ export class InsightsService {
 
   private toPersonaType(value: string): PersonaType | null {
     return (PERSONA_TYPES as readonly string[]).includes(value) ? (value as PersonaType) : null;
+  }
+
+  private currentStreak(habits: { streak: number }[]): number {
+    return habits.reduce((max, h) => Math.max(max, h.streak), 0);
   }
 }
