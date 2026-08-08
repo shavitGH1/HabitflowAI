@@ -15,9 +15,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.habitflowai.data.model.ClassifyPersonaResponse
+import com.habitflowai.data.model.ChatUiState
+import com.habitflowai.presentation.ui.chat.ChatOverlay
 import com.habitflowai.presentation.ui.persona.*
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.habitflowai.presentation.viewmodel.OnboardingUiState
+import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -152,6 +155,35 @@ fun ProfileContent(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Preview(showBackground = true, name = "Profile with Chat FAB")
+@Composable
+fun ProfileWithChatPreview() {
+    val personaType = "Grower"
+    HabitFlowTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ProfileContent(
+                uiState = OnboardingUiState(
+                    personaResult = ClassifyPersonaResponse(
+                        id = "1",
+                        personaType = personaType,
+                        motivationalMessage = "You are doing great! Keep growing.",
+                        success = true
+                    )
+                ),
+                onRetakeAssessment = {},
+                onNavigateToSuccessJournal = {},
+                onLogout = {}
+            )
+            ChatOverlay(
+                uiState = ChatUiState(personaType = personaType),
+                onToggleChat = {},
+                onInputChanged = {},
+                onSendMessage = {}
+            )
+        }
     }
 }
 
