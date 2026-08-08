@@ -2,6 +2,7 @@ package com.habitflowai.presentation.ui.profile
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,13 +25,15 @@ import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.SmartToy
 
 @Composable
 fun ProfileRoute(
     viewModel: OnboardingViewModel,
     onRetakeAssessment: () -> Unit,
     onNavigateToSuccessJournal: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onToggleChat: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -38,16 +41,19 @@ fun ProfileRoute(
         uiState = uiState,
         onRetakeAssessment = onRetakeAssessment,
         onNavigateToSuccessJournal = onNavigateToSuccessJournal,
-        onLogout = onLogout
+        onLogout = onLogout,
+        onToggleChat = onToggleChat
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileContent(
     uiState: OnboardingUiState,
     onRetakeAssessment: () -> Unit,
     onNavigateToSuccessJournal: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onToggleChat: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val personaResult = uiState.personaResult
@@ -68,93 +74,115 @@ fun ProfileContent(
         PersonaUiData.getDetails(personaResult.personaType)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        PersonaBadge(details = details)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        SummaryCard(
-            type = details.type,
-            message = personaResult.motivationalMessage,
-            details = details
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            onClick = onNavigateToSuccessJournal
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Rounded.Book,
-                    contentDescription = null,
-                    tint = details.endColor
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Profile", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onToggleChat) {
+                        Icon(
+                            imageVector = Icons.Rounded.SmartToy,
+                            contentDescription = "AI Assistant",
+                            tint = details.endColor
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent
                 )
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Success Journal",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+            )
+        },
+        containerColor = Color.Transparent
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(scrollState)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            PersonaBadge(details = details)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            SummaryCard(
+                type = details.type,
+                message = personaResult.motivationalMessage,
+                details = details
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                onClick = onNavigateToSuccessJournal
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Rounded.Book,
+                        contentDescription = null,
+                        tint = details.endColor
                     )
-                    Text(
-                        text = "Review your growth and milestones",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Success Journal",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Review your growth and milestones",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.Rounded.ChevronRight,
+                        contentDescription = null,
+                        tint = Color.Gray
                     )
                 }
-                Icon(
-                    Icons.Rounded.ChevronRight,
-                    contentDescription = null,
-                    tint = Color.Gray
-                )
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            TipsSection(details)
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            ChallengesSection(details)
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            OutlinedButton(
+                onClick = onRetakeAssessment,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Gray)
+            ) {
+                Text("Re-take Persona Assessment", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Logout", fontWeight = FontWeight.Bold, color = Color.White)
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        TipsSection(details)
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        ChallengesSection(details)
-
-        Spacer(modifier = Modifier.height(48.dp))
-
-        OutlinedButton(
-            onClick = onRetakeAssessment,
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Gray)
-        ) {
-            Text("Re-take Persona Assessment", fontWeight = FontWeight.Bold)
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = onLogout,
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-        ) {
-            Text("Logout", fontWeight = FontWeight.Bold, color = Color.White)
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -175,7 +203,8 @@ fun ProfileWithChatPreview() {
                 ),
                 onRetakeAssessment = {},
                 onNavigateToSuccessJournal = {},
-                onLogout = {}
+                onLogout = {},
+                onToggleChat = {}
             )
             ChatOverlay(
                 uiState = ChatUiState(personaType = personaType),
@@ -201,7 +230,8 @@ fun ProfilePreview() {
         ),
         onRetakeAssessment = {},
         onNavigateToSuccessJournal = {},
-        onLogout = {}
+        onLogout = {},
+        onToggleChat = {}
     )
 }
 
@@ -212,10 +242,10 @@ fun ProfileLogoutPreview() {
         Button(
             onClick = {},
             modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
         ) {
-            Text("Logout", fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.White)
+            Text("Logout", fontWeight = FontWeight.Bold, color = Color.White)
         }
     }
 }
