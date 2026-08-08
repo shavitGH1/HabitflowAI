@@ -367,4 +367,54 @@ describe('HabitsService', () => {
       expect(result.streak).toBe(1);
     });
   });
+
+  describe('getStats()', () => {
+    it('throws NotFoundException when the habit does not exist', async () => {
+      mockHabitRepository.findById.mockResolvedValue(null);
+
+      await expect(service.getStats(USER_ID, HABIT_ID)).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ForbiddenException when the caller does not own the habit', async () => {
+      mockHabitRepository.findById.mockResolvedValue(makeHabit({ userId: OTHER_USER_ID }));
+
+      await expect(service.getStats(USER_ID, HABIT_ID)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('returns correct completion aggregates for a habit completed every day since creation', async () => {
+      const createdAt = new Date();
+      createdAt.setUTCDate(createdAt.getUTCDate() - 3);
+
+      mockHabitRepository.findById.mockResolvedValue(
+        makeHabit({
+          createdAt: createdAt.toISOString(),
+          completionHistory: ['d1', 'd2', 'd3', 'd4'],
+          streak: 4,
+          consistencyScore: 0.8,
+          implementedAt: undefined,
+        }),
+      );
+
+      const result = await service.getStats(USER_ID, HABIT_ID);
+
+      expect(result).toEqual({
+        habitId: HABIT_ID,
+        totalCompletions: 4,
+        currentStreak: 4,
+        consistencyScore: 0.8,
+        daysSinceCreation: 4,
+        completionRate: 1,
+        implementedAt: undefined,
+      });
+    });
+
+    it('surfaces implementedAt when the habit has crossed the threshold', async () => {
+      const implementedAt = new Date().toISOString();
+      mockHabitRepository.findById.mockResolvedValue(makeHabit({ implementedAt }));
+
+      const result = await service.getStats(USER_ID, HABIT_ID);
+
+      expect(result.implementedAt).toBe(implementedAt);
+    });
+  });
 });

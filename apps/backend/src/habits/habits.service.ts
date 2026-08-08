@@ -4,11 +4,22 @@ import { GoalData, GoalRepository } from '../goals/goal.repository';
 import { AiService } from '../ai/ai.service';
 import { CreateHabitDto } from './dto/create-habit.dto';
 import { UpdateHabitDto } from './dto/update-habit.dto';
+import { daysBetween } from './utils/consistency.utils';
 
 export const MAX_HABITS_PER_GOAL = 3;
 export const MAX_STANDALONE_HABITS = 2;
 
 export type HabitWithWarning = HabitData & { relevanceWarning?: string };
+
+export interface HabitStats {
+  habitId: string;
+  totalCompletions: number;
+  currentStreak: number;
+  consistencyScore: number;
+  daysSinceCreation: number;
+  completionRate: number;
+  implementedAt?: string;
+}
 
 @Injectable()
 export class HabitsService {
@@ -83,6 +94,25 @@ export class HabitsService {
     if (!habit) throw new NotFoundException('Habit not found');
     if (habit.userId !== userId) throw new ForbiddenException('You do not own this habit');
     return (await this.habitRepository.completeHabit(id))!;
+  }
+
+  async getStats(userId: string, id: string): Promise<HabitStats> {
+    const habit = await this.habitRepository.findById(id);
+    if (!habit) throw new NotFoundException('Habit not found');
+    if (habit.userId !== userId) throw new ForbiddenException('You do not own this habit');
+
+    const today = new Date().toISOString().split('T')[0];
+    const daysSinceCreation = daysBetween(habit.createdAt.split('T')[0], today) + 1;
+
+    return {
+      habitId: habit.id,
+      totalCompletions: habit.completionHistory.length,
+      currentStreak: habit.streak,
+      consistencyScore: habit.consistencyScore,
+      daysSinceCreation,
+      completionRate: habit.completionHistory.length / daysSinceCreation,
+      implementedAt: habit.implementedAt,
+    };
   }
 
   private async checkRelevance(goal: GoalData, habitTitle: string, habitDescription?: string): Promise<string | undefined> {

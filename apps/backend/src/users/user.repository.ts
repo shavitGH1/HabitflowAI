@@ -5,6 +5,12 @@ import { Model } from 'mongoose';
 import { GoalTask } from '../dto/goal.dto';
 import { User, UserDocument } from './schemas/user.schema';
 
+export interface Achievement {
+  goalId: string;
+  medal: string;
+  awardedAt: string;
+}
+
 export interface UserData {
   id: string;
   email: string;
@@ -23,6 +29,7 @@ export interface UserData {
   failurePatterns?: string[];
   confidenceScore?: number;
   fcmToken?: string;
+  achievements?: Achievement[];
 }
 
 @Injectable()
@@ -95,6 +102,15 @@ export class UserRepository {
     return doc ? this.toUserData(doc) : null;
   }
 
+  async addAchievement(userId: string, achievement: Achievement): Promise<UserData | null> {
+    const doc = await this.userModel.findByIdAndUpdate(
+      userId,
+      { $push: { achievements: achievement } },
+      { new: true },
+    );
+    return doc ? this.toUserData(doc) : null;
+  }
+
   async completeTask(userId: string, taskId: string): Promise<boolean> {
     const inCore = await this.userModel.findOneAndUpdate(
       { _id: userId, 'coreGoals.id': taskId },
@@ -128,6 +144,7 @@ export class UserRepository {
       failurePatterns: doc.failurePatterns,
       confidenceScore: doc.confidenceScore,
       fcmToken: doc.fcmToken,
+      achievements: (doc.achievements ?? []).map(a => ({ goalId: a.goalId, medal: a.medal, awardedAt: a.awardedAt.toISOString() })),
     };
   }
 }
