@@ -14,6 +14,10 @@ import {
 import { HabitInsightsFeature, HabitInsightsInput } from './features/habit-insights.feature';
 import { CoachPhrasingFeature, CoachPhrasingInput } from './features/coach-phrasing.feature';
 import {
+  HabitGoalRelevanceFeature,
+  HabitGoalRelevanceInput,
+} from './features/habit-goal-relevance.feature';
+import {
   MotivationFeedbackStore,
   MotivationVote,
   FeedbackTally,
@@ -22,6 +26,7 @@ import { PersonaClassifierOutput } from './schemas/persona-classifier.schema';
 import { PortfolioGeneratorOutput } from './schemas/portfolio-generator.schema';
 import { DailyMotivationOutput } from './schemas/daily-motivation.schema';
 import { HabitInsightsOutput } from './schemas/habit-insights.schema';
+import { HabitGoalRelevanceOutput } from './schemas/habit-goal-relevance.schema';
 import { GeminiClient } from './gemini.client';
 
 type GoalInput = Pick<UserData, 'goal' | 'personaType' | 'email'>;
@@ -36,6 +41,7 @@ export class AiService {
     private readonly driftDetector: PersonaDriftDetectorFeature,
     private readonly habitInsights: HabitInsightsFeature,
     private readonly coachPhrasing: CoachPhrasingFeature,
+    private readonly habitGoalRelevance: HabitGoalRelevanceFeature,
     private readonly feedbackStore: MotivationFeedbackStore,
   ) {}
 
@@ -73,6 +79,10 @@ export class AiService {
 
   phraseCoachMessage(input: CoachPhrasingInput): Promise<string> {
     return this.coachPhrasing.phrase(input);
+  }
+
+  checkHabitGoalRelevance(input: HabitGoalRelevanceInput): Promise<HabitGoalRelevanceOutput> {
+    return this.habitGoalRelevance.check(input);
   }
 
   recordMotivationFeedback(userId: string, vote: MotivationVote): FeedbackTally {

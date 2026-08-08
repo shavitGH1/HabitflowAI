@@ -29,6 +29,15 @@ export class Habit {
 
   @Prop({ default: false })
   isArchived: boolean;
+
+  @Prop()
+  goalId?: string;
+
+  @Prop({ default: 0 })
+  consistencyScore: number;
+
+  @Prop()
+  implementedAt?: Date;
 }
 
 export const HabitSchema = SchemaFactory.createForClass(Habit);
