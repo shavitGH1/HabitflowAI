@@ -1,4 +1,5 @@
 import { PersonaType } from '../ai/pillars';
+import { ConfirmCoachChangeResult } from '../personas/personas.service';
 
 export const COACH_USER_ID = '000000000000000000000c0a';
 
@@ -33,5 +34,18 @@ export const NOTHING_DONE_TODAY = 'Nothing was marked as done today.';
 export const completedTodayLine = (titles: string[]): string =>
   `Today you completed: ${titles.join(', ')}.`;
 
+export const notesTodayLine = (notes: string[]): string => `You noted: ${notes.join('; ')}.`;
+
 export const personaSwitchLine = (persona: string): string =>
   `Your recent pattern looks closer to ${persona}. You can switch persona in the app.`;
+
+export const confirmationLine = (result: ConfirmCoachChangeResult): string => {
+  switch (result.type) {
+    case 'personaSwitch':
+      return `Done. Your persona is now ${result.personaType}.`;
+    case 'adjustDifficulty':
+      return 'Done. I adjusted today\'s plan for you.';
+    case 'forfeitGoal':
+      return `Done. "${result.goal.title}" is closed. Start a new goal whenever you are ready.`;
+  }
+};

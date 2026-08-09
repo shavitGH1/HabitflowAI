@@ -4,8 +4,6 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DriftCheckDto } from './dto/drift-check.dto';
 import { ReclassifyDto } from './dto/reclassify.dto';
-import { CoachChatDto } from './dto/coach-chat.dto';
-import { ConfirmCoachChangeDto } from './dto/confirm-coach-change.dto';
 import { PersonasService } from './personas.service';
 
 @ApiTags('personas')
@@ -39,30 +37,5 @@ export class PersonasController {
   @ApiResponse({ status: 429, description: 'Too many requests' })
   driftCheck(@Req() req: { user: { id: string } }, @Body() dto: DriftCheckDto) {
     return this.personasService.driftCheck(req.user.id, dto);
-  }
-
-  @Post('coach-chat')
-  @HttpCode(200)
-  @UseGuards(ThrottlerGuard)
-  @ApiOperation({ summary: 'Send a message to the coaching agent and get a reply plus an optional proposed change' })
-  @ApiResponse({ status: 200, description: 'Coach reply, with an optional proposedChange the user must explicitly confirm' })
-  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  @ApiResponse({ status: 429, description: 'Too many requests' })
-  coachChat(@Req() req: { user: { id: string } }, @Body() dto: CoachChatDto) {
-    return this.personasService.coachChat(req.user.id, dto);
-  }
-
-  @Post('coach-chat/confirm')
-  @HttpCode(200)
-  @UseGuards(ThrottlerGuard)
-  @ApiOperation({ summary: 'Apply a coaching-agent proposed change after explicit user confirmation' })
-  @ApiResponse({ status: 200, description: 'Change applied' })
-  @ApiResponse({ status: 400, description: 'Only an active goal can be forfeited' })
-  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-  @ApiResponse({ status: 404, description: 'User or goal not found' })
-  @ApiResponse({ status: 429, description: 'Too many requests' })
-  confirmCoachChange(@Req() req: { user: { id: string } }, @Body() dto: ConfirmCoachChangeDto) {
-    return this.personasService.confirmCoachChange(req.user.id, dto);
   }
 }

@@ -12,6 +12,7 @@ export interface CoachStats {
   streak: number;
   oldestHabitAgeDays: number;
   completedToday: string[];
+  notesToday: string[];
 }
 
 export const toDateKey = (date: Date): string => date.toISOString().split('T')[0];
@@ -37,6 +38,9 @@ export const computeStats = (habits: HabitData[], now: Date): CoachStats => {
     completedToday: habits
       .filter((habit) => habit.completionHistory.includes(today))
       .map((habit) => habit.title),
+    notesToday: habits.flatMap((habit) =>
+      habit.completionNotes.filter((entry) => entry.date === today).map((entry) => entry.note),
+    ),
   };
 };
 
