@@ -9,7 +9,7 @@ export interface PostData {
   habitName: string;
   completionNote: string;
   imageUrl?: string;
-  likeCount: number;
+  likes: string[];
   createdAt: string;
 }
 
@@ -44,9 +44,24 @@ export class PostRepository {
     return posts.map(doc => this.toPostData(doc));
   }
 
+  async findPaginatedByAuthorIds(authorIds: string[], page: number, limit: number): Promise<PostData[]> {
+    const posts = await this.postModel
+      .find({ authorId: { $in: authorIds } })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .exec();
+    return posts.map(doc => this.toPostData(doc));
+  }
+
   async findById(id: string): Promise<PostData | null> {
     const post = await this.postModel.findById(id).exec();
     return post ? this.toPostData(post) : null;
+  }
+
+  async setLikes(id: string, likes: string[]): Promise<PostData | null> {
+    const doc = await this.postModel.findByIdAndUpdate(id, { likes }, { returnDocument: 'after' }).exec();
+    return doc ? this.toPostData(doc) : null;
   }
 
   async deletePost(id: string): Promise<void> {
@@ -60,7 +75,7 @@ export class PostRepository {
       habitName: doc.habitName,
       completionNote: doc.completionNote,
       imageUrl: doc.imageUrl,
-      likeCount: doc.likeCount,
+      likes: doc.likes,
       createdAt: (doc as unknown as { createdAt: Date }).createdAt.toISOString(),
     };
   }

@@ -63,10 +63,16 @@ export class PostsController {
   @ApiOperation({ summary: 'Paginated social feed' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'friendsOnly', required: false, type: Boolean, example: false })
   @ApiResponse({ status: 200, description: 'Array of posts' })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-  getFeed(@Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.postsService.getFeed(Number(page), Number(limit));
+  getFeed(
+    @Req() req: { user: { id: string } },
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Query('friendsOnly') friendsOnly = 'false',
+  ) {
+    return this.postsService.getFeed(req.user.id, Number(page), Number(limit), friendsOnly === 'true');
   }
 
   @Get('me')
@@ -86,5 +92,24 @@ export class PostsController {
   @ApiResponse({ status: 404, description: 'Post not found' })
   delete(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.postsService.deletePost(req.user.id, id);
+  }
+
+  @Post(':id/like')
+  @ApiOperation({ summary: 'Like a post (idempotent)' })
+  @ApiResponse({ status: 201, description: 'Post liked' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'Post not found' })
+  like(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.postsService.likePost(req.user.id, id);
+  }
+
+  @Delete(':id/like')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Unlike a post (idempotent)' })
+  @ApiResponse({ status: 200, description: 'Post unliked' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'Post not found' })
+  unlike(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.postsService.unlikePost(req.user.id, id);
   }
 }

@@ -18,6 +18,20 @@ class GoalTask {
 
 const GoalTaskSchema = SchemaFactory.createForClass(GoalTask);
 
+@Schema({ _id: false })
+class Achievement {
+  @Prop({ required: true })
+  goalId: string;
+
+  @Prop({ required: true })
+  medal: string;
+
+  @Prop({ required: true })
+  awardedAt: Date;
+}
+
+const AchievementSchema = SchemaFactory.createForClass(Achievement);
+
 @Schema({ timestamps: true })
 export class User {
   @Prop({ required: true, unique: true })
@@ -67,6 +81,9 @@ export class User {
 
   @Prop()
   fcmToken?: string;
+
+  @Prop({ type: [AchievementSchema], default: [] })
+  achievements: Achievement[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

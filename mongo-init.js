@@ -220,3 +220,116 @@ if (!db.users.findOne({ _id: COACH_ID })) {
   });
 }
 
+const demoUserIds = {};
+db.users.find({ email: { $in: users.map(u => u.email) } }, { email: 1 }).forEach(u => {
+  demoUserIds[u.email] = u._id.toString();
+});
+
+const alexId = demoUserIds['demo.alex@habitflow.ai'];
+const mayaId = demoUserIds['demo.maya@habitflow.ai'];
+const benId = demoUserIds['demo.ben@habitflow.ai'];
+const saraId = demoUserIds['demo.sara@habitflow.ai'];
+
+if (alexId && mayaId && !db.chats.findOne({ isGroup: false, participantIds: { $all: [alexId, mayaId], $size: 2 } })) {
+  const directChatId = db.chats.insertOne({
+    participantIds: [alexId, mayaId],
+    isGroup: false,
+    admins: [],
+    unreadCount: {},
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).insertedId;
+
+  db.messages.insertOne({
+    chatId: directChatId.toString(),
+    senderId: alexId,
+    text: 'Hey! Saw your streak — nice work this week.',
+    likes: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const directLastMsgId = db.messages.insertOne({
+    chatId: directChatId.toString(),
+    senderId: mayaId,
+    text: 'Thanks! Trying to keep it going through the weekend.',
+    likes: [alexId],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).insertedId;
+
+  db.chats.updateOne({ _id: directChatId }, { $set: { lastMessage: directLastMsgId.toString() } });
+}
+
+if (alexId && mayaId && benId && saraId && !db.chats.findOne({ isGroup: true, name: 'Habit Squad' })) {
+  const groupChatId = db.chats.insertOne({
+    participantIds: [alexId, mayaId, benId, saraId],
+    isGroup: true,
+    name: 'Habit Squad',
+    admins: [alexId],
+    owner: alexId,
+    description: 'Keeping each other accountable.',
+    unreadCount: {},
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).insertedId;
+
+  db.messages.insertOne({
+    chatId: groupChatId.toString(),
+    senderId: alexId,
+    text: "Let's crush this week!",
+    likes: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const groupLastMsgId = db.messages.insertOne({
+    chatId: groupChatId.toString(),
+    senderId: saraId,
+    text: "I'm in — checking off my morning routine now.",
+    likes: [alexId, mayaId, benId],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).insertedId;
+
+  db.chats.updateOne({ _id: groupChatId }, { $set: { lastMessage: groupLastMsgId.toString() } });
+}
+
+if (alexId && mayaId && benId && saraId && db.posts.countDocuments() === 0) {
+  const postDefs = [
+    { authorId: alexId, habitName: '5km morning run', completionNote: 'New personal best today!', likes: [mayaId, benId] },
+    { authorId: mayaId, habitName: 'Daily meditation (15 min)', completionNote: 'Stayed calm through a stressful day.', likes: [alexId, benId] },
+    { authorId: benId, habitName: 'Group workout session', completionNote: 'Got the whole crew moving today.', likes: [alexId, mayaId, saraId] },
+    { authorId: saraId, habitName: 'Join a community challenge', completionNote: 'Signed up for the 30-day challenge!', likes: [mayaId] },
+  ];
+
+  const postIds = postDefs.map(def => db.posts.insertOne({
+    ...def,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).insertedId);
+
+  // Mix of interaction types across the 8 seeded likes: 5 liked-only (Ben/post0,
+  // Alex+Ben/post1, Alex+Maya/post2), 3 liked-and-commented (Maya/post0, Sara/post2,
+  // Maya/post3), 2 commented-without-liking (Sara/post0, Alex/post3) - not everyone
+  // who liked a post commented on it too.
+  const commentDefs = [
+    { postId: postIds[0].toString(), userId: mayaId, text: 'Incredible pace!' },
+    { postId: postIds[0].toString(), userId: saraId, text: 'Beat your own record next!' },
+    { postId: postIds[2].toString(), userId: saraId, text: 'Count me in next week.' },
+    { postId: postIds[3].toString(), userId: mayaId, text: 'So proud of you for stepping up!' },
+    { postId: postIds[3].toString(), userId: alexId, text: "Which challenge? I'm interested!" },
+  ];
+  commentDefs.forEach(def => db.comments.insertOne({ ...def, createdAt: new Date(), updatedAt: new Date() }));
+}
+
+if (alexId && mayaId && benId && saraId && db.follows.countDocuments() === 0) {
+  const followDefs = [
+    { followerId: mayaId, followingId: alexId },
+    { followerId: benId, followingId: alexId },
+    { followerId: saraId, followingId: mayaId },
+    { followerId: alexId, followingId: saraId },
+  ];
+  followDefs.forEach(def => db.follows.insertOne({ ...def, createdAt: new Date(), updatedAt: new Date() }));
+}
+
