@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, IsMongoId, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateHabitDto {
   @IsString()
@@ -21,4 +21,12 @@ export class CreateHabitDto {
   @Min(1)
   @ApiPropertyOptional({ example: 1, minimum: 1 })
   targetCount?: number;
+
+  @IsOptional()
+  @IsMongoId()
+  @ApiPropertyOptional({
+    example: '64f1a2b3c4d5e6f7a8b9c0d1',
+    description: 'Link this habit to your active goal (max 3 linked habits per goal). Omit for a standalone habit (max 2 per user).',
+  })
+  goalId?: string;
 }
