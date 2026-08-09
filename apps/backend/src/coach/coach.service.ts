@@ -8,7 +8,10 @@ import { MessageData } from '../chat/chat.repository';
 import { ChatEvent } from '../chat/enums/chat-event.enum';
 import { HabitRepository } from '../habits/habit.repository';
 import { logger } from '../logger';
-import { PersonasService } from '../personas/personas.service';
+import { CoachChatDto } from '../personas/dto/coach-chat.dto';
+import { ConfirmCoachChangeDto } from '../personas/dto/confirm-coach-change.dto';
+import { ConfirmCoachChangeResult, PersonasService } from '../personas/personas.service';
+import { ProposedChange } from '../ai/schemas/coaching-agent.schema';
 import { UserData, UserRepository } from '../users/user.repository';
 import {
   CoachStats,
@@ -25,8 +28,16 @@ import {
   PERSONA_LINES,
   TIPS,
   completedTodayLine,
+  confirmationLine,
+  notesTodayLine,
   personaSwitchLine,
 } from './coach.templates';
+
+export interface CoachConversationResult {
+  chatId: string;
+  reply: string;
+  proposedChange: ProposedChange | null;
+}
 
 @Injectable()
 export class CoachService {
@@ -55,11 +66,13 @@ export class CoachService {
     if (!force && (await this.alreadyPostedToday(chatId))) return null;
 
     const stats = await this.loadStats(userId);
-    const base = stats.completedToday.length
+    const done = stats.completedToday.length
       ? completedTodayLine(stats.completedToday)
       : NOTHING_DONE_TODAY;
+    const notes = stats.notesToday.length ? notesTodayLine(stats.notesToday) : '';
+    const base = [done, notes, this.personaLine(user)].filter(Boolean).join(' ');
 
-    const text = await this.phrase(user, stats, `${base} ${this.personaLine(user)}`.trim(), 'daily');
+    const text = await this.phrase(user, stats, base, 'daily');
     return this.post(chatId, text);
   }
 
@@ -78,6 +91,23 @@ export class CoachService {
     const suggestion = await this.personaSuggestion(user, stats);
 
     return this.post(chatId, suggestion ? `${phrased} ${suggestion}` : phrased);
+  }
+
+  async converse(userId: string, dto: CoachChatDto): Promise<CoachConversationResult> {
+    await this.loadUser(userId);
+    const chatId = await this.ensureCoachChat(userId);
+
+    await this.postAs(userId, chatId, dto.message);
+    const { reply, proposedChange } = await this.personasService.coachChat(userId, dto);
+    await this.post(chatId, reply);
+
+    return { chatId, reply, proposedChange };
+  }
+
+  async confirmChange(userId: string, dto: ConfirmCoachChangeDto): Promise<ConfirmCoachChangeResult> {
+    const result = await this.personasService.confirmCoachChange(userId, dto);
+    await this.post(await this.ensureCoachChat(userId), confirmationLine(result));
+    return result;
   }
 
   private async runForAllUsers(label: string, run: (userId: string) => Promise<unknown>): Promise<void> {
@@ -119,7 +149,11 @@ export class CoachService {
   }
 
   private async post(chatId: string, text: string): Promise<MessageData> {
-    const message = await this.chatService.postMessage(COACH_USER_ID, chatId, text);
+    return this.postAs(COACH_USER_ID, chatId, text);
+  }
+
+  private async postAs(senderId: string, chatId: string, text: string): Promise<MessageData> {
+    const message = await this.chatService.postMessage(senderId, chatId, text);
     this.chatGateway.emitToRoom(chatId, ChatEvent.NEW_MESSAGE, { ...message });
     return message;
   }

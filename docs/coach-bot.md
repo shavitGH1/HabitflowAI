@@ -1,19 +1,30 @@
 # Coach Bot — Feature Specification
 
 Author: Member 3 (AI / Persona Engine)
-Status: Approved for implementation
-Scope: `apps/backend/src/coach/` (new module), one small change in `ChatModule`
+Status: Implemented
+Scope: `apps/backend/src/coach/`, the `coach-phrasing` and `coaching-agent` features under `src/ai/`
 
 ## 1. Concept
 
 A coach bot is a seeded user that participates in a normal 1:1 chat with every user.
-It posts a short daily summary of what the user completed, a weekly grade with one tip,
-and — once the user has 30 days of tracked history — an optional persona-switch suggestion.
+It works in both directions:
 
-The bot separates **what to say** from **how to say it**. A deterministic rule engine picks the
-message using fixed numeric thresholds, and a Gemini phrasing layer rewrites that decision in the
-user's persona tone. Every AI call has a static template fallback, so the bot still works — and
-still says the same thing — when the model is unavailable.
+| Direction | Trigger | Engine |
+|---|---|---|
+| Proactive | daily and weekly cron | deterministic rules, Gemini rewrites the wording |
+| Reactive | the user sends a message | conversational agent, may propose a change |
+
+Proactively it posts a short daily summary of what the user completed, a weekly grade with one
+tip, and — once the user has 30 days of tracked history — an optional persona-switch suggestion.
+Reactively it answers questions and can propose a concrete change that the user must confirm.
+
+Everything lands in one chat thread, so the transcript is the single record of the coaching
+relationship.
+
+The proactive path separates **what to say** from **how to say it**. A deterministic rule engine
+picks the message using fixed numeric thresholds, and a Gemini phrasing layer rewrites that
+decision in the user's persona tone. Every AI call has a static template fallback, so the bot
+still works — and still says the same thing — when the model is unavailable.
 
 The existing Gemini-based `GET /ai/weekly-insights` endpoint stays untouched.
 
@@ -34,6 +45,8 @@ This removes almost all client work:
 exist as a real `User` document with a fixed `_id`.
 
 ## 3. The rule engine
+
+This section covers the proactive path only. The conversational path is section 3.6.
 
 Two inputs, both already present on `HabitData`:
 
@@ -109,14 +122,29 @@ Rules for the AI call, following the existing `src/ai/` conventions:
 Because the fallback is the template, the 10 static strings remain the ground truth of the
 feature and are what the unit tests assert against.
 
+### 3.6 Conversational path
+
+When the user sends a message, `CoachService.converse` writes it into the coach chat, calls
+`PersonasService.coachChat`, and writes the reply back into the same chat.
+
+The agent sees the user's persona, active goal, habits with their consistency scores and streaks,
+and any pending drift suggestion. It returns a reply and optionally a `proposedChange`:
+`personaSwitch`, `adjustDifficulty` or `forfeitGoal`.
+
+A proposed change is never applied on its own. The client must call the confirm endpoint, and the
+bot then posts a confirmation line so the transcript records what was agreed. A `forfeitGoal`
+proposal that does not match the user's active goal is dropped before it reaches the client.
+
+On any model failure the agent returns a fixed apology reply with no proposed change.
+
 ## 4. Module layout
 
 ```
 apps/backend/src/coach/
-  coach.templates.ts    bot id, 4 band sentences, 6 persona lines, 3 tips
+  coach.templates.ts    bot id, 4 band sentences, 6 persona lines, 3 tips, confirmation lines
   coach.rules.ts        computeStats / pickBand / pickTip  (pure, no Nest, no DB)
-  coach.service.ts      ensureCoachChat, postDaily, postWeekly, both @Cron jobs
-  coach.controller.ts   POST /coach/check-in
+  coach.service.ts      ensureCoachChat, postDaily, postWeekly, converse, confirmChange, @Cron
+  coach.controller.ts   check-in, weekly-review, chat, chat/confirm
   coach.module.ts
   coach.rules.spec.ts
 
@@ -125,20 +153,27 @@ apps/backend/src/ai/
   schemas/coach-phrasing.schema.ts
   features/coach-phrasing.feature.ts
   features/coach-phrasing.feature.spec.ts
+  features/coaching-agent.feature.ts
 ```
 
 `coach.rules.ts` has no framework, database or AI imports. All rule tests target it directly.
-The AI files follow the established `prompts / schemas / features` pattern, and
-`AiService` gains one method, `phraseCoachMessage`.
+The AI files follow the established `prompts / schemas / features` pattern. `AiService` exposes
+`phraseCoachMessage` for the proactive path and `coachChat` for the conversational one.
+
+`CoachService` is the only writer to the coach chat. `PersonasService` keeps the agent logic and
+knows nothing about chat.
 
 ## 5. API
 
 | Method | Route | Purpose |
 |---|---|---|
-| `POST` | `/api/v1/coach/check-in` | Runs the daily job for the caller immediately |
+| `POST` | `/api/v1/coach/chat` | Send a message; both sides are stored in the coach chat |
+| `POST` | `/api/v1/coach/chat/confirm` | Apply a change the coach proposed |
+| `POST` | `/api/v1/coach/check-in` | Run the daily job for the caller immediately |
+| `POST` | `/api/v1/coach/weekly-review` | Run the weekly job for the caller immediately |
 
-Guarded by `JwtAuthGuard`. This endpoint exists so the feature can be demonstrated without
-waiting for a cron window.
+All guarded by `JwtAuthGuard`; the two conversational routes also use `ThrottlerGuard`.
+The last two exist so the feature can be demonstrated without waiting for a cron window.
 
 Reading coach messages uses the existing chat endpoints. No new read API.
 
@@ -158,7 +193,8 @@ created today. No new collection or flag is introduced.
 
 `ChatService.postMessage`, `ChatService.assertParticipant`, `ChatGateway.emitToRoom`,
 `HabitRepository.findByUserId`, `UserRepository.findAllUsers`, `PersonasService.driftCheck`,
-`GeminiClient`, `PROMPT_SAFETY_GUARDRAIL`.
+`PersonasService.coachChat`, `PersonasService.confirmCoachChange`, `GeminiClient`,
+`PROMPT_SAFETY_GUARDRAIL`.
 
 ## 8. Task assignment
 
@@ -172,24 +208,29 @@ created today. No new collection or flag is introduced.
 
 ### Member 2 — Android UI
 
-No required work for this version. The coach chat renders through the existing chat screen.
-Optional follow-up: a bot badge and a read-only input state when the chat participant is the bot.
+The coach chat renders through the existing chat screen with no changes. To use the
+conversational path, send the user's text to `POST /coach/chat`; when the response contains a
+`proposedChange`, show a confirm action that calls `POST /coach/chat/confirm`. Never apply a
+proposed change without an explicit user tap.
 
 ### Member 3 — AI / Persona Engine
 
 Owns the whole `src/coach/` module — the rule engine, the templates, the cron jobs, the
-controller and the tests — plus the `coach-phrasing` prompt, schema and feature under `src/ai/`.
+controller and the tests — plus the `coach-phrasing` and `coaching-agent` prompts, schemas and
+features under `src/ai/`.
 
 ### Member 4 — Android Data Layer
 
-No required work for this version. Existing chat sync covers the coach chat.
+No required work for this version. Existing chat sync covers the coach chat, including messages
+the user sends to the coach.
 
 ## 9. Out of scope
 
-Free-text understanding, natural language parsing, quick-reply buttons, push notifications,
-group coach chats, new Mongo schemas, new drift mathematics, and any Android change.
+Quick-reply buttons, push notifications, group coach chats, new drift mathematics, and any
+change to the `Chat`, `Message` or `User` schemas.
 
-The model rewrites messages; it never reads user input and never decides the verdict.
+The phrasing model rewrites messages and never decides the verdict. The conversational agent may
+propose a change but can never apply one without explicit user confirmation.
 
 ## 10. Verification
 
@@ -199,4 +240,5 @@ The model rewrites messages; it never reads user input and never decides the ver
    returned as-is and that an API error, malformed JSON and an over-length message each fall back
    to the static template.
 3. `POST /coach/check-in` returns a created message, and `unreadCount` increments for the user.
-4. `pnpm test` and `pnpm build` pass from the repo root.
+4. `POST /coach/chat` stores the user's message and the reply in the same chat.
+5. `pnpm test` and `pnpm build` pass from the repo root.

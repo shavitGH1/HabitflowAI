@@ -1,5 +1,4 @@
-// STOPGAP (Nir):
-// swap the prompt/schema/logic below freely, PersonasService only depends on AiService.coachChat().
+// Owner: Member 3 (AI). Prompt, schema and logic are free to change — callers only depend on AiService.coachChat().
 import { Injectable } from '@nestjs/common';
 import { GeminiClient } from '../gemini.client';
 import { logger } from '../../logger';
