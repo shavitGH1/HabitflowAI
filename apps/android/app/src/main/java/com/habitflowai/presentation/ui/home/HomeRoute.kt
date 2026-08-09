@@ -36,6 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.habitflowai.presentation.viewmodel.HomeViewModel
 import com.habitflowai.data.model.HomeGoalTask
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.SmartToy
 import com.habitflowai.presentation.ui.chat.ChatOverlay
 import com.habitflowai.data.model.ChatUiState
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
@@ -47,7 +48,8 @@ import com.habitflowai.data.model.HomeResponse
 fun HomeRoute(
     personaResult: ClassifyPersonaResponse?,
     userId: String,
-    onNavigateToReassessment: () -> Unit
+    onNavigateToReassessment: () -> Unit,
+    onToggleChat: () -> Unit
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
@@ -61,7 +63,8 @@ fun HomeRoute(
         personaResult = personaResult,
         onCompleteTask = { viewModel.completeTask(it) },
         onDismissDriftBanner = { viewModel.dismissDriftBanner() },
-        onStartReassessment = onNavigateToReassessment
+        onStartReassessment = onNavigateToReassessment,
+        onToggleChat = onToggleChat
     )
 }
 
@@ -72,7 +75,8 @@ fun HomeScreen(
     personaResult: ClassifyPersonaResponse?,
     onCompleteTask: (String) -> Unit,
     onDismissDriftBanner: () -> Unit,
-    onStartReassessment: () -> Unit
+    onStartReassessment: () -> Unit,
+    onToggleChat: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val today = remember { LocalDate.now() }
@@ -84,7 +88,7 @@ fun HomeScreen(
     }
 
     val homeData = uiState.homeData
-    if (homeData == null && !uiState.isLoading) {
+    if (homeData == null) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -119,10 +123,7 @@ fun HomeScreen(
     }
 
     var checklistState by remember(goalsForSelectedDate) {
-        val map = mutableMapOf<String, Boolean>()
-        goalsForSelectedDate.forEach { task ->
-            map[task.id] = task.completed
-        }
+        val map = goalsForSelectedDate.associate { it.id to it.completed }
         mutableStateOf(map)
     }
 
@@ -140,6 +141,15 @@ fun HomeScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("HabitFlow AI", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onToggleChat) {
+                        Icon(
+                            imageVector = Icons.Rounded.SmartToy,
+                            contentDescription = "AI Assistant",
+                            tint = endColor
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.Transparent,
                     titleContentColor = Color(0xFF37474F)
@@ -329,7 +339,6 @@ fun GoalPlanSection(
             val isChecked = checkedGoals[task.id] ?: task.completed
             InteractiveGoalItem(
                 goalText = task.description,
-                score = if (personaType == "Achiever") task.points else 0,
                 isChecked = isChecked,
                 onCheckedChange = { onGoalToggled(task.id, it) }
             )
@@ -484,7 +493,6 @@ fun PlanExplanationSection(personaType: String) {
 @Composable
 fun InteractiveGoalItem(
     goalText: String,
-    score: Int,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
@@ -634,8 +642,17 @@ fun LeaderboardRow(rank: Int, name: String, score: Int, highlight: Boolean) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = name, fontWeight = if (highlight) FontWeight.ExtraBold else FontWeight.Medium, color = if (highlight) Color(0xFFE65100) else Color(0xFF5D4037))
+            Text(
+                text = "$rank. $name",
+                fontWeight = if (highlight) FontWeight.ExtraBold else FontWeight.Medium,
+                color = if (highlight) Color(0xFFE65100) else Color(0xFF5D4037)
+            )
         }
+        Text(
+            text = "$score pts",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (highlight) Color(0xFFE65100) else Color.Gray
+        )
     }
 }
 
@@ -742,8 +759,8 @@ fun ComponentGalleryPreview() {
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Text("Goal Items", style = MaterialTheme.typography.titleLarge)
-            InteractiveGoalItem("Unchecked Task", 10, false, {})
-            InteractiveGoalItem("Checked Task", 10, true, {})
+            InteractiveGoalItem("Unchecked Task", false, {})
+            InteractiveGoalItem("Checked Task", true, {})
 
             HorizontalDivider()
             Text("Progress Section", style = MaterialTheme.typography.titleLarge)
@@ -841,7 +858,8 @@ fun HomeWithChatPreview() {
                 personaResult = null,
                 onCompleteTask = {},
                 onDismissDriftBanner = {},
-                onStartReassessment = {}
+                onStartReassessment = {},
+                onToggleChat = {}
             )
             ChatOverlay(
                 uiState = ChatUiState(personaType = personaType),
@@ -881,7 +899,8 @@ fun HomePersonaPreview(personaType: String) {
             personaResult = samplePersona,
             onCompleteTask = {},
             onDismissDriftBanner = {},
-            onStartReassessment = {}
+            onStartReassessment = {},
+            onToggleChat = {}
         )
     }
 }
