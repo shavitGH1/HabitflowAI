@@ -2,8 +2,8 @@ package com.habitflowai.presentation.ui.chat
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,10 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,7 +30,6 @@ import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.data.model.ChatUiState
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
-import kotlin.math.roundToInt
 
 @Composable
 fun ChatOverlay(
@@ -40,88 +37,32 @@ fun ChatOverlay(
     onToggleChat: () -> Unit,
     onInputChanged: (String) -> Unit,
     onSendMessage: () -> Unit,
-    onUpdateFabPosition: (Float, Float) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
-    val currentOnUpdateFabPosition by rememberUpdatedState(onUpdateFabPosition)
-    val currentOnToggleChat by rememberUpdatedState(onToggleChat)
-    val currentFabOffsetX by rememberUpdatedState(uiState.fabOffsetX)
-    val currentFabOffsetY by rememberUpdatedState(uiState.fabOffsetY)
-
-    Box(
-        modifier = modifier.fillMaxSize()
+    AnimatedVisibility(
+        visible = uiState.isChatOpen,
+        enter = fadeIn() + scaleIn(initialScale = 0.9f),
+        exit = fadeOut() + scaleOut(targetScale = 0.9f)
     ) {
-        // Chat Window
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
-                .padding(bottom = 100.dp, end = 16.dp),
-            contentAlignment = Alignment.BottomEnd
+                .background(Color.Black.copy(alpha = 0.4f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onToggleChat
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            AnimatedVisibility(
-                visible = uiState.isChatOpen,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut()
-            ) {
-                ChatCard(
-                    uiState = uiState,
-                    onInputChanged = onInputChanged,
-                    onSendMessage = onSendMessage,
-                    onClose = onToggleChat
-                )
-            }
-        }
-
-        // Floating Action Button - Draggable
-        AnimatedVisibility(
-            visible = !uiState.isChatOpen,
-            enter = fadeIn() + scaleIn(),
-            exit = fadeOut() + scaleOut(),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 100.dp, end = 16.dp)
-                .offset { IntOffset(uiState.fabOffsetX.roundToInt(), uiState.fabOffsetY.roundToInt()) }
-        ) {
-            val personaDetails = PersonaUiData.getDetails(uiState.personaType)
-            val gradient = Brush.linearGradient(
-                colors = listOf(personaDetails.startColor, personaDetails.endColor)
-            )
-
-            Surface(
+            ChatCard(
+                uiState = uiState,
+                onInputChanged = onInputChanged,
+                onSendMessage = onSendMessage,
+                onClose = onToggleChat,
                 modifier = Modifier
-                    .size(64.dp)
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            currentOnUpdateFabPosition(
-                                currentFabOffsetX + dragAmount.x,
-                                currentFabOffsetY + dragAmount.y
-                            )
-                        }
-                    }
-                    .pointerInput(Unit) {
-                        detectTapGestures {
-                            currentOnToggleChat()
-                        }
-                    },
-                shape = CircleShape,
-                color = Color.Transparent,
-                shadowElevation = 8.dp
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(gradient),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.SmartToy,
-                        contentDescription = "Chat Assistant",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
+                    .clickable(enabled = false) {} // Prevent click-through to background
+            )
         }
     }
 }
@@ -132,7 +73,8 @@ fun ChatCard(
     uiState: ChatUiState,
     onInputChanged: (String) -> Unit,
     onSendMessage: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val personaDetails = PersonaUiData.getDetails(uiState.personaType)
     val gradient = Brush.linearGradient(
@@ -140,33 +82,32 @@ fun ChatCard(
     )
 
     Card(
-        modifier = Modifier
-            .width(320.dp)
-            .height(450.dp)
-            .padding(bottom = 80.dp), // Above the FAB
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+        modifier = modifier
+            .width(340.dp)
+            .height(550.dp)
+            .padding(16.dp),
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color.Transparent,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                color = Color.Transparent
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(gradient)
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(36.dp)
                                 .clip(CircleShape)
                                 .background(Color.White.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
@@ -175,14 +116,14 @@ fun ChatCard(
                                 Icons.Rounded.SmartToy,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "HabitFlow AI Assistant",
                             color = Color.White,
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -194,7 +135,7 @@ fun ChatCard(
                             Icons.Rounded.Close,
                             contentDescription = "Close",
                             tint = Color.White,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -213,8 +154,8 @@ fun ChatCard(
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(uiState.messages) { message ->
                     MessageBubble(message, uiState.personaType)
@@ -228,14 +169,14 @@ fun ChatCard(
 
             // Input
             Surface(
-                tonalElevation = 2.dp,
-                shadowElevation = 8.dp,
+                tonalElevation = 8.dp,
+                shadowElevation = 12.dp,
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextField(
@@ -244,7 +185,7 @@ fun ChatCard(
                         placeholder = { Text("Ask me something...", fontSize = 14.sp) },
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = 48.dp, max = 100.dp),
+                            .heightIn(min = 48.dp, max = 120.dp),
                         shape = RoundedCornerShape(24.dp),
                         colors = TextFieldDefaults.colors(
                             focusedIndicatorColor = Color.Transparent,
@@ -256,10 +197,10 @@ fun ChatCard(
                         singleLine = false,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                        FloatingActionButton(
+                    Spacer(modifier = Modifier.width(12.dp))
+                    FloatingActionButton(
                         onClick = onSendMessage,
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(44.dp),
                         containerColor = personaDetails.startColor,
                         contentColor = Color.White,
                         shape = CircleShape,
@@ -268,7 +209,7 @@ fun ChatCard(
                         Icon(
                             Icons.AutoMirrored.Rounded.Send,
                             contentDescription = "Send",
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -340,78 +281,6 @@ fun TypingIndicator() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text("Thinking...", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewMessageBubbleBot() {
-    HabitFlowTheme {
-        Box(Modifier.padding(16.dp)) {
-            MessageBubble(
-                message = ChatMessage(
-                    text = "Hello! How can I help you build better habits today?",
-                    senderId = "bot",
-                    isFromBot = true
-                )
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewMessageBubbleUser() {
-    HabitFlowTheme {
-        Box(Modifier.padding(16.dp)) {
-            MessageBubble(
-                message = ChatMessage(
-                    text = "I want to start running every morning.",
-                    senderId = "user",
-                    isFromBot = false
-                )
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewChatCardAchiever() {
-    HabitFlowTheme {
-        ChatCard(
-            uiState = ChatUiState(
-                messages = listOf(
-                    ChatMessage(text = "Hi!", senderId = "bot", isFromBot = true),
-                    ChatMessage(text = "I'm an Achiever!", senderId = "user", isFromBot = false)
-                ),
-                isTyping = true,
-                personaType = "Achiever"
-            ),
-            onInputChanged = {},
-            onSendMessage = {},
-            onClose = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewChatCardGrower() {
-    HabitFlowTheme {
-        ChatCard(
-            uiState = ChatUiState(
-                messages = listOf(
-                    ChatMessage(text = "Hi!", senderId = "bot", isFromBot = true),
-                    ChatMessage(text = "I'm a Grower!", senderId = "user", isFromBot = false)
-                ),
-                isTyping = true,
-                personaType = "Grower"
-            ),
-            onInputChanged = {},
-            onSendMessage = {},
-            onClose = {}
-        )
     }
 }
 
