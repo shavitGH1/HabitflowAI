@@ -10,6 +10,11 @@ export class UsersService {
     private readonly ai: AiService,
   ) {}
 
+  async getAllUsers(): Promise<{ id: string; email: string }[]> {
+    const users = await this.userRepository.findAllUsers();
+    return users.map(u => ({ id: u.id, email: u.email }));
+  }
+
   async getHomePageData(userId: string) {
     const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
