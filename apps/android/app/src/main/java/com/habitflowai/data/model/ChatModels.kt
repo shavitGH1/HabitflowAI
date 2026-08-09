@@ -16,9 +16,7 @@ data class ChatUiState(
     val isChatOpen: Boolean = false,
     val inputText: String = "",
     val isTyping: Boolean = false,
-    val personaType: String = "Regulator",
-    val fabOffsetX: Float = 0f,
-    val fabOffsetY: Float = 0f
+    val personaType: String = "Regulator"
 )
 
 data class ChatResponse(

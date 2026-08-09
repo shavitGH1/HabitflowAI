@@ -1,22 +1,41 @@
+import { v4 as uuidv4 } from 'uuid';
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { AiService } from '../ai/ai.service';
 import { logger } from '../logger';
 import { PERSONA_TYPES, PILLARS, Pillar, PersonaType } from '../ai/pillars';
 import { BehaviorSnapshot } from '../ai/prompts/persona-drift-detector.prompt';
 import { DriftResult } from '../ai/features/persona-drift-detector.feature';
+import { ProposedChange } from '../ai/schemas/coaching-agent.schema';
 import { FIREBASE_MESSAGING } from '../notifications/firebase.module';
 import { DriftFlagRepository } from '../notifications/drift-flag.repository';
 import { HabitData, HabitRepository } from '../habits/habit.repository';
 import { UserData, UserRepository } from '../users/user.repository';
+import { GoalData, GoalRepository } from '../goals/goal.repository';
+import { GoalsService } from '../goals/goals.service';
+import { GoalTask } from '../dto/goal.dto';
 import { DriftCheckDto } from './dto/drift-check.dto';
 import { ReclassifyDto } from './dto/reclassify.dto';
+import { CoachChatDto } from './dto/coach-chat.dto';
+import { ConfirmCoachChangeDto } from './dto/confirm-coach-change.dto';
 import { Messaging } from 'firebase-admin/messaging';
+
+export interface CoachChatResult {
+  reply: string;
+  proposedChange: ProposedChange | null;
+}
+
+export type ConfirmCoachChangeResult =
+  | { type: 'personaSwitch'; personaType: PersonaType }
+  | { type: 'adjustDifficulty'; dailyVariations: GoalTask[] }
+  | { type: 'forfeitGoal'; goal: GoalData };
 
 @Injectable()
 export class PersonasService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly habitRepository: HabitRepository,
+    private readonly goalRepository: GoalRepository,
+    private readonly goalsService: GoalsService,
     private readonly ai: AiService,
     private readonly driftFlagRepository: DriftFlagRepository,
     @Inject(FIREBASE_MESSAGING) private readonly messaging: Messaging,
@@ -72,6 +91,7 @@ export class PersonasService {
             await this.messaging.send({
               token: user.fcmToken,
               notification: { body: 'Your habit style may be shifting — tap to check' },
+              data: { screen: 'coach-chat' },
             });
           }
         }
@@ -120,6 +140,98 @@ export class PersonasService {
       positiveFeedbackCount: tally.positiveFeedbackCount,
       negativeFeedbackCount: tally.negativeFeedbackCount,
     };
+  }
+
+  async coachChat(userId: string, dto: CoachChatDto): Promise<CoachChatResult> {
+    const user = await this.userRepository.findUserById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const [habits, activeGoal] = await Promise.all([
+      this.habitRepository.findByUserId(userId),
+      this.goalRepository.findActiveByUserId(userId),
+    ]);
+
+    const currentPersona = this.toPersonaType(user.personaType);
+    const driftSuggestedPersona = await this.driftSuggestion(user, currentPersona);
+
+    const output = await this.ai.coachChat({
+      message: dto.message,
+      personaType: currentPersona,
+      activeGoal: activeGoal
+        ? { id: activeGoal.id, title: activeGoal.title, targetDate: activeGoal.targetDate }
+        : null,
+      habits: habits.map((h) => ({
+        id: h.id,
+        title: h.title,
+        goalId: h.goalId,
+        consistencyScore: h.consistencyScore,
+        streak: h.streak,
+      })),
+      driftSuggestedPersona,
+    });
+
+    return {
+      reply: output.reply,
+      proposedChange: this.sanitizeProposedChange(output.proposedChange, activeGoal),
+    };
+  }
+
+  async confirmCoachChange(userId: string, dto: ConfirmCoachChangeDto): Promise<ConfirmCoachChangeResult> {
+    switch (dto.type) {
+      case 'personaSwitch':
+        return this.applyPersonaSwitch(userId, dto.suggestedPersona!);
+      case 'adjustDifficulty':
+        return this.applyDifficultyAdjustment(userId, dto.direction!);
+      case 'forfeitGoal':
+        return this.applyGoalForfeit(userId, dto.goalId!);
+    }
+  }
+
+  private async driftSuggestion(user: UserData, currentPersona: PersonaType | null): Promise<PersonaType | null> {
+    if (!currentPersona) return null;
+    try {
+      const drift = await this.evaluateDrift(user);
+      return drift.driftDetected ? drift.newSuggestedPersona : null;
+    } catch (error) {
+      logger.warn({ userId: user.id, err: error }, 'coach-chat drift lookup skipped');
+      return null;
+    }
+  }
+
+  private sanitizeProposedChange(change: ProposedChange | null, activeGoal: GoalData | null): ProposedChange | null {
+    if (!change) return null;
+    if (change.type === 'forfeitGoal' && change.goalId !== activeGoal?.id) {
+      logger.warn(
+        { goalId: change.goalId },
+        'coach-chat proposed forfeitGoal for a goal that is not the active goal — dropping',
+      );
+      return null;
+    }
+    return change;
+  }
+
+  private async applyPersonaSwitch(userId: string, suggestedPersona: PersonaType): Promise<ConfirmCoachChangeResult> {
+    const updated = await this.userRepository.updateUserPersona(userId, { personaType: suggestedPersona });
+    if (!updated) throw new NotFoundException('User not found');
+    return { type: 'personaSwitch', personaType: suggestedPersona };
+  }
+
+  private async applyDifficultyAdjustment(
+    userId: string,
+    direction: 'increase' | 'decrease',
+  ): Promise<ConfirmCoachChangeResult> {
+    const user = await this.userRepository.findUserById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const newTasks = await this.ai.generateDailyVariations(user, new Date().getDay(), direction);
+    const updatedTasks = newTasks.map((t) => ({ ...t, id: uuidv4(), completed: false }));
+    await this.userRepository.updateUserDailyTasks(userId, updatedTasks);
+    return { type: 'adjustDifficulty', dailyVariations: updatedTasks };
+  }
+
+  private async applyGoalForfeit(userId: string, goalId: string): Promise<ConfirmCoachChangeResult> {
+    const goal = await this.goalsService.forfeitGoal(userId, goalId);
+    return { type: 'forfeitGoal', goal };
   }
 
   private activeStreak(habits: HabitData[]): number {

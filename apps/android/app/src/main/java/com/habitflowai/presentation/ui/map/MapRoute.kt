@@ -5,9 +5,13 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.MyLocation
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,13 +37,20 @@ import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.MapUiState
 import com.habitflowai.presentation.viewmodel.MapViewModel
+import com.habitflowai.presentation.viewmodel.ChatViewModel
 
 @Composable
 fun MapRoute(
     personaType: String,
-    viewModel: MapViewModel = hiltViewModel()
+    viewModel: MapViewModel = hiltViewModel(),
+    chatViewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val chatUiState by chatViewModel.uiState.collectAsState()
+
+    LaunchedEffect(personaType) {
+        chatViewModel.setPersonaType(personaType)
+    }
 
     val context = LocalContext.current
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -52,16 +64,34 @@ fun MapRoute(
         }
     }
 
-    MapContent(
-        uiState = uiState,
-        personaType = personaType
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        MapContent(
+            uiState = uiState,
+            personaType = personaType,
+            onSearchQueryChange = viewModel::onSearchQueryChange,
+            onSearch = viewModel::onSearch,
+            onCameraMoved = viewModel::onCameraMoved,
+            onToggleChat = { chatViewModel.toggleChat() }
+        )
+
+        ChatOverlay(
+            uiState = chatUiState,
+            onToggleChat = chatViewModel::toggleChat,
+            onInputChanged = chatViewModel::onInputChanged,
+            onSendMessage = chatViewModel::sendMessage
+        )
+    }
 }
 
+@OptIn(MapsComposeExperimentalApi::class)
 @Composable
 fun MapContent(
     uiState: MapUiState,
     personaType: String = "Regulator",
+    onSearchQueryChange: (String) -> Unit = {},
+    onSearch: () -> Unit = {},
+    onCameraMoved: () -> Unit = {},
+    onToggleChat: () -> Unit = {}
 ) {
     val defaultCenter = LatLng(32.0853, 34.7818)
     val cameraPositionState = rememberCameraPositionState {
@@ -70,26 +100,21 @@ fun MapContent(
 
     val personaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
 
-    val initialFitDone = remember { mutableStateOf(false) }
-    LaunchedEffect(uiState.markers) {
-        if (!initialFitDone.value && uiState.markers.isNotEmpty()) {
-            val center = LatLng(
-                (uiState.markers.minOf { it.latLng.latitude } + uiState.markers.maxOf { it.latLng.latitude }) / 2,
-                (uiState.markers.minOf { it.latLng.longitude } + uiState.markers.maxOf { it.latLng.longitude }) / 2
-            )
-            val zoom = if (uiState.markers.size == 1) {
-                14f
-            } else {
-                val latSpan = uiState.markers.maxOf { it.latLng.latitude } - uiState.markers.minOf { it.latLng.latitude }
-                val lngSpan = uiState.markers.maxOf { it.latLng.longitude } - uiState.markers.minOf { it.latLng.longitude }
-                val span = maxOf(latSpan, lngSpan)
-                (14.0 - (span * 8.0)).toFloat()
-            }
+    LaunchedEffect(uiState.searchResult) {
+        uiState.searchResult?.let { latLng ->
             cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(center, zoom.coerceIn(5f, 16f))
+                CameraUpdateFactory.newLatLngZoom(latLng, 13f)
             )
-            initialFitDone.value = true
+            onCameraMoved()
         }
+    }
+
+    var selectedCategory by remember { mutableStateOf("All") }
+    val categories = listOf("All", "Physical", "Mental", "Productivity", "Growth")
+
+    val filteredMarkers = remember(uiState.markers, selectedCategory) {
+        if (selectedCategory == "All") uiState.markers
+        else uiState.markers.filter { it.habitType == selectedCategory }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -107,14 +132,14 @@ fun MapContent(
             )
         ) {
             Clustering(
-                items = uiState.markers,
-                onClusterItemClick = { marker ->
+                items = filteredMarkers,
+                onClusterItemClick = {
                     false // Return false to show default info window
                 }
             )
         }
 
-        // Top header
+        // Top Glassmorphism Header
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -126,99 +151,156 @@ fun MapContent(
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                 shadowElevation = 8.dp
             ) {
-                Row(
-                    modifier = Modifier.padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "My Habit Map",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = personaDetails.endColor
-                        )
-                        Text(
-                            text = "Where you completed your tasks",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp,
-                            color = personaDetails.endColor
-                        )
-                    }
-                }
-            }
-        }
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = onToggleChat,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Search,
+                                contentDescription = "AI Assistant",
+                                tint = personaDetails.endColor
+                            )
+                        }
 
-        // Empty state
-        if (uiState.markers.isEmpty() && !uiState.isLoading) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(32.dp),
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                shadowElevation = 8.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(text = "📍", fontSize = 40.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "No completions yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = personaDetails.endColor
+                        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                            Text(
+                                text = "Habit Flow Map",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = personaDetails.endColor
+                            )
+                            Text(
+                                text = "Discover collective growth nearby",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    TextField(
+                        value = uiState.searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        placeholder = { Text("Search location...") },
+                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = personaDetails.endColor) },
+                        trailingIcon = {
+                            if (uiState.searchQuery.isNotEmpty()) {
+                                IconButton(onClick = onSearch) {
+                                    Text("Go", color = personaDetails.endColor, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                            focusedContainerColor = personaDetails.startColor.copy(alpha = 0.1f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        ),
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            imeAction = ImeAction.Search
+                        ),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                            onSearch = { onSearch() }
+                        )
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Complete a task on the Home screen and it will show up here.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        item {
+                            Icon(
+                                Icons.Rounded.FilterList,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(20.dp).padding(end = 4.dp)
+                            )
+                        }
+                        items(categories) { category ->
+                            val isSelected = selectedCategory == category
+                            FilterChip(
+                                isSelected = isSelected,
+                                text = category,
+                                personaColor = personaDetails.endColor,
+                                onClick = { selectedCategory = category }
+                            )
+                        }
+                    }
                 }
             }
         }
 
         // Stats overlay at bottom
-        if (uiState.markers.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp, start = 24.dp, end = 24.dp)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp, start = 24.dp, end = 24.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(32.dp),
+                color = personaDetails.endColor,
+                shadowElevation = 6.dp
             ) {
-                Surface(
-                    shape = RoundedCornerShape(32.dp),
-                    color = personaDetails.endColor,
-                    shadowElevation = 6.dp
+                Row(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Rounded.MyLocation,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${uiState.markers.size} completions mapped",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
+                    Icon(
+                        Icons.Rounded.MyLocation,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "${filteredMarkers.size} completions mapped",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+fun FilterChip(
+    isSelected: Boolean,
+    text: String,
+    personaColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) personaColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier
+                .clickable { onClick() }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+        )
     }
 }
 
@@ -234,12 +316,6 @@ fun MapAchieverPreview() {
                     )
                 ),
                 personaType = "Achiever"
-            )
-            ChatOverlay(
-                uiState = ChatUiState(personaType = "Achiever"),
-                onToggleChat = {},
-                onInputChanged = {},
-                onSendMessage = {}
             )
         }
     }
@@ -258,12 +334,6 @@ fun MapGrowerPreview() {
                 ),
                 personaType = "Grower"
             )
-            ChatOverlay(
-                uiState = ChatUiState(personaType = "Grower"),
-                onToggleChat = {},
-                onInputChanged = {},
-                onSendMessage = {}
-            )
         }
     }
 }
@@ -280,12 +350,6 @@ fun MapRegulatorPreview() {
                     )
                 ),
                 personaType = "Regulator"
-            )
-            ChatOverlay(
-                uiState = ChatUiState(personaType = "Regulator"),
-                onToggleChat = {},
-                onInputChanged = {},
-                onSendMessage = {}
             )
         }
     }
@@ -304,12 +368,6 @@ fun MapSocializerPreview() {
                 ),
                 personaType = "Socializer"
             )
-            ChatOverlay(
-                uiState = ChatUiState(personaType = "Socializer"),
-                onToggleChat = {},
-                onInputChanged = {},
-                onSendMessage = {}
-            )
         }
     }
 }
@@ -326,12 +384,6 @@ fun MapExplorerPreview() {
                     )
                 ),
                 personaType = "Explorer"
-            )
-            ChatOverlay(
-                uiState = ChatUiState(personaType = "Explorer"),
-                onToggleChat = {},
-                onInputChanged = {},
-                onSendMessage = {}
             )
         }
     }

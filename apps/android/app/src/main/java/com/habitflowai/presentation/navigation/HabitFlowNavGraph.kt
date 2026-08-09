@@ -165,7 +165,8 @@ fun HabitFlowNavGraph(
                         userId = uiState.personaResult?.userId ?: uiState.personaResult?.id ?: "",
                         onNavigateToReassessment = {
                             navController.navigate(NavRoute.DriftReassessment.route)
-                        }
+                        },
+                        onToggleChat = { chatViewModel.toggleChat() }
                     )
                 }
                 composable(NavRoute.Habits.route) {
@@ -174,7 +175,8 @@ fun HabitFlowNavGraph(
                         personaType = uiState.personaResult?.personaType ?: "Regulator",
                         onHabitClick = { habitId ->
                             navController.navigate(NavRoute.HabitDetail.createRoute(habitId))
-                        }
+                        },
+                        onToggleChat = { chatViewModel.toggleChat() }
                     )
                 }
                 composable(NavRoute.HabitDetail.route) { backStackEntry ->
@@ -187,7 +189,9 @@ fun HabitFlowNavGraph(
                     )
                 }
                 composable(NavRoute.Social.route) {
-                    SocialRoute()
+                    SocialRoute(
+                        onToggleChat = { chatViewModel.toggleChat() }
+                    )
                 }
                 composable(NavRoute.SuccessJournal.route) {
                     SuccessJournalRoute(
@@ -210,7 +214,8 @@ fun HabitFlowNavGraph(
                             navController.navigate(NavRoute.Login.route) {
                                 popUpTo(0) { inclusive = true }
                             }
-                        }
+                        },
+                        onToggleChat = { chatViewModel.toggleChat() }
                     )
                 }
                 composable(NavRoute.Map.route) {
@@ -235,8 +240,7 @@ fun HabitFlowNavGraph(
                     uiState = chatUiState,
                     onToggleChat = chatViewModel::toggleChat,
                     onInputChanged = chatViewModel::onInputChanged,
-                    onSendMessage = chatViewModel::sendMessage,
-                    onUpdateFabPosition = chatViewModel::updateFabPosition
+                    onSendMessage = chatViewModel::sendMessage
                 )
             }
         }

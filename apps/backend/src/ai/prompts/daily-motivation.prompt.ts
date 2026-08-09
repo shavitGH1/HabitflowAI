@@ -28,6 +28,9 @@ export const buildDailyVariationsPrompt = (
   personaType: string,
   goal: string,
   dayOfWeek: number,
+  // STOPGAP (Nir): bias wording owned by Yaron — the `difficultyBias` param itself (called from
+  // PersonasService.applyDifficultyAdjustment) is the shared contract; tune the sentences below freely.
+  difficultyBias?: 'increase' | 'decrease',
 ): string => `
 You are an expert productivity and habit-tracking coach.
 
@@ -36,6 +39,13 @@ Based on the user's persona and goal, generate a new set of daily variation task
 User Persona: "${personaType}"
 User's Goal: "${goal}"
 Target Day of the Week: "${DAYS[dayOfWeek]}"
+${
+  difficultyBias === 'increase'
+    ? 'The user has been completing tasks consistently — make today\'s tasks moderately more challenging than usual (harder targets, slightly more effort), while staying realistic for one day.'
+    : difficultyBias === 'decrease'
+      ? 'The user has been missing tasks recently — make today\'s tasks easier and smaller in scope than usual, to help rebuild momentum.'
+      : ''
+}
 
 OUTPUT FORMAT:
 Return the response STRICTLY as a valid JSON object containing only the "dailyVariations" array.

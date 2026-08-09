@@ -6,6 +6,9 @@ import { DailyMotivationFeature } from './features/daily-motivation.feature';
 import { PersonaDriftDetectorFeature } from './features/persona-drift-detector.feature';
 import { HabitInsightsFeature } from './features/habit-insights.feature';
 import { CoachPhrasingFeature } from './features/coach-phrasing.feature';
+import { HabitGoalRelevanceFeature } from './features/habit-goal-relevance.feature';
+import { TaskVerificationFeature } from './features/task-verification.feature';
+import { CoachingAgentFeature } from './features/coaching-agent.feature';
 import { MotivationFeedbackStore } from './feedback/motivation-feedback.store';
 import { GeminiClient } from './gemini.client';
 
@@ -19,6 +22,9 @@ import { GeminiClient } from './gemini.client';
     PersonaDriftDetectorFeature,
     HabitInsightsFeature,
     CoachPhrasingFeature,
+    HabitGoalRelevanceFeature,
+    TaskVerificationFeature,
+    CoachingAgentFeature,
     MotivationFeedbackStore,
   ],
   exports: [
@@ -29,6 +35,9 @@ import { GeminiClient } from './gemini.client';
     PersonaDriftDetectorFeature,
     HabitInsightsFeature,
     CoachPhrasingFeature,
+    HabitGoalRelevanceFeature,
+    TaskVerificationFeature,
+    CoachingAgentFeature,
   ],
 })
 export class AiModule {}

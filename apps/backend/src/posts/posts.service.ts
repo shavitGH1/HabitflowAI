@@ -2,11 +2,13 @@ import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nest
 import { CreatePostDto } from './dto/create-post.dto';
 import { PostData, PostRepository } from './post.repository';
 import { IStorageAdapter, STORAGE_ADAPTER } from '../storage/storage.adapter';
+import { FollowRepository } from '../follows/follow.repository';
 
 @Injectable()
 export class PostsService {
   constructor(
     private readonly postRepository: PostRepository,
+    private readonly followRepository: FollowRepository,
     @Inject(STORAGE_ADAPTER) private readonly storage: IStorageAdapter,
   ) {}
 
@@ -27,8 +29,12 @@ export class PostsService {
     });
   }
 
-  async getFeed(page: number, limit: number): Promise<PostData[]> {
-    return this.postRepository.findPaginated(page, limit);
+  async getFeed(userId: string, page: number, limit: number, friendsOnly: boolean): Promise<PostData[]> {
+    if (!friendsOnly) return this.postRepository.findPaginated(page, limit);
+
+    const followingIds = await this.followRepository.findFollowingIds(userId);
+    if (followingIds.length === 0) return [];
+    return this.postRepository.findPaginatedByAuthorIds(followingIds, page, limit);
   }
 
   async getMyPosts(authorId: string): Promise<PostData[]> {
@@ -43,5 +49,23 @@ export class PostsService {
       await this.storage.delete(post.imageUrl);
     }
     await this.postRepository.deletePost(id);
+  }
+
+  async likePost(userId: string, id: string): Promise<PostData> {
+    const post = await this.getPostOrThrow(id);
+    if (post.likes.includes(userId)) return post;
+    return (await this.postRepository.setLikes(id, [...post.likes, userId]))!;
+  }
+
+  async unlikePost(userId: string, id: string): Promise<PostData> {
+    const post = await this.getPostOrThrow(id);
+    if (!post.likes.includes(userId)) return post;
+    return (await this.postRepository.setLikes(id, post.likes.filter(likeId => likeId !== userId)))!;
+  }
+
+  private async getPostOrThrow(id: string): Promise<PostData> {
+    const post = await this.postRepository.findById(id);
+    if (!post) throw new NotFoundException('Post not found');
+    return post;
   }
 }

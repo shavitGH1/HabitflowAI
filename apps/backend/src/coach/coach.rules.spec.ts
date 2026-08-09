@@ -17,6 +17,8 @@ const habit = (overrides: Partial<HabitData> = {}): HabitData => ({
   completionHistory: [],
   persona: 'Achiever',
   isArchived: false,
+  consistencyScore: 0,
+  completionNotes: [],
   createdAt: NOW.toISOString(),
   ...overrides,
 });
@@ -31,6 +33,7 @@ describe('computeStats', () => {
       streak: 0,
       oldestHabitAgeDays: 0,
       completedToday: [],
+      notesToday: [],
     });
   });
 
@@ -91,6 +94,7 @@ describe('pickTip', () => {
     streak,
     oldestHabitAgeDays: 5,
     completedToday: [],
+    notesToday: [],
   });
 
   it('tells a user with no streak to restart small', () => {
@@ -115,7 +119,7 @@ describe('pickTip', () => {
 });
 
 describe('isDueForPersonaReview', () => {
-  const base = { habitCount: 1, completionRate7d: 0.5, streak: 1, completedToday: [] };
+  const base = { habitCount: 1, completionRate7d: 0.5, streak: 1, completedToday: [], notesToday: [] };
 
   it('is due once the oldest habit reaches 30 days', () => {
     expect(isDueForPersonaReview({ ...base, oldestHabitAgeDays: 30 })).toBe(true);

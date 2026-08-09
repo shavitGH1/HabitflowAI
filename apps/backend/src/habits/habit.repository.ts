@@ -3,7 +3,13 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Habit, HabitDocument } from './schemas/habit.schema';
 import { calculateStreak } from './utils/streak.utils';
+import { calculateConsistencyScore, isImplemented } from './utils/consistency.utils';
 import { logger } from '../logger';
+
+export interface CompletionNote {
+  date: string;
+  note: string;
+}
 
 export interface HabitData {
   id: string;
@@ -16,6 +22,10 @@ export interface HabitData {
   completionHistory: string[];
   persona: string;
   isArchived: boolean;
+  goalId?: string;
+  consistencyScore: number;
+  implementedAt?: string;
+  completionNotes: CompletionNote[];
   createdAt: string;
 }
 
@@ -26,6 +36,7 @@ export interface CreateHabitInput {
   frequency: 'daily' | 'weekly';
   targetCount?: number;
   persona?: string;
+  goalId?: string;
 }
 
 export interface UpdateHabitInput {
@@ -33,6 +44,7 @@ export interface UpdateHabitInput {
   description?: string;
   frequency?: 'daily' | 'weekly';
   targetCount?: number;
+  goalId?: string | null;
 }
 
 @Injectable()
@@ -69,7 +81,7 @@ export class HabitRepository {
     return doc ? this.toHabitData(doc) : null;
   }
 
-  async completeHabit(id: string): Promise<HabitData | null> {
+  async completeHabit(id: string, note?: string): Promise<HabitData | null> {
     const today = new Date().toISOString().split('T')[0];
     const doc = await this.habitModel.findById(id);
     if (!doc) return null;
@@ -77,8 +89,19 @@ export class HabitRepository {
     if (!doc.completionHistory.includes(today)) {
       doc.completionHistory.push(today);
     }
+    if (note) {
+      doc.completionNotes.push({ date: today, note });
+    }
 
     doc.streak = calculateStreak(doc.completionHistory);
+
+    const createdAt = (doc as unknown as { createdAt: Date }).createdAt.toISOString().split('T')[0];
+    doc.consistencyScore = calculateConsistencyScore(doc.completionHistory, createdAt, today);
+
+    if (!doc.implementedAt && isImplemented(doc.consistencyScore, createdAt, today)) {
+      doc.implementedAt = new Date();
+    }
+
     const saved = await doc.save();
     return this.toHabitData(saved);
   }
@@ -95,6 +118,10 @@ export class HabitRepository {
       completionHistory: doc.completionHistory,
       persona: doc.persona,
       isArchived: doc.isArchived,
+      goalId: doc.goalId ?? undefined,
+      consistencyScore: doc.consistencyScore,
+      implementedAt: doc.implementedAt?.toISOString(),
+      completionNotes: doc.completionNotes ?? [],
       createdAt: (doc as unknown as { createdAt: Date }).createdAt?.toISOString() ?? '',
     };
   }
