@@ -711,7 +711,11 @@ fun JoinGroupDialog(
                     onValueChange = { groupId = it },
                     label = { Text("Group ID/Name") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = personaColor,
+                        focusedLabelColor = personaColor
+                    )
                 )
             }
         },
@@ -1122,6 +1126,7 @@ fun PreviewChatDetailV2() {
             chat = ChatResponse("1", "Mountain Climbers", true, "Who's hiking Sunday?", listOf("alex", "mia")),
             messages = emptyList(),
             personaColor = personaColor,
+            currentUserId = "me",
             onDismiss = {},
             onSendMessage = {},
             onLikeMessage = {},

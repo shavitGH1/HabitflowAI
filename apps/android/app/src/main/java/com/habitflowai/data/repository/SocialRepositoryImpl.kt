@@ -78,31 +78,33 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getAllChats(): List<ChatResponse> {
+        val cachedGroups = try { chatLocalStorage.loadGroupChats(myId) } catch (_: Exception) { emptyList() }
+        val cachedDms = try { chatLocalStorage.loadDirectChats(myId) } catch (_: Exception) { emptyList() }
+        val initialResult = cachedGroups + cachedDms
+
         return try {
-            val chats = api.getChats()
-            val groups = chats.filter { it.isGroup }
-            val dms = chats.filter { !it.isGroup }
+            val serverChats = api.getChats()
+            val groups = serverChats.filter { it.isGroup }
+            val dms = serverChats.filter { !it.isGroup }
             try {
                 chatLocalStorage.saveGroupChats(myId, groups)
                 chatLocalStorage.saveDirectChats(myId, dms)
             } catch (_: Exception) {}
-            chats
+            
+            // Merge: Prefer server data, but keep local-only chats (e.g. optimistic creations)
+            val serverIds = serverChats.map { it.id }.toSet()
+            val localOnly = initialResult.filter { it.id !in serverIds }
+            serverChats + localOnly
         } catch (e: Exception) {
-            try {
-                val cachedGroups = chatLocalStorage.loadGroupChats(myId)
-                val cachedDms = chatLocalStorage.loadDirectChats(myId)
-                if (cachedGroups.isNotEmpty() || cachedDms.isNotEmpty()) {
-                    cachedGroups + cachedDms
-                } else {
-                    // Hardcoded fallback for testing/demo if cache is empty and network fails
-                    listOf(
-                        ChatResponse("1", "Marathon Crew", true, "Let's run!", participantIds = listOf(myId, "alex_id", "mia_id")),
-                        ChatResponse("2", "Meditators", true, "Zen mode on", participantIds = listOf(myId, "sam_id")),
-                        ChatResponse("dm_alex", "Alex", false, "Hey there!", participantIds = listOf(myId, "alex_id"))
-                    )
-                }
-            } catch (_: Exception) {
-                emptyList()
+            if (initialResult.isNotEmpty()) {
+                initialResult
+            } else {
+                // Hardcoded fallback for testing/demo if cache is empty and network fails
+                listOf(
+                    ChatResponse("1", "Marathon Crew", true, "Let's run!", participantIds = listOf(myId, "alex_id", "mia_id")),
+                    ChatResponse("2", "Meditators", true, "Zen mode on", participantIds = listOf(myId, "sam_id")),
+                    ChatResponse("dm_alex", "Alex", false, "Hey there!", participantIds = listOf(myId, "alex_id"))
+                )
             }
         }
     }
@@ -130,29 +132,32 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createGroup(name: String, participantIds: List<String>): ChatResponse {
+        val tempId = (10..9999).random().toString()
+        val tempChat = ChatResponse(
+            id = tempId,
+            name = name,
+            isGroup = true,
+            lastMessage = null,
+            participantIds = participantIds + myId,
+            admins = listOf(myId),
+            owner = myId
+        )
+        
+        // Optimistically save to local cache before network
+        try {
+            chatLocalStorage.saveGroupChats(myId, listOf(tempChat))
+        } catch (_: Exception) {}
+
         return try {
             val chat = api.createChat(CreateChatRequest(name = name, participantIds = participantIds))
-            // Append to cached groups
+            // Replace temp with real server data
             try {
-                val updated = chatLocalStorage.loadGroupChats(myId) + chat
-                chatLocalStorage.saveGroupChats(myId, updated)
+                chatLocalStorage.deleteChat(tempId)
+                chatLocalStorage.saveGroupChats(myId, listOf(chat))
             } catch (_: Exception) {}
             chat
         } catch (e: Exception) {
-            val chat = ChatResponse(
-                id = (10..9999).random().toString(),
-                name = name,
-                isGroup = true,
-                lastMessage = null,
-                participantIds = participantIds,
-                admins = listOf(myId),
-                owner = myId
-            )
-            try {
-                val updated = chatLocalStorage.loadGroupChats(myId) + chat
-                chatLocalStorage.saveGroupChats(myId, updated)
-            } catch (_: Exception) {}
-            chat
+            tempChat
         }
     }
 
@@ -294,25 +299,29 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createDirectChat(userId: String): ChatResponse {
+        val tempId = (10000..99999).random().toString()
+        val tempChat = ChatResponse(
+            id = tempId,
+            name = userId,
+            isGroup = false,
+            lastMessage = null,
+            participantIds = listOf(myId, userId)
+        )
+
+        // Optimistically save to local cache
+        try {
+            chatLocalStorage.saveDirectChats(myId, listOf(tempChat))
+        } catch (_: Exception) {}
+
         return try {
             val chat = api.createChat(CreateChatRequest(name = userId, participantIds = listOf(userId), isGroup = false))
             try {
-                val updated = chatLocalStorage.loadDirectChats(myId) + chat
-                chatLocalStorage.saveDirectChats(myId, updated)
+                chatLocalStorage.deleteChat(tempId)
+                chatLocalStorage.saveDirectChats(myId, listOf(chat))
             } catch (_: Exception) {}
             chat
         } catch (_: Exception) {
-            val chat = ChatResponse(
-                id = (10000..99999).random().toString(),
-                name = userId,
-                isGroup = false,
-                lastMessage = null
-            )
-            try {
-                val updated = chatLocalStorage.loadDirectChats(myId) + chat
-                chatLocalStorage.saveDirectChats(myId, updated)
-            } catch (_: Exception) {}
-            chat
+            tempChat
         }
     }
 

@@ -81,14 +81,18 @@ class SocialViewModel @Inject constructor(
                 if (newUid != oldUid) {
                     _uiState.update { it.copy(currentUserId = newUid) }
                     if (newUid == "me") {
-                        // Logout: Clear messages and refresh lists (loads mocks/guest cache)
+                        // Logout or Guest: Clear UI state and disconnect
+                        socketService.disconnect()
                         _uiState.update { it.copy(
                             groupChats = emptyList(),
                             directChats = emptyList(),
                             chatMessages = emptyMap()
                         ) }
+                    } else {
+                        // Logged in: Connect and load real user data
+                        socketService.connect()
+                        loadAllChats()
                     }
-                    loadAllChats()
                 } else if (newUid == "me" && _uiState.value.groupChats.isEmpty()) {
                     // Initial load if not logged in yet (shows mocks/cached)
                     loadAllChats()

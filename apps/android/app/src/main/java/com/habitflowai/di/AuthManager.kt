@@ -47,12 +47,13 @@ class AuthManager @Inject constructor(
             .apply()
     }
 
-    /** Decodes the JWT payload (no verification) to extract sub/_id/userId. */
+    /** Decodes the JWT payload (no verification) to extract id/sub/_id/userId. */
     private fun decodeUserIdFromJwt(token: String): String? = try {
         val payload = token.split(".").getOrNull(1) ?: return null
         val decoded = Base64.decode(payload, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
         val json = JSONObject(String(decoded))
-        json.optString("sub").takeIf { it.isNotBlank() }
+        json.optString("id").takeIf { it.isNotBlank() }
+            ?: json.optString("sub").takeIf { it.isNotBlank() }
             ?: json.optString("_id").takeIf { it.isNotBlank() }
             ?: json.optString("userId").takeIf { it.isNotBlank() }
     } catch (_: Exception) { null }
