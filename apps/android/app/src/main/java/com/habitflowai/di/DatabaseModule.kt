@@ -27,7 +27,7 @@ object DatabaseModule {
             context,
             HabitFlowDatabase::class.java,
             "habitflow_db"
-        )
+)
         .addMigrations(
             HabitFlowDatabase.MIGRATION_2_3, 
             HabitFlowDatabase.MIGRATION_3_4,

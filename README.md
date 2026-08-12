@@ -89,6 +89,7 @@ Variable reference:
 | PORT | apps/backend/.env | No (default 3000) | Backend listen port |
 | MONGO_URI | apps/backend/.env | Yes | MongoDB connection string |
 | GEMINI_API_KEY | apps/backend/.env | Yes | Google AI Studio key |
+| GOOGLE_MAPS_API_KEY | apps/backend/.env | Yes | Server-side Maps key (Geocoding API, IP-restricted) |
 | JWT_SECRET | apps/backend/.env | Yes | Signs access tokens |
 | JWT_REFRESH_SECRET | apps/backend/.env | Yes | Signs refresh tokens |
 | MONGO_INITDB_ROOT_USERNAME | .env (root) | Yes | Mongo root user for Docker |
@@ -225,6 +226,13 @@ Full interactive docs: `http://localhost:3000/api-docs`
 | Method | Endpoint | Auth | Body |
 |---|---|---|---|
 | PATCH | /api/v1/tasks/:taskId/complete | Bearer | — |
+
+### Locations
+
+| Method | Endpoint | Auth | Body / Query |
+|---|---|---|---|
+| POST | /api/v1/locations | Bearer | habitId, taskTitle, latitude, longitude, timestamp?, isPublic? |
+| GET | /api/v1/locations/me | Bearer | — (returns your completion locations, newest first) |
 
 ### Personas
 

@@ -33,6 +33,7 @@ import { UsersModule } from './users/users.module';
         GOOGLE_CLIENT_ID: Joi.string().required(),
         GOOGLE_CLIENT_SECRET: Joi.string().required(),
         GOOGLE_CALLBACK_URL: Joi.string().required(),
+        GOOGLE_MAPS_API_KEY: Joi.string().required(),
         FIREBASE_PROJECT_ID: Joi.string().required(),
         FIREBASE_PRIVATE_KEY: Joi.string().required(),
         FIREBASE_CLIENT_EMAIL: Joi.string().required(),

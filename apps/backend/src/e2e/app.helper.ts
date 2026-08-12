@@ -7,6 +7,7 @@ import request from 'supertest';
 import { AiService } from '../ai/ai.service';
 import { AppModule } from '../app.module';
 import { FIREBASE_MESSAGING } from '../notifications/firebase.module';
+import { GoogleGeocodingService } from '../locations/geocoding.service';
 
 export const OPEN_ANSWERS = [
   'I want to build a consistent study routine and track real progress each week',
@@ -61,6 +62,10 @@ const mockAiService = {
 
 const mockMessaging = { send: jest.fn().mockResolvedValue('msg-id') };
 
+const mockGeocodingService = {
+  reverseGeocode: jest.fn().mockResolvedValue({ placeName: 'Mock Place', address: 'Mock Address 1' }),
+};
+
 export async function createTestApp(): Promise<{ app: INestApplication; mongod: MongoMemoryServer }> {
   const mongod = await MongoMemoryServer.create();
   process.env['MONGO_URI'] = mongod.getUri();
@@ -70,6 +75,7 @@ export async function createTestApp(): Promise<{ app: INestApplication; mongod: 
     .useFactory({ factory: () => ({ get: (key: string) => process.env[key] }) })
     .overrideProvider(AiService).useValue(mockAiService)
     .overrideProvider(FIREBASE_MESSAGING).useValue(mockMessaging)
+    .overrideProvider(GoogleGeocodingService).useValue(mockGeocodingService)
     .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
     .compile();
 

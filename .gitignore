@@ -38,6 +38,8 @@ apps/android/file-system.probe
 apps/android/gradle/gradle-daemon-jvm.properties
 # Build log files
 apps/android/build_output*.txt
+# JVM/Android heap dumps
+*.hprof
 # Local config (never commit)
 apps/android/gradle.properties
 apps/android/local.properties

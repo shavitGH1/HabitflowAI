@@ -1,29 +1,33 @@
 package com.habitflowai.presentation.ui.map
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.habitflowai.data.model.ChatUiState
 import com.habitflowai.presentation.ui.chat.ChatOverlay
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
@@ -46,6 +50,18 @@ fun MapRoute(
 
     LaunchedEffect(personaType) {
         chatViewModel.setPersonaType(personaType)
+    }
+
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+    LaunchedEffect(Unit) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -77,9 +93,9 @@ fun MapContent(
     onCameraMoved: () -> Unit = {},
     onToggleChat: () -> Unit = {}
 ) {
-    val telAviv = LatLng(32.0853, 34.7818)
+    val defaultCenter = LatLng(32.0853, 34.7818)
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(telAviv, 13f)
+        position = CameraPosition.fromLatLngZoom(defaultCenter, 13f)
     }
 
     val personaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
@@ -87,7 +103,7 @@ fun MapContent(
     LaunchedEffect(uiState.searchResult) {
         uiState.searchResult?.let { latLng ->
             cameraPositionState.animate(
-                com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(latLng, 13f)
+                CameraUpdateFactory.newLatLngZoom(latLng, 13f)
             )
             onCameraMoved()
         }
@@ -106,12 +122,13 @@ fun MapContent(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = MapProperties(
-                isMyLocationEnabled = false,
+                isMyLocationEnabled = true,
                 mapStyleOptions = null
             ),
             uiSettings = MapUiSettings(
                 zoomControlsEnabled = false,
-                tiltGesturesEnabled = false
+                tiltGesturesEnabled = false,
+                myLocationButtonEnabled = true
             )
         ) {
             Clustering(
@@ -150,7 +167,7 @@ fun MapContent(
                                 tint = personaDetails.endColor
                             )
                         }
-                        
+
                         Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
                             Text(
                                 text = "Habit Flow Map",
@@ -165,7 +182,7 @@ fun MapContent(
                             )
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     TextField(
@@ -199,9 +216,9 @@ fun MapContent(
                             onSearch = { onSearch() }
                         )
                     )
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -227,7 +244,7 @@ fun MapContent(
                 }
             }
         }
-        
+
         // Stats overlay at bottom
         Box(
             modifier = Modifier
@@ -243,8 +260,15 @@ fun MapContent(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Icon(
+                        Icons.Rounded.MyLocation,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "✨ ${filteredMarkers.size} Habits in this area",
+                        text = "${filteredMarkers.size} completions mapped",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
@@ -263,14 +287,16 @@ fun FilterChip(
     onClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.clickable { onClick() },
+        modifier = Modifier,
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) personaColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier
+                .clickable { onClick() }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             style = MaterialTheme.typography.labelLarge,
             color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
@@ -291,12 +317,6 @@ fun MapAchieverPreview() {
                 ),
                 personaType = "Achiever"
             )
-            ChatOverlay(
-                uiState = ChatUiState(personaType = "Achiever"),
-                onToggleChat = {},
-                onInputChanged = {},
-                onSendMessage = {}
-            )
         }
     }
 }
@@ -313,12 +333,6 @@ fun MapGrowerPreview() {
                     )
                 ),
                 personaType = "Grower"
-            )
-            ChatOverlay(
-                uiState = ChatUiState(personaType = "Grower"),
-                onToggleChat = {},
-                onInputChanged = {},
-                onSendMessage = {}
             )
         }
     }
@@ -337,12 +351,6 @@ fun MapRegulatorPreview() {
                 ),
                 personaType = "Regulator"
             )
-            ChatOverlay(
-                uiState = ChatUiState(personaType = "Regulator"),
-                onToggleChat = {},
-                onInputChanged = {},
-                onSendMessage = {}
-            )
         }
     }
 }
@@ -355,16 +363,10 @@ fun MapSocializerPreview() {
             MapContent(
                 uiState = MapUiState(
                     markers = listOf(
-                        HabitMarker("1", "Community Walk", "🚶‍♂️", "Social", LatLng(32.0853, 34.7818))
+                        HabitMarker("1", "Community Walk", "🚶", "Social", LatLng(32.0853, 34.7818))
                     )
                 ),
                 personaType = "Socializer"
-            )
-            ChatOverlay(
-                uiState = ChatUiState(personaType = "Socializer"),
-                onToggleChat = {},
-                onInputChanged = {},
-                onSendMessage = {}
             )
         }
     }
@@ -382,12 +384,6 @@ fun MapExplorerPreview() {
                     )
                 ),
                 personaType = "Explorer"
-            )
-            ChatOverlay(
-                uiState = ChatUiState(personaType = "Explorer"),
-                onToggleChat = {},
-                onInputChanged = {},
-                onSendMessage = {}
             )
         }
     }

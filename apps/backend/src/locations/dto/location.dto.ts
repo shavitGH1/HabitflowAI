@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class LocationDto {
   @IsOptional()
@@ -7,13 +7,20 @@ export class LocationDto {
   @ApiPropertyOptional({ description: 'The related habit/task ID' })
   habitId?: string;
 
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional({ description: 'Display name of the completed task' })
+  taskTitle?: string;
+
   @IsNumber()
-  @IsNotEmpty()
+  @Min(-90)
+  @Max(90)
   @ApiProperty({ description: 'Latitude' })
   latitude: number;
 
   @IsNumber()
-  @IsNotEmpty()
+  @Min(-180)
+  @Max(180)
   @ApiProperty({ description: 'Longitude' })
   longitude: number;
 
@@ -29,6 +36,6 @@ export class LocationDto {
 
   @IsOptional()
   @IsBoolean()
-  @ApiPropertyOptional({ description: 'Whether this location is visible on the public map', default: true })
+  @ApiPropertyOptional({ description: 'Whether this location is visible on the public map', default: false })
   isPublic?: boolean;
 }
