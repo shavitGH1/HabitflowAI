@@ -19,6 +19,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+sealed class SearchResult {
+    data class User(val user: com.habitflowai.data.model.AppUser) : SearchResult()
+    data class Group(val chat: ChatResponse) : SearchResult()
+}
+
 data class SocialUiState(
     val posts: List<Post> = emptyList(),
     val comments: Map<Int, List<Comment>> = emptyMap(),
@@ -28,7 +33,8 @@ data class SocialUiState(
     val typingUsers: Map<String, Set<String>> = emptyMap(),
     val currentUserId: String = "me",
     val allUsers: List<com.habitflowai.data.model.AppUser> = emptyList(), // all app users for member picker
-    val knownUserIds: List<String> = emptyList(), // deprecated — use allUsers
+    val searchResults: List<SearchResult> = emptyList(),
+    val isSearching: Boolean = false,
     val isLoading: Boolean = false,
     val isLoadingComments: Boolean = false,
     val isLoadingChats: Boolean = false,
@@ -51,6 +57,7 @@ class SocialViewModel @Inject constructor(
 
     private val pageSize = 10
     private var isTaskLoading = false
+    private var loadChatsJob: kotlinx.coroutines.Job? = null
 
     /** The real user ID from the JWT token, falling back to "me" if not yet authenticated. */
     private val currentUserId: String
@@ -67,13 +74,16 @@ class SocialViewModel @Inject constructor(
         )
         _uiState.update { it.copy(allUsers = initialTestUsers) }
 
-        loadMorePosts()
+        // Start socket and load posts once
         socketService.connect()
         collectSocketEvents()
-
-        // Sync with Auth: only load data when the user ID actually changes to a valid one.
-        // This avoids redundant calls (HTTP 429) at startup.
+        
+        // Use a single launch for all initial sync logic to avoid parallel bursts
         viewModelScope.launch {
+            // First load posts
+            loadMorePosts()
+            
+            // Then wait for auth and load chats
             authManager.currentUserId.collect { uid ->
                 val oldUid = _uiState.value.currentUserId
                 val newUid = uid ?: "me"
@@ -81,7 +91,6 @@ class SocialViewModel @Inject constructor(
                 if (newUid != oldUid) {
                     _uiState.update { it.copy(currentUserId = newUid) }
                     if (newUid == "me") {
-                        // Logout or Guest: Clear UI state and disconnect
                         socketService.disconnect()
                         _uiState.update { it.copy(
                             groupChats = emptyList(),
@@ -89,12 +98,13 @@ class SocialViewModel @Inject constructor(
                             chatMessages = emptyMap()
                         ) }
                     } else {
-                        // Logged in: Connect and load real user data
+                        // Logged in: Reconnect socket and sync data
                         socketService.connect()
+                        kotlinx.coroutines.delay(800) // Staggered start
                         loadAllChats()
                     }
-                } else if (newUid == "me" && _uiState.value.groupChats.isEmpty()) {
-                    // Initial load if not logged in yet (shows mocks/cached)
+                } else if (newUid != "me" && _uiState.value.groupChats.isEmpty()) {
+                    // One-time sync for existing session
                     loadAllChats()
                 }
             }
@@ -211,10 +221,16 @@ class SocialViewModel @Inject constructor(
                 
                 _uiState.update { it.copy(
                     groupChats = groups,
-                    directChats = dms,
-                    isLoadingChats = false
+                    directChats = dms
                 ) }
-                loadKnownUsers(allChats)
+                
+                // Only load users if the list is nearly empty (avoid heavy call every startup)
+                if (_uiState.value.allUsers.size <= 5) {
+                    loadKnownUsers(allChats)
+                }
+            } catch (e: Exception) {
+                // If it's a 429, we just log it and rely on cache. 
+                // Don't crash or loop.
             } finally {
                 _uiState.update { it.copy(isLoadingChats = false) }
                 isTaskLoading = false
@@ -223,38 +239,38 @@ class SocialViewModel @Inject constructor(
     }
 
     /** Loads all app users (excluding self) for the member picker. */
-    private fun loadKnownUsers(chats: List<ChatResponse> = emptyList()) {
-        // If we already have a significant number of users (e.g. from the hardcoded seed),
-        // we can skip the network call if we are under rate-limit pressure.
-        if (_uiState.value.allUsers.size > 10 && _uiState.value.isLoadingChats) return
-
-        viewModelScope.launch {
-            val uid = currentUserId
-            try {
-                val users = repository.getAllUsers().filter { it.id != uid }
-                _uiState.update { it.copy(allUsers = users, knownUserIds = users.map { u -> u.id }) }
-            } catch (_: Exception) {
-                // Fallback: build from chat participants + follows
-                val fromChats = chats.flatMap { it.participantIds }.toMutableSet()
-                try { fromChats.addAll(repository.getFollowing(uid)) } catch (_: Exception) {}
-                fromChats.remove(uid)
-                // Even on failure, populate allUsers with what we have (ID fallback) so the list isn't empty
-                val fallbackUsers = fromChats.map { id -> com.habitflowai.data.model.AppUser(id, id) }
-                _uiState.update { it.copy(allUsers = fallbackUsers, knownUserIds = fromChats.sorted()) }
+    private suspend fun loadKnownUsers(chats: List<ChatResponse> = emptyList()) {
+        val uid = currentUserId
+        try {
+            val users = repository.getAllUsers().filter { it.id != uid }
+            _uiState.update { it.copy(allUsers = users) }
+        } catch (_: Exception) {
+            // Fallback: build from chat participants
+            val fromChats = chats.flatMap { it.participantIds }.toMutableSet()
+            fromChats.remove(uid)
+            val fallbackUsers = fromChats.map { id -> com.habitflowai.data.model.AppUser(id, id) }
+            if (fallbackUsers.isNotEmpty()) {
+                _uiState.update { it.copy(allUsers = fallbackUsers) }
             }
         }
     }
 
     fun loadGroupChats() {
-        viewModelScope.launch {
+        loadChatsJob?.cancel()
+        loadChatsJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoadingChats = true) }
-            val chats = repository.getGroupChats()
-            _uiState.update { it.copy(groupChats = chats, isLoadingChats = false) }
+            try {
+                val chats = repository.getGroupChats()
+                _uiState.update { it.copy(groupChats = chats, isLoadingChats = false) }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isLoadingChats = false) }
+            }
         }
     }
 
     fun createGroup(
         name: String,
+        description: String = "",
         participantIds: List<String> = emptyList(),
         imageUri: android.net.Uri? = null,
         onCreated: (ChatResponse) -> Unit = {}
@@ -262,24 +278,27 @@ class SocialViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingChats = true) }
             val newChat = repository.createGroup(name, participantIds)
-
-            // Upload image and merge the returned imageUrl into newChat (fallback keeps newChat intact)
-            val finalChat = if (imageUri != null) {
-                try {
-                    val uploaded = repository.uploadGroupImage(newChat.id, imageUri)
-                    // Merge: keep all fields from newChat, only pick up imageUrl from upload response
-                    newChat.copy(imageUrl = uploaded.imageUrl ?: newChat.imageUrl)
-                } catch (_: Exception) {
-                    newChat  // image upload failed — keep the full chat data, just no photo
-                }
+            
+            // Immediately update description if provided
+            val chatWithDesc = if (description.isNotBlank()) {
+                try { repository.updateGroupDescription(newChat.id, description) } catch (_: Exception) { newChat }
             } else newChat
 
-            // Upsert: replace if already in list (repo.createGroup may have added it), else append
+            // Upload image and merge the returned imageUrl into final chat
+            val finalChat = if (imageUri != null) {
+                try {
+                    val uploaded = repository.uploadGroupImage(chatWithDesc.id, imageUri)
+                    chatWithDesc.copy(imageUrl = uploaded.imageUrl ?: chatWithDesc.imageUrl)
+                } catch (_: Exception) {
+                    chatWithDesc
+                }
+            } else chatWithDesc
+
+            // Upsert: replace if already in list, else append
             _uiState.update { state ->
                 val without = state.groupChats.filter { it.id != finalChat.id }
                 state.copy(groupChats = without + finalChat, isLoadingChats = false)
             }
-            // Persist the final merged state to local cache
             try { chatLocalStorage.saveGroupChats(currentUserId, _uiState.value.groupChats) } catch (_: Exception) {}
             onCreated(finalChat)
         }
@@ -319,12 +338,27 @@ class SocialViewModel @Inject constructor(
         }
     }
 
-    fun joinGroup(chatId: String) {
+    fun joinGroup(chatId: String, onJoined: (ChatResponse) -> Unit = {}) {
         // Backend has no standalone "join" endpoint — add self as member via addMembers
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingChats = true) }
             val success = repository.addMember(chatId, currentUserId)
-            if (success) loadGroupChats() else _uiState.update { it.copy(isLoadingChats = false) }
+            if (success) {
+                // Refresh chats and find the one we joined
+                val allChats = repository.getAllChats()
+                val groups = allChats.filter { it.isGroup }
+                val dms = allChats.filter { !it.isGroup }
+                
+                _uiState.update { it.copy(
+                    groupChats = groups,
+                    directChats = dms,
+                    isLoadingChats = false
+                ) }
+                
+                groups.find { it.id == chatId }?.let { onJoined(it) }
+            } else {
+                _uiState.update { it.copy(isLoadingChats = false) }
+            }
         }
     }
 
@@ -448,6 +482,41 @@ class SocialViewModel @Inject constructor(
             repository.deleteGroup(chatId)
             _uiState.update { it.copy(directChats = it.directChats.filter { c -> c.id != chatId }) }
         }
+    }
+
+    // ─── Search ─────────────────────────────────────────────────────────
+
+    fun search(query: String) {
+        if (query.isBlank()) {
+            _uiState.update { it.copy(searchResults = emptyList(), isSearching = false) }
+            return
+        }
+
+        _uiState.update { it.copy(isSearching = true) }
+        
+        // Local filtering for users (by username/email) and groups (by name)
+        val userResults = _uiState.value.allUsers
+            .filter { user -> 
+                user.email.substringBefore('@').contains(query, ignoreCase = true) ||
+                user.email.contains(query, ignoreCase = true)
+            }
+            .take(10)
+            .map { SearchResult.User(it) }
+
+        val groupResults = _uiState.value.groupChats
+            .filter { it.name?.contains(query, ignoreCase = true) == true }
+            .take(5)
+            .map { SearchResult.Group(it) }
+
+        _uiState.update { it.copy(
+            searchResults = (userResults + groupResults).sortedBy { 
+                when(it) {
+                    is SearchResult.User -> it.user.email
+                    is SearchResult.Group -> it.chat.name
+                }
+            },
+            isSearching = false
+        ) }
     }
 
     // ─── Messages ────────────────────────────────────────────────────────

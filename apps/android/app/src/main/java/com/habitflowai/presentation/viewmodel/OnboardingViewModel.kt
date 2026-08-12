@@ -90,8 +90,9 @@ class OnboardingViewModel @Inject constructor(
     }
 
     fun fetchProfile() {
+        if (_uiState.value.isLoading) return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
                 val homeData = api.getHome()
                 if (homeData.success) {
@@ -104,9 +105,14 @@ class OnboardingViewModel @Inject constructor(
                             success = true
                         )
                     )
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                val errorMsg = if (e is retrofit2.HttpException && e.code() == 429) {
+                    "Taking a short break... the server is busy. Please wait a moment."
+                } else null
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = errorMsg)
             }
         }
     }
