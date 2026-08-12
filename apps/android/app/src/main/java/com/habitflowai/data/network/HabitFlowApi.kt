@@ -81,6 +81,9 @@ interface HabitFlowApi {
     suspend fun recordLocation(@Body request: LocationSyncRequest): Response<Unit>
 
     // Chat
+    @GET("api/v1/coach/chat")
+    suspend fun getCoachChat(): com.habitflowai.data.model.CoachChatResponse
+
     @GET("api/v1/chats")
     suspend fun getChats(): List<com.habitflowai.data.model.ChatResponse>
 

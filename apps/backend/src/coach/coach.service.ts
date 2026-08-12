@@ -104,6 +104,11 @@ export class CoachService {
     return { chatId, reply, proposedChange };
   }
 
+  async getCoachChatId(userId: string): Promise<{ chatId: string }> {
+    await this.loadUser(userId);
+    return { chatId: await this.ensureCoachChat(userId) };
+  }
+
   async confirmChange(userId: string, dto: ConfirmCoachChangeDto): Promise<ConfirmCoachChangeResult> {
     const result = await this.personasService.confirmCoachChange(userId, dto);
     await this.post(await this.ensureCoachChat(userId), confirmationLine(result));

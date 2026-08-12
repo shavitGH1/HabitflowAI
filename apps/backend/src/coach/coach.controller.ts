@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -31,6 +31,15 @@ export class CoachController {
   @ApiResponse({ status: 404, description: 'User not found' })
   weeklyReview(@Req() req: { user: { id: string } }) {
     return this.coachService.postWeekly(req.user.id, true);
+  }
+
+  @Get('chat')
+  @ApiOperation({ summary: 'Get the current user\'s coach chat id, creating it on first call' })
+  @ApiResponse({ status: 200, description: 'The coach chat id' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  getCoachChat(@Req() req: { user: { id: string } }) {
+    return this.coachService.getCoachChatId(req.user.id);
   }
 
   @Post('chat')
