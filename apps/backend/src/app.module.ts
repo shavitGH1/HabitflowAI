@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import * as Joi from 'joi';
+import { ArticlesModule } from './articles/articles.module';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { CoachModule } from './coach/coach.module';
@@ -59,6 +60,7 @@ import { UsersModule } from './users/users.module';
     CoachModule,
     GoalsModule,
     FollowsModule,
+    ArticlesModule,
   ],
 })
 export class AppModule {}

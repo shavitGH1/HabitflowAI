@@ -4,6 +4,8 @@ import { GoogleGenAI } from '@google/genai';
 import { ZodSchema } from 'zod';
 import { logger } from '../logger';
 
+const EMBEDDING_MODEL = 'gemini-embedding-001';
+
 @Injectable()
 export class GeminiClient {
   private readonly ai: GoogleGenAI;
@@ -15,6 +17,21 @@ export class GeminiClient {
     this.models = configured
       ? [configured]
       : ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
+  }
+
+  async embedContent(text: string): Promise<number[]> {
+    try {
+      const response = await this.ai.models.embedContent({ model: EMBEDDING_MODEL, contents: text });
+      const values = response.embeddings?.[0]?.values;
+      if (!values) throw new Error('Empty embedding response');
+      return values;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error({ err: msg }, 'Gemini embedding call failed');
+      throw new InternalServerErrorException(
+        'AI Service is currently overloaded. Please try again in a few seconds.',
+      );
+    }
   }
 
   async generateJson<T>(prompt: string, schema?: ZodSchema<T>): Promise<T> {

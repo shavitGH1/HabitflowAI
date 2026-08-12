@@ -19,6 +19,7 @@ import {
 } from './features/habit-goal-relevance.feature';
 import { TaskVerificationFeature, TaskVerificationInput } from './features/task-verification.feature';
 import { CoachingAgentFeature, CoachingAgentInput } from './features/coaching-agent.feature';
+import { RagSearchFeature, RagSearchInput, RankedArticle } from './features/rag-search.feature';
 import {
   MotivationFeedbackStore,
   MotivationVote,
@@ -48,6 +49,7 @@ export class AiService {
     private readonly habitGoalRelevance: HabitGoalRelevanceFeature,
     private readonly taskVerification: TaskVerificationFeature,
     private readonly coachingAgent: CoachingAgentFeature,
+    private readonly ragSearch: RagSearchFeature,
     private readonly feedbackStore: MotivationFeedbackStore,
   ) {}
 
@@ -101,6 +103,10 @@ export class AiService {
 
   coachChat(input: CoachingAgentInput): Promise<ResolvedCoachingAgentOutput> {
     return this.coachingAgent.converse(input);
+  }
+
+  searchArticles(input: RagSearchInput): Promise<RankedArticle[]> {
+    return this.ragSearch.search(input);
   }
 
   recordMotivationFeedback(userId: string, vote: MotivationVote): FeedbackTally {

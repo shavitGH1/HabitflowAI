@@ -9,7 +9,8 @@
     "predev": "kill-port 3000",
     "dev": "ts-node-dev --respawn --transpile-only -r reflect-metadata src/main.ts",
     "build": "tsc",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "seed:articles": "ts-node -r reflect-metadata scripts/seed-articles.ts"
   },
   "jest": {
     "preset": "ts-jest",
