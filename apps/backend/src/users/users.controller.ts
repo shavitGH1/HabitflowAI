@@ -10,6 +10,14 @@ import { UsersService } from './users.service';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get()
+  @ApiOperation({ summary: 'List all users (id + email) for member picker' })
+  @ApiResponse({ status: 200, description: 'Array of { id, email }' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  getAllUsers(@Req() req: { user: { id: string } }) {
+    return this.usersService.getAllUsers();
+  }
+
   @Get('me/home')
   @ApiOperation({ summary: 'Get persona, goals and daily tasks for the authenticated user' })
   @ApiResponse({ status: 200, description: 'Home page data including persona, goals, daily tasks, and portfolio fields' })

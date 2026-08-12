@@ -19,14 +19,18 @@ import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.model.RegisterResponse
 import com.habitflowai.data.model.TokenRefreshRequest
 import com.habitflowai.data.model.TokenRefreshResponse
+import okhttp3.MultipartBody
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -101,4 +105,56 @@ interface HabitFlowApi {
         @Query("page") page: Int = 1,
         @Query("limit") limit: Int = 30
     ): List<com.habitflowai.data.model.MessageResponse>
+
+    @POST("api/v1/chats/{chatId}/read")
+    suspend fun markAsRead(@Path("chatId") chatId: String): Response<Unit>
+
+    @HTTP(method = "DELETE", path = "api/v1/chats/{chatId}/members", hasBody = true)
+    suspend fun removeMembers(
+        @Path("chatId") chatId: String,
+        @Body request: com.habitflowai.data.model.RemoveMembersRequest
+    ): com.habitflowai.data.model.ChatResponse
+
+    @POST("api/v1/chats/{chatId}/leave")
+    suspend fun leaveGroup(@Path("chatId") chatId: String): Response<Unit>
+
+    @PATCH("api/v1/chats/{chatId}/name")
+    suspend fun renameGroup(
+        @Path("chatId") chatId: String,
+        @Body request: com.habitflowai.data.model.UpdateGroupNameRequest
+    ): com.habitflowai.data.model.ChatResponse
+
+    @PATCH("api/v1/chats/{chatId}/description")
+    suspend fun updateGroupDescription(
+        @Path("chatId") chatId: String,
+        @Body request: com.habitflowai.data.model.UpdateGroupDescriptionRequest
+    ): com.habitflowai.data.model.ChatResponse
+
+    @PATCH("api/v1/chats/{chatId}/admins")
+    suspend fun promoteAdmin(
+        @Path("chatId") chatId: String,
+        @Body request: com.habitflowai.data.model.UpdateAdminsRequest
+    ): com.habitflowai.data.model.ChatResponse
+
+    @HTTP(method = "DELETE", path = "api/v1/chats/{chatId}/admins", hasBody = true)
+    suspend fun demoteAdmin(
+        @Path("chatId") chatId: String,
+        @Body request: com.habitflowai.data.model.UpdateAdminsRequest
+    ): com.habitflowai.data.model.ChatResponse
+
+    @DELETE("api/v1/chats/{chatId}")
+    suspend fun deleteGroup(@Path("chatId") chatId: String): Response<Unit>
+
+    @Multipart
+    @POST("api/v1/chats/{chatId}/image")
+    suspend fun uploadGroupImage(
+        @Path("chatId") chatId: String,
+        @Part image: MultipartBody.Part
+    ): com.habitflowai.data.model.ChatResponse
+
+    @GET("api/v1/users/{userId}/following")
+    suspend fun getFollowing(@Path("userId") userId: String): List<String>
+
+    @GET("api/v1/users")
+    suspend fun getUsers(): List<com.habitflowai.data.model.AppUser>
 }
