@@ -9,6 +9,8 @@ export interface LocationData {
   habitId?: string;
   latitude: number;
   longitude: number;
+  placeName: string;
+  taskDescription: string;
   timestamp: number;
   personaType: string;
   isPublic: boolean;
@@ -20,6 +22,8 @@ export interface CreateLocationInput {
   habitId?: string;
   latitude: number;
   longitude: number;
+  placeName?: string;
+  taskDescription?: string;
   timestamp?: number;
   personaType?: string;
   isPublic?: boolean;
@@ -54,6 +58,15 @@ export class LocationRepository {
     return docs.map(doc => this.toLocationData(doc));
   }
 
+  async findByUser(userId: string, limit = 500): Promise<LocationData[]> {
+    const docs = await this.locationModel
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
+    return docs.map(doc => this.toLocationData(doc));
+  }
+
   private toLocationData(doc: LocationRecordDocument): LocationData {
     return {
       id: (doc._id as { toString(): string }).toString(),
@@ -61,6 +74,8 @@ export class LocationRepository {
       habitId: doc.habitId,
       latitude: doc.latitude,
       longitude: doc.longitude,
+      placeName: doc.placeName ?? '',
+      taskDescription: doc.taskDescription ?? '',
       timestamp: doc.timestamp,
       personaType: doc.personaType,
       isPublic: doc.isPublic,

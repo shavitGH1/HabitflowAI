@@ -39,7 +39,6 @@ class HomeViewModel @Inject constructor(
             try {
                 val success = goalsRepository.completeTask(taskId)
                 if (success) {
-                    locationRepository.captureAndSaveLocation(taskId)
                     _uiState.value.homeData?.let { currentData ->
                         val updatedCoreGoals = currentData.coreGoals.map {
                             if (it.id == taskId) it.copy(completed = true) else it
@@ -55,6 +54,7 @@ class HomeViewModel @Inject constructor(
                             )
                         )
                     }
+                    locationRepository.captureAndSaveLocation(taskId)
                     onResult(true)
                 } else {
                     onResult(false)

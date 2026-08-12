@@ -1,12 +1,15 @@
 package com.habitflowai.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
 import com.habitflowai.data.model.HabitMarker
+import com.habitflowai.domain.repository.LocationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class MapUiState(
@@ -17,9 +20,11 @@ data class MapUiState(
 )
 
 @HiltViewModel
-class MapViewModel @Inject constructor() : ViewModel() {
+class MapViewModel @Inject constructor(
+    private val locationRepository: LocationRepository
+) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MapUiState())
+    private val _uiState = MutableStateFlow(MapUiState(isLoading = true))
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
 
     init {
@@ -44,16 +49,32 @@ class MapViewModel @Inject constructor() : ViewModel() {
         _uiState.value = _uiState.value.copy(searchResult = null)
     }
 
+    fun refreshMarkers() {
+        loadMarkers()
+    }
+
     private fun loadMarkers() {
-        // Mock data for clustering
-        val mockMarkers = listOf(
-            HabitMarker("1", "Morning Run", "🏃", "Physical", LatLng(32.0853, 34.7818)),
-            HabitMarker("2", "Meditation", "🧘", "Mental", LatLng(32.0860, 34.7825)),
-            HabitMarker("3", "Deep Work", "💻", "Productivity", LatLng(32.0845, 34.7810)),
-            HabitMarker("4", "Reading", "📚", "Growth", LatLng(32.0870, 34.7830), isPublic = true, username = "Alex"),
-            HabitMarker("5", "Gym", "🏋️", "Physical", LatLng(32.1000, 34.8000)),
-            HabitMarker("6", "Yoga", "🧘", "Mental", LatLng(32.1010, 34.8010))
-        )
-        _uiState.value = MapUiState(markers = mockMarkers)
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            val locations = locationRepository.getMyLocations()
+            val markers = locations.map { location ->
+                val taskName = location.taskDescription?.takeIf { it.isNotBlank() }
+                val placeName = location.placeName?.takeIf { it.isNotBlank() }
+                HabitMarker(
+                    id = location.id,
+                    habitName = taskName ?: placeName ?: "Completed task",
+                    personaEmoji = "📍",
+                    habitType = "Completed",
+                    latLng = LatLng(location.latitude, location.longitude),
+                    username = placeName
+                )
+            }
+            _uiState.value = MapUiState(
+                markers = markers,
+                isLoading = false,
+                searchQuery = _uiState.value.searchQuery,
+                searchResult = _uiState.value.searchResult
+            )
+        }
     }
 }

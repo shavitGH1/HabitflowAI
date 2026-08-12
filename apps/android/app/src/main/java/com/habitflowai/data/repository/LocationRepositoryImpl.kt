@@ -1,16 +1,26 @@
 package com.habitflowai.data.repository
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.location.Location
+import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.habitflowai.data.local.dao.LocationDao
 import com.habitflowai.data.local.entity.LocationEntity
 import com.habitflowai.data.local.entity.SyncStatus
+import com.habitflowai.data.model.LocationResponse
+import com.habitflowai.data.model.LocationSyncRequest
+import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.domain.repository.LocationRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
@@ -22,6 +32,7 @@ import javax.inject.Singleton
 class LocationRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val locationDao: LocationDao,
+    private val api: HabitFlowApi,
     private val workManager: WorkManager
 ) : LocationRepository {
 
@@ -30,7 +41,11 @@ class LocationRepositoryImpl @Inject constructor(
     }
 
     override suspend fun captureAndSaveLocation(habitId: String?) {
-        val location = getCurrentLocation() ?: return
+        val location = getCurrentLocation()
+        if (location == null) {
+            Log.w(TAG, "captureAndSaveLocation: no location available, skipping (habitId=$habitId)")
+            return
+        }
         val entity = LocationEntity(
             id = UUID.randomUUID().toString(),
             habitId = habitId,
@@ -40,7 +55,31 @@ class LocationRepositoryImpl @Inject constructor(
             syncStatus = SyncStatus.PENDING_CREATE
         )
         locationDao.insert(entity)
-        enqueueSync()
+        Log.d(TAG, "captureAndSaveLocation: saved ${location.latitude},${location.longitude} (habitId=$habitId)")
+
+        val request = LocationSyncRequest(
+            habitId = entity.habitId,
+            latitude = entity.latitude,
+            longitude = entity.longitude,
+            timestamp = entity.timestamp
+        )
+        val uploaded = try {
+            val response = api.recordLocation(request)
+            if (response.isSuccessful) {
+                locationDao.markSynced(entity.id)
+                Log.d(TAG, "captureAndSaveLocation: uploaded immediately (${entity.id})")
+                true
+            } else {
+                Log.w(TAG, "captureAndSaveLocation: server returned ${response.code()}, will retry via worker")
+                false
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "captureAndSaveLocation: upload threw (${e.message}), will retry via worker")
+            false
+        }
+        if (!uploaded) {
+            enqueueSync()
+        }
     }
 
     override fun getLastLocation(): LocationEntity? {
@@ -57,11 +96,36 @@ class LocationRepositoryImpl @Inject constructor(
         return locationDao.getAllLocations()
     }
 
-    private suspend fun getCurrentLocation(): Location? {
+    override suspend fun getMyLocations(): List<LocationResponse> {
         return try {
-            fusedLocationClient.lastLocation.await()
+            api.getMyLocations().also { Log.d(TAG, "getMyLocations: ${it.size} records") }
         } catch (e: Exception) {
-            null
+            Log.w(TAG, "getMyLocations failed: ${e.message}")
+            emptyList()
+        }
+    }
+
+    private suspend fun getCurrentLocation(): Location? {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.w(TAG, "getCurrentLocation: ACCESS_FINE_LOCATION not granted")
+            return null
+        }
+        return try {
+            val request = CurrentLocationRequest.Builder()
+                .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                .setDurationMillis(5000)
+                .build()
+            fusedLocationClient.getCurrentLocation(request, CancellationTokenSource().token).await()
+        } catch (e: Exception) {
+            Log.w(TAG, "getCurrentLocation failed (${e.message}), falling back to lastLocation")
+            try {
+                fusedLocationClient.lastLocation.await()
+            } catch (e2: Exception) {
+                Log.w(TAG, "lastLocation also failed: ${e2.message}")
+                null
+            }
         }
     }
 
@@ -75,5 +139,9 @@ class LocationRepositoryImpl @Inject constructor(
             .build()
 
         workManager.enqueue(syncRequest)
+    }
+
+    companion object {
+        private const val TAG = "LocationRepo"
     }
 }

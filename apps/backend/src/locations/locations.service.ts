@@ -1,22 +1,51 @@
 import { Injectable } from '@nestjs/common';
+import { logger } from '../logger';
 import { LocationDto } from './dto/location.dto';
 import { LocationData, LocationRepository } from './location.repository';
+import { GeocodingService } from './geocoding.service';
+import { UserRepository } from '../users/user.repository';
 
 @Injectable()
 export class LocationsService {
-  constructor(private readonly locationRepository: LocationRepository) {}
+  constructor(
+    private readonly locationRepository: LocationRepository,
+    private readonly geocoding: GeocodingService,
+    private readonly userRepository: UserRepository,
+  ) {}
 
   async recordLocation(userId: string, dto: LocationDto): Promise<{ success: boolean }> {
-    await this.locationRepository.create({
+    logger.info(
+      { userId, habitId: dto.habitId, latitude: dto.latitude, longitude: dto.longitude },
+      'recordLocation: request received',
+    );
+
+    const placeName = dto.placeName ?? (await this.geocoding.reverseGeocode(dto.latitude, dto.longitude)) ?? '';
+    const taskDescription =
+      dto.taskDescription ?? (dto.habitId ? await this.resolveTaskDescription(userId, dto.habitId) : '');
+
+    const created = await this.locationRepository.create({
       userId,
       habitId: dto.habitId,
       latitude: dto.latitude,
       longitude: dto.longitude,
+      placeName,
+      taskDescription,
       timestamp: dto.timestamp ?? Date.now(),
       personaType: dto.personaType,
       isPublic: dto.isPublic,
     });
+
+    logger.info(
+      { id: created.id, placeName, taskDescription, success: true },
+      'recordLocation: saved',
+    );
     return { success: true };
+  }
+
+  async getMyLocations(userId: string): Promise<LocationData[]> {
+    const records = await this.locationRepository.findByUser(userId);
+    logger.info({ userId, count: records.length }, 'getMyLocations: returning records');
+    return records;
   }
 
   async getBbox(
@@ -26,5 +55,17 @@ export class LocationsService {
     maxLng: number,
   ): Promise<LocationData[]> {
     return this.locationRepository.findByBbox(minLat, maxLat, minLng, maxLng);
+  }
+
+  private async resolveTaskDescription(userId: string, taskId: string): Promise<string> {
+    try {
+      const user = await this.userRepository.findUserById(userId);
+      if (!user) return '';
+      const task =
+        user.coreGoals.find(t => t.id === taskId) ?? user.dailyVariations.find(t => t.id === taskId);
+      return task?.description ?? '';
+    } catch {
+      return '';
+    }
   }
 }
