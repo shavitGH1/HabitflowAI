@@ -14,6 +14,14 @@ class ChatRepository @Inject constructor(
     private val _messages = MutableSharedFlow<ChatMessage>()
     val messages: Flow<ChatMessage> = _messages
 
+    suspend fun getCoachChatId(): String? {
+        return try {
+            api.getCoachChat().chatId
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     suspend fun getHistory(chatId: String): List<ChatMessage> {
         return try {
             api.getMessages(chatId).map { 

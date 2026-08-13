@@ -39,28 +39,81 @@ abstract class HabitFlowDatabase : RoomDatabase() {
     companion object {
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // To change primary key, we must recreate the table
-                db.execSQL("DROP TABLE IF EXISTS `chats_old`")
-                db.execSQL("ALTER TABLE `chats` RENAME TO `chats_old`")
-                db.execSQL(
-                    """
-                    CREATE TABLE IF NOT EXISTS `chats` (
-                        `id` TEXT NOT NULL, 
-                        `userId` TEXT NOT NULL, 
-                        `name` TEXT, 
-                        `isGroup` INTEGER NOT NULL, 
-                        `lastMessage` TEXT, 
-                        `participantIds` TEXT NOT NULL, 
-                        `admins` TEXT NOT NULL, 
-                        `owner` TEXT, 
-                        `description` TEXT, 
-                        `imageUrl` TEXT, 
-                        PRIMARY KEY(`id`, `userId`)
+                // Recreate `locations` to match the v5 entity: the old v3->v4 migration added
+                // taskTitle/placeName/address columns (and DEFAULT clauses) that no longer exist.
+                db.execSQL("DROP TABLE IF EXISTS `locations_new`")
+                db.execSQL("CREATE TABLE `locations_new` (`id` TEXT NOT NULL, `habitId` TEXT, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `timestamp` INTEGER NOT NULL, `syncStatus` TEXT NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("INSERT INTO `locations_new` (`id`, `habitId`, `latitude`, `longitude`, `timestamp`, `syncStatus`) SELECT `id`, `habitId`, `latitude`, `longitude`, `timestamp`, `syncStatus` FROM `locations`")
+                db.execSQL("DROP TABLE `locations`")
+                db.execSQL("ALTER TABLE `locations_new` RENAME TO `locations`")
+                // Recreate `drift_checks` to match the v5 entity (drop the DEFAULT clause).
+                db.execSQL("DROP TABLE IF EXISTS `drift_checks_new`")
+                db.execSQL("CREATE TABLE `drift_checks_new` (`id` TEXT NOT NULL, `driftDetected` INTEGER NOT NULL, `driftScore` REAL NOT NULL, `newSuggestedPersona` TEXT, `rationale` TEXT, `checkedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("INSERT INTO `drift_checks_new` (`id`, `driftDetected`, `driftScore`, `newSuggestedPersona`, `rationale`, `checkedAt`) SELECT `id`, `driftDetected`, `driftScore`, `newSuggestedPersona`, `rationale`, `checkedAt` FROM `drift_checks`")
+                db.execSQL("DROP TABLE `drift_checks`")
+                db.execSQL("ALTER TABLE `drift_checks_new` RENAME TO `drift_checks`")
+                val hasChats = db.query("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='chats'").use { cursor ->
+                    cursor.moveToFirst()
+                    cursor.getInt(0) > 0
+                }
+                if (hasChats) {
+                    // To change primary key, we must recreate the table
+                    db.execSQL("DROP TABLE IF EXISTS `chats_old`")
+                    db.execSQL("ALTER TABLE `chats` RENAME TO `chats_old`")
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `chats` (
+                            `id` TEXT NOT NULL, 
+                            `userId` TEXT NOT NULL, 
+                            `name` TEXT, 
+                            `isGroup` INTEGER NOT NULL, 
+                            `lastMessage` TEXT, 
+                            `participantIds` TEXT NOT NULL, 
+                            `admins` TEXT NOT NULL, 
+                            `owner` TEXT, 
+                            `description` TEXT, 
+                            `imageUrl` TEXT, 
+                            PRIMARY KEY(`id`, `userId`)
+                        )
+                        """.trimIndent()
                     )
-                    """.trimIndent()
-                )
-                db.execSQL("INSERT INTO `chats` SELECT * FROM `chats_old`")
-                db.execSQL("DROP TABLE `chats_old`")
+                    db.execSQL("INSERT INTO `chats` SELECT * FROM `chats_old`")
+                    db.execSQL("DROP TABLE `chats_old`")
+                } else {
+                    // v4 databases never had a chats table; the feature was added in v5
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `chats` (
+                            `id` TEXT NOT NULL, 
+                            `userId` TEXT NOT NULL, 
+                            `name` TEXT, 
+                            `isGroup` INTEGER NOT NULL, 
+                            `lastMessage` TEXT, 
+                            `participantIds` TEXT NOT NULL, 
+                            `admins` TEXT NOT NULL, 
+                            `owner` TEXT, 
+                            `description` TEXT, 
+                            `imageUrl` TEXT, 
+                            PRIMARY KEY(`id`, `userId`)
+                        )
+                        """.trimIndent()
+                    )
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `messages` (
+                            `id` TEXT NOT NULL, 
+                            `chatId` TEXT NOT NULL, 
+                            `text` TEXT NOT NULL, 
+                            `senderId` TEXT NOT NULL, 
+                            `isFromBot` INTEGER NOT NULL, 
+                            `timestamp` INTEGER NOT NULL, 
+                            `imageUrl` TEXT, 
+                            `likedBy` TEXT NOT NULL, 
+                            PRIMARY KEY(`id`)
+                        )
+                        """.trimIndent()
+                    )
+                }
             }
         }
         val MIGRATION_3_4 = object : Migration(3, 4) {

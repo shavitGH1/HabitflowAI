@@ -1,6 +1,7 @@
 package com.habitflowai.data.repository
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -21,23 +22,33 @@ class LocationSyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return try {
             val unsynced = locationDao.getUnsyncedLocations()
+            Log.d(TAG, "doWork: ${unsynced.size} unsynced locations")
             for (location in unsynced) {
                 try {
-                    val request = com.habitflowai.data.model.LocationSyncRequest(
+                    val request = LocationSyncRequest(
                         habitId = location.habitId,
                         latitude = location.latitude,
                         longitude = location.longitude,
                         timestamp = location.timestamp
                     )
-                    api.recordLocation(request)
-                    locationDao.markSynced(location.id)
-                } catch (_: Exception) {
-                    // Will retry on next sync
+                    val response = api.recordLocation(request)
+                    if (response.isSuccessful) {
+                        locationDao.markSynced(location.id)
+                        Log.d(TAG, "synced location ${location.id} (habitId=${location.habitId})")
+                    } else {
+                        Log.w(TAG, "recordLocation returned ${response.code()}, keeping unsynced (${location.id})")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "recordLocation threw for ${location.id}: ${e.message}")
                 }
             }
             Result.success()
         } catch (e: Exception) {
             if (runAttemptCount < 3) Result.retry() else Result.failure()
         }
+    }
+
+    companion object {
+        private const val TAG = "LocationSyncWorker"
     }
 }

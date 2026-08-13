@@ -27,3 +27,13 @@ data class LocationSyncRequest(
     @SerializedName("longitude") val longitude: Double,
     @SerializedName("timestamp") val timestamp: Long
 )
+
+data class LocationResponse(
+    @SerializedName("id") val id: String,
+    @SerializedName("habitId") val habitId: String?,
+    @SerializedName("latitude") val latitude: Double,
+    @SerializedName("longitude") val longitude: Double,
+    @SerializedName("placeName") val placeName: String? = null,
+    @SerializedName("taskDescription") val taskDescription: String? = null,
+    @SerializedName("timestamp") val timestamp: Long = 0
+)

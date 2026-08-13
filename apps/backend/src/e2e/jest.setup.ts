@@ -11,3 +11,4 @@ process.env['GOOGLE_CALLBACK_URL'] = 'http://localhost:3000/api/v1/auth/google/c
 process.env['FIREBASE_PROJECT_ID'] = 'test-firebase-project';
 process.env['FIREBASE_PRIVATE_KEY'] = 'test-firebase-key';
 process.env['FIREBASE_CLIENT_EMAIL'] = 'test@test-project.iam.gserviceaccount.com';
+process.env['GOOGLE_MAPS_API_KEY'] = 'test-maps-key';

@@ -27,15 +27,19 @@ class ChatViewModel @Inject constructor(
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     private var socket: Socket? = null
-    private val botChatId = "bot_chat_id" // In a real app, this would be fetched
+    private var botChatId: String? = null
 
     init {
-        setupSocket()
-        loadHistory()
+        viewModelScope.launch {
+            botChatId = repository.getCoachChatId()
+            setupSocket()
+            loadHistory()
+        }
     }
 
     private fun setupSocket() {
         val token = authManager.accessToken.value ?: return
+        val chatId = botChatId ?: return
         val options = IO.Options.builder()
             .setAuth(mapOf("token" to "Bearer $token"))
             .build()
@@ -43,7 +47,7 @@ class ChatViewModel @Inject constructor(
         try {
             socket = IO.socket(BuildConfig.BASE_URL, options)
             socket?.on(Socket.EVENT_CONNECT) {
-                socket?.emit("joinChat", JSONObject().put("chatId", botChatId))
+                socket?.emit("joinChat", JSONObject().put("chatId", chatId))
             }
             socket?.on("newMessage") { args ->
                 val data = args[0] as JSONObject
@@ -64,8 +68,9 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun loadHistory() {
+        val chatId = botChatId ?: return
         viewModelScope.launch {
-            val history = repository.getHistory(botChatId)
+            val history = repository.getHistory(chatId)
             if (history.isNotEmpty()) {
                 _uiState.update { it.copy(messages = history) }
             } else {
@@ -100,9 +105,10 @@ class ChatViewModel @Inject constructor(
     fun sendMessage() {
         val text = _uiState.value.inputText.trim()
         if (text.isEmpty()) return
+        val chatId = botChatId ?: return
 
         val messageObj = JSONObject().apply {
-            put("chatId", botChatId)
+            put("chatId", chatId)
             put("text", text)
         }
         socket?.emit("sendMessage", messageObj)

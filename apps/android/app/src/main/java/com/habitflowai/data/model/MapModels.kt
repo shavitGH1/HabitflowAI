@@ -14,6 +14,6 @@ data class HabitMarker(
 ) : ClusterItem {
     override fun getPosition(): LatLng = latLng
     override fun getTitle(): String = habitName
-    override fun getSnippet(): String = "$personaEmoji $habitType"
+    override fun getSnippet(): String = username?.takeIf { it.isNotBlank() } ?: "$personaEmoji $habitType"
     override fun getZIndex(): Float? = null
 }

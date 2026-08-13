@@ -17,6 +17,12 @@ export class LocationRecord {
   @Prop({ required: true })
   longitude: number;
 
+  @Prop({ default: '' })
+  placeName: string;
+
+  @Prop({ default: '' })
+  taskDescription: string;
+
   @Prop({ default: Date.now })
   timestamp: number;
 

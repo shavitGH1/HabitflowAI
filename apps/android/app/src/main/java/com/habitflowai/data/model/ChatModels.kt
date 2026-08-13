@@ -2,6 +2,10 @@ package com.habitflowai.data.model
 
 import java.util.UUID
 
+data class CoachChatResponse(
+    val chatId: String
+)
+
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val text: String,

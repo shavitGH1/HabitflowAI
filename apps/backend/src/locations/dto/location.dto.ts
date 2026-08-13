@@ -24,6 +24,16 @@ export class LocationDto {
 
   @IsOptional()
   @IsString()
+  @ApiPropertyOptional({ description: 'Geocoded place name (falls back to server-side reverse geocoding)' })
+  placeName?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional({ description: 'Task description (falls back to server-side lookup by habitId)' })
+  taskDescription?: string;
+
+  @IsOptional()
+  @IsString()
   @ApiPropertyOptional({ description: "User's persona type at time of completion" })
   personaType?: string;
 

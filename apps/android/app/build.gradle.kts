@@ -38,6 +38,9 @@ android {
             "BASE_URL",
             "\"${localProps.getProperty("backend.base.url", "http://10.0.2.2:3000/")}\""
         )
+
+        manifestPlaceholders["googleMapsApiKey"] =
+            localProps.getProperty("maps.api.key", "YOUR_API_KEY_HERE")
     }
 
     buildTypes {

@@ -48,6 +48,10 @@ fun MapRoute(
         chatViewModel.setPersonaType(personaType)
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.refreshMarkers()
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         MapContent(
             uiState = uiState,
@@ -94,7 +98,7 @@ fun MapContent(
     }
 
     var selectedCategory by remember { mutableStateOf("All") }
-    val categories = listOf("All", "Physical", "Mental", "Productivity", "Growth")
+    val categories = listOf("All", "Completed")
 
     val filteredMarkers = remember(uiState.markers, selectedCategory) {
         if (selectedCategory == "All") uiState.markers
@@ -159,7 +163,7 @@ fun MapContent(
                                 color = personaDetails.endColor
                             )
                             Text(
-                                text = "Discover collective growth nearby",
+                                text = "Where you completed your tasks",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -244,7 +248,7 @@ fun MapContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "✨ ${filteredMarkers.size} Habits in this area",
+                        text = "✨ ${filteredMarkers.size} tasks completed here",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp

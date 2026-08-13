@@ -2,9 +2,13 @@
 # Backend (Node.js & TypeScript)
 # =========================
 .env
+.env.*
+!.env.example
 apps/backend/node_modules/
 apps/backend/dist/
 apps/backend/.env
+apps/backend/.env.*
+!apps/backend/.env.example
 apps/backend/tsconfig.tsbuildinfo
 apps/backend/firebase-service-account.json
 apps/backend/uploads/
