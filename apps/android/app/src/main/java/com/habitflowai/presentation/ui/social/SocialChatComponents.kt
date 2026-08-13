@@ -131,7 +131,7 @@ fun SocialGroupChatContent(
     var showDeleteDmConfirm by remember { mutableStateOf(false) }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().imePadding()) {
             SocialChatTopBar(
                 chat = chat,
                 personaColor = personaColor,
@@ -539,7 +539,8 @@ fun EditGroupSheet(
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.92f),
+                .fillMaxHeight(0.92f)
+                .imePadding(),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             // ── Group Photo ──────────────────────────────
@@ -1321,6 +1322,7 @@ fun MemberPickerSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.85f)
+                .imePadding()
         ) {
             // Header
             Row(

@@ -555,6 +555,7 @@ fun CreateGroupBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.92f)
+                .imePadding()
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -1087,6 +1088,7 @@ fun CommentsBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.9f)
+                .imePadding()
                 .padding(horizontal = 16.dp)
         ) {
             // Expanded Post Content
@@ -1217,6 +1219,7 @@ fun CreatePostBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .imePadding()
                 .padding(24.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
