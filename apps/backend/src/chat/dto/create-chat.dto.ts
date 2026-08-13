@@ -17,6 +17,14 @@ export class CreateChatDto {
   isGroup?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Group chats only: true for a publicly visible group, false/omitted for private',
+  })
+  isPublic?: boolean;
+
+  @IsOptional()
   @IsString()
   @ApiPropertyOptional({ example: 'Marathon Crew' })
   name?: string;

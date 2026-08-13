@@ -9,6 +9,7 @@ export interface ChatData {
   id: string;
   participantIds: string[];
   isGroup: boolean;
+  isPublic: boolean;
   name?: string;
   admins: string[];
   owner?: string;
@@ -32,6 +33,7 @@ export interface MessageData {
 export interface CreateChatInput {
   participantIds: string[];
   isGroup: boolean;
+  isPublic?: boolean;
   name?: string;
   admins?: string[];
   owner?: string;
@@ -40,6 +42,7 @@ export interface CreateChatInput {
 export interface UpdateChatInput {
   name?: string;
   description?: string;
+  isPublic?: boolean;
   imageUrl?: string;
   participantIds?: string[];
   admins?: string[];
@@ -141,6 +144,7 @@ export class ChatRepository {
       id: doc._id.toString(),
       participantIds: doc.participantIds,
       isGroup: doc.isGroup,
+      isPublic: doc.isPublic,
       name: doc.name,
       admins: doc.admins,
       owner: doc.owner,

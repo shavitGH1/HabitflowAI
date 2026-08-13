@@ -38,6 +38,7 @@ const makeChat = (overrides: Partial<ChatData> = {}): ChatData => ({
   id: CHAT_ID,
   participantIds: [USER_ID, OTHER_USER_ID],
   isGroup: false,
+  isPublic: false,
   admins: [],
   unreadCount: {},
   createdAt: new Date().toISOString(),
@@ -48,6 +49,7 @@ const makeGroupChat = (overrides: Partial<ChatData> = {}): ChatData => ({
   id: GROUP_CHAT_ID,
   participantIds: [USER_ID, OTHER_USER_ID, THIRD_USER_ID],
   isGroup: true,
+  isPublic: false,
   name: 'Marathon Crew',
   owner: USER_ID,
   admins: [USER_ID],
@@ -128,6 +130,37 @@ describe('ChatService', () => {
 
       expect(mockChatRepository.findDirectChatBetween).not.toHaveBeenCalled();
       expect(result).toEqual(created);
+    });
+
+    it('defaults a new group chat to private (isPublic: false) when omitted', async () => {
+      mockUserRepository.findUserById.mockResolvedValue({ id: OTHER_USER_ID });
+      mockChatRepository.createChat.mockResolvedValue(makeGroupChat());
+
+      await service.createChat(USER_ID, {
+        participantIds: [OTHER_USER_ID, THIRD_USER_ID],
+        isGroup: true,
+        name: 'Marathon Crew',
+      });
+
+      expect(mockChatRepository.createChat).toHaveBeenCalledWith(
+        expect.objectContaining({ isPublic: false }),
+      );
+    });
+
+    it('respects an explicit isPublic: true on a new group chat', async () => {
+      mockUserRepository.findUserById.mockResolvedValue({ id: OTHER_USER_ID });
+      mockChatRepository.createChat.mockResolvedValue(makeGroupChat({ isPublic: true }));
+
+      await service.createChat(USER_ID, {
+        participantIds: [OTHER_USER_ID, THIRD_USER_ID],
+        isGroup: true,
+        name: 'Marathon Crew',
+        isPublic: true,
+      });
+
+      expect(mockChatRepository.createChat).toHaveBeenCalledWith(
+        expect.objectContaining({ isPublic: true }),
+      );
     });
   });
 
@@ -422,6 +455,35 @@ describe('ChatService', () => {
         imageUrl: '/uploads/group-123.jpg',
       });
       expect(result.imageUrl).toBe('/uploads/group-123.jpg');
+    });
+  });
+
+  describe('updateVisibility()', () => {
+    it('rejects changing visibility on a direct chat', async () => {
+      mockChatRepository.findById.mockResolvedValue(makeChat());
+
+      await expect(service.updateVisibility(CHAT_ID, true)).rejects.toThrow(BadRequestException);
+      expect(mockChatRepository.updateChat).not.toHaveBeenCalled();
+    });
+
+    it('makes a private group public', async () => {
+      mockChatRepository.findById.mockResolvedValue(makeGroupChat({ isPublic: false }));
+      mockChatRepository.updateChat.mockResolvedValue(makeGroupChat({ isPublic: true }));
+
+      const result = await service.updateVisibility(GROUP_CHAT_ID, true);
+
+      expect(mockChatRepository.updateChat).toHaveBeenCalledWith(GROUP_CHAT_ID, { isPublic: true });
+      expect(result.isPublic).toBe(true);
+    });
+
+    it('makes a public group private', async () => {
+      mockChatRepository.findById.mockResolvedValue(makeGroupChat({ isPublic: true }));
+      mockChatRepository.updateChat.mockResolvedValue(makeGroupChat({ isPublic: false }));
+
+      const result = await service.updateVisibility(GROUP_CHAT_ID, false);
+
+      expect(mockChatRepository.updateChat).toHaveBeenCalledWith(GROUP_CHAT_ID, { isPublic: false });
+      expect(result.isPublic).toBe(false);
     });
   });
 

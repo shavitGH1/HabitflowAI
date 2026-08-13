@@ -9,6 +9,9 @@ export class Chat {
   @Prop({ default: false })
   isGroup: boolean;
 
+  @Prop({ default: false })
+  isPublic: boolean;
+
   @Prop()
   name?: string;
 
