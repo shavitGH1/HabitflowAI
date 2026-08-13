@@ -3,6 +3,9 @@ package com.habitflowai.data.model
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.clustering.ClusterItem
 
+/**
+ * Model for habit completion locations on the map.
+ */
 data class HabitMarker(
     val id: String,
     val habitName: String,

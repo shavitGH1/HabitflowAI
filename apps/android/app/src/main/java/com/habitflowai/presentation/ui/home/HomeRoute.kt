@@ -39,6 +39,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.habitflowai.presentation.viewmodel.HomeViewModel
 import com.habitflowai.data.model.HomeGoalTask
 import androidx.compose.material.icons.rounded.Close
@@ -110,7 +111,7 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(24.dp)
         ) {
             Text(text = "No goal data yet.", style = MaterialTheme.typography.headlineMedium)
@@ -170,11 +171,11 @@ fun HomeScreen(
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.Transparent,
-                    titleContentColor = Color(0xFF37474F)
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = Color.Transparent
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -184,7 +185,7 @@ fun HomeScreen(
                         listOf(
                             startColor.copy(alpha = 0.4f),
                             endColor.copy(alpha = 0.1f),
-                            Color.White
+                            MaterialTheme.colorScheme.background
                         )
                     )
                 )
@@ -225,7 +226,7 @@ fun HomeScreen(
                 text = "Welcome, $actualPersonaType!",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF37474F)
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -233,7 +234,7 @@ fun HomeScreen(
             Text(
                 text = "Your tailored dashboard is ready.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color(0xFF546E7A),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
 
@@ -242,13 +243,13 @@ fun HomeScreen(
             Card(
                 shape = RoundedCornerShape(24.dp),
                 elevation = CardDefaults.cardElevation(8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 if (homeData != null) {
                     Text(
                         text = homeData.motivationalMessage,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.DarkGray,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(24.dp)
                     )
                 }
@@ -350,7 +351,7 @@ fun GoalPlanSection(
             text = dateText,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF37474F)
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         goals.forEach { task ->
@@ -381,12 +382,12 @@ fun HistoryCalendarSection(
             text = "Weekly History & Tracking",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF37474F)
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = "Tap any day to review your progress.",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF546E7A)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -402,9 +403,9 @@ fun HistoryCalendarSection(
                         .clickable { onDateSelected(date) },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) Color(0xFF1E88E5)
-                                       else if (isCompleted) Color(0xFFC8E6C9)
-                                       else Color.White
+                        containerColor = if (isSelected) MaterialTheme.colorScheme.primary
+                                       else if (isCompleted) MaterialTheme.colorScheme.primaryContainer
+                                       else MaterialTheme.colorScheme.surfaceVariant
                     ),
                     elevation = CardDefaults.cardElevation(if (isSelected) 8.dp else 2.dp)
                 ) {
@@ -418,16 +419,21 @@ fun HistoryCalendarSection(
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) Color.White
-                                    else if (isCompleted) Color(0xFF2E7D32)
-                                    else Color(0xFF37474F)
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                    else if (isCompleted) MaterialTheme.colorScheme.onPrimaryContainer
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (isCompleted) {
                             Spacer(Modifier.height(4.dp))
-                            Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = if(isSelected) Color.White else Color(0xFF388E3C), modifier = Modifier.size(16.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.CheckCircle,
+                                contentDescription = null,
+                                tint = if(isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
                         } else if (isToday && !isSelected) {
                             Spacer(Modifier.height(4.dp))
-                            Box(modifier = Modifier.size(6.dp).background(Color(0xFF1E88E5), CircleShape))
+                            Box(modifier = Modifier.size(6.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
                         }
                     }
                 }
@@ -441,32 +447,34 @@ fun ProgressPhaseSection(personaType: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Star, contentDescription = null, tint = Color(0xFFFF8F00))
+                Icon(Icons.Rounded.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Current Phase: Foundation (Days 1-7)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFE65100)
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Your plan updates automatically every 7 days to ensure you keep making progress. Next week, we'll intensify the $personaType routine by introducing secondary habits.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF5D4037)
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
             )
             Spacer(modifier = Modifier.height(12.dp))
             LinearProgressIndicator(
                 progress = { 0.5f },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                color = Color(0xFFFFB300),
-                trackColor = Color(0xFFFFE082),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
                 strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
             )
         }
@@ -481,29 +489,29 @@ fun PlanExplanationSection(personaType: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Info, contentDescription = null, tint = Color(0xFF1E88E5))
+                Icon(Icons.Rounded.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Your $personaType Master Plan",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1565C0)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFE3F2FD))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text(text = "Daily Strategy", style = MaterialTheme.typography.titleSmall, color = Color(0xFF0D47A1), fontWeight = FontWeight.Bold)
-            Text(text = dailyExpl, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF455A64))
+            Text(text = "Daily Strategy", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(text = dailyExpl, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(text = "Monthly Overview", style = MaterialTheme.typography.titleSmall, color = Color(0xFF0D47A1), fontWeight = FontWeight.Bold)
-            Text(text = monthlyExpl, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF455A64))
+            Text(text = "Monthly Overview", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(text = monthlyExpl, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -515,12 +523,14 @@ fun InteractiveGoalItem(
     onCheckedChange: (Boolean) -> Unit
 ) {
     val backgroundColor by animateColorAsState(
-        targetValue = if (isChecked) Color(0xFFC8E6C9) else Color(0xFFFFF9C4),
+        targetValue = if (isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                      else MaterialTheme.colorScheme.surfaceVariant,
         label = "GoalBackgroundAnimation"
     )
 
     val textColor by animateColorAsState(
-        targetValue = if (isChecked) Color(0xFF2E7D32) else Color(0xFFF57F17),
+        targetValue = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer
+                      else MaterialTheme.colorScheme.onSurfaceVariant,
         label = "GoalTextAnimation"
     )
 
@@ -542,9 +552,9 @@ fun InteractiveGoalItem(
                 onCheckedChange = { if (it) onCheckedChange(true) },
                 enabled = !isChecked,
                 colors = CheckboxDefaults.colors(
-                    checkedColor = Color(0xFF388E3C),
-                    uncheckedColor = Color(0xFFFBC02D),
-                    checkmarkColor = Color.White
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.outline,
+                    checkmarkColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -567,29 +577,29 @@ fun RegulatorHome() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.DateRange, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(28.dp))
+                Icon(Icons.Rounded.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "STRUCTURE & ROUTINE", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0D47A1))
+                Text(text = "STRUCTURE & ROUTINE", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
             }
 
-            HorizontalDivider(color = Color(0xFFBBDEFB))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text(text = "Current Consistency Score", style = MaterialTheme.typography.labelLarge, color = Color(0xFF00695C))
+            Text(text = "Current Consistency Score", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LinearProgressIndicator(
                 progress = { 0.88f },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(14.dp)
                     .clip(RoundedCornerShape(7.dp)),
-                color = Color(0xFF4CAF50),
-                trackColor = Color(0xFFC8E6C9),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.primaryContainer,
                 strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
             )
-            Text(text = "88% Excellent", style = MaterialTheme.typography.bodyLarge, color = Color(0xFF2E7D32), fontWeight = FontWeight.ExtraBold)
+            Text(text = "88% Excellent", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(text = "Today's Prescribed Hours", style = MaterialTheme.typography.titleMedium, color = Color(0xFF0277BD), fontWeight = FontWeight.Bold)
+            Text(text = "Today's Prescribed Hours", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
 
             TimeSlotCard("06:00 AM", "Morning Protocol & Hydration")
             TimeSlotCard("08:00 AM", "Deep Work Block")
@@ -603,13 +613,13 @@ fun TimeSlotCard(time: String, activity: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFE3F2FD), RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = time, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1565C0))
-        Text(text = activity, style = MaterialTheme.typography.bodyLarge, color = Color(0xFF0D47A1), fontWeight = FontWeight.Medium)
+        Text(text = time, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+        Text(text = activity, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -618,18 +628,18 @@ fun AchieverHome() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Rounded.Star, contentDescription = null, tint = Color(0xFFFF8F00), modifier = Modifier.size(28.dp))
+                Icon(Icons.Rounded.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "GLOBAL COMPETITION", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = Color(0xFFE65100))
+                Text(text = "GLOBAL COMPETITION", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
             }
-            HorizontalDivider(color = Color(0xFFFFE082))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text(text = "You are competing against 4,203 Achievers globally.", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFF57F17))
+            Text(text = "You are competing against 4,203 Achievers globally.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             LeaderboardRow(rank = 1, name = "Strider AI", score = 14500, highlight = false)
             LeaderboardRow(rank = 2, name = "Sarah.H", score = 14220, highlight = false)
@@ -640,7 +650,7 @@ fun AchieverHome() {
             Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = {},
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFA000)),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("View Full Leaderboard", fontWeight = FontWeight.Bold)
@@ -654,7 +664,7 @@ fun LeaderboardRow(rank: Int, name: String, score: Int, highlight: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (highlight) Color(0xFFFFECB3) else Color.Transparent, RoundedCornerShape(8.dp))
+            .background(if (highlight) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, RoundedCornerShape(8.dp))
             .padding(8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -663,13 +673,13 @@ fun LeaderboardRow(rank: Int, name: String, score: Int, highlight: Boolean) {
             Text(
                 text = "$rank. $name",
                 fontWeight = if (highlight) FontWeight.ExtraBold else FontWeight.Medium,
-                color = if (highlight) Color(0xFFE65100) else Color(0xFF5D4037)
+                color = if (highlight) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
             )
         }
         Text(
             text = "$score pts",
             style = MaterialTheme.typography.bodyMedium,
-            color = if (highlight) Color(0xFFE65100) else Color.Gray
+            color = if (highlight) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -718,48 +728,54 @@ fun ArchitectHome() {
 fun BaseTemplate(title: String, lines: List<String>) {
     Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Star, contentDescription = null, tint = Color(0xFFFF9800), modifier = Modifier.size(28.dp))
+            Icon(Icons.Rounded.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = Color(0xFFE65100))
+            Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
         }
-        HorizontalDivider(color = Color(0xFFFFE082))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         lines.forEach { line ->
-            Text(text = line, style = MaterialTheme.typography.bodyLarge, color = Color(0xFF4E342E), fontWeight = FontWeight.Medium)
+            Text(text = line, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
         }
     }
 }
 
-@Preview(showBackground = true, name = "Achiever Persona", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Achiever Persona - Light", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Achiever Persona - Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun AchieverHomePreview() {
     HomePersonaPreview("Achiever")
 }
 
-@Preview(showBackground = true, name = "Grower Persona", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Grower Persona - Light", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Grower Persona - Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun GrowerHomePreview() {
     HomePersonaPreview("Grower")
 }
 
-@Preview(showBackground = true, name = "Regulator Persona", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Regulator Persona - Light", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Regulator Persona - Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun RegulatorHomePreview() {
     HomePersonaPreview("Regulator")
 }
 
-@Preview(showBackground = true, name = "Socializer Persona", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Socializer Persona - Light", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Socializer Persona - Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun SocializerHomePreview() {
     HomePersonaPreview("Socializer")
 }
 
-@Preview(showBackground = true, name = "Explorer Persona", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Explorer Persona - Light", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Explorer Persona - Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun ExplorerHomePreview() {
     HomePersonaPreview("Explorer")
 }
 
-@Preview(showBackground = true, name = "Altruist Persona", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Altruist Persona - Light", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Altruist Persona - Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun AltruistHomePreview() {
     HomePersonaPreview("Altruist")

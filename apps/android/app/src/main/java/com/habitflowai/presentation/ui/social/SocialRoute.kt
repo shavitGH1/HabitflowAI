@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import androidx.compose.ui.graphics.luminance
 import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.Post
 import com.habitflowai.data.model.ChatResponse
@@ -124,18 +125,24 @@ fun SocialRoute(
                             )
                         }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = personaDetails.endColor,
+                        actionIconContentColor = personaDetails.endColor
+                    )
                 )
             },
             floatingActionButton = {
                 FloatingActionButton(
                     onClick = { showCreateSheet = true },
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     Icon(Icons.Rounded.Add, contentDescription = "Add Post")
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
                 SocialContent(
@@ -314,6 +321,7 @@ fun GroupChatsDrawerContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
             .padding(24.dp)
     ) {
         Text(
@@ -385,7 +393,7 @@ fun GroupChatsDrawerContent(
                 if (uiState.groupChats.isEmpty() && uiState.directChats.isEmpty()) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
-                            Text("No chats yet.", color = Color.Gray)
+                            Text("No chats yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -410,6 +418,7 @@ fun GroupChatsDrawerContent(
         Spacer(modifier = Modifier.height(8.dp))
 
         // Gradient "New Group" Button
+        val newGroupContentColor = if (personaColor.luminance() > 0.5f) Color.Black else Color.White
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -420,9 +429,9 @@ fun GroupChatsDrawerContent(
             contentAlignment = Alignment.Center
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.White)
+                Icon(Icons.Rounded.Add, contentDescription = null, tint = newGroupContentColor)
                 Spacer(Modifier.width(8.dp))
-                Text("New Group", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("New Group", color = newGroupContentColor, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -670,7 +679,7 @@ fun CreateGroupBottomSheet(
                                     },
                                     shape = RoundedCornerShape(12.dp),
                                     colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = Color.White,
+                                        containerColor = MaterialTheme.colorScheme.surface,
                                         labelColor = MaterialTheme.colorScheme.onSurface
                                     ),
                                     border = null
@@ -782,7 +791,7 @@ fun JoinGroupDialog(
                     if (uiState.isSearching) {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = personaColor)
                     } else if (query.isNotBlank() && uiState.searchResults.isEmpty()) {
-                        Text("No results found for \"$query\"", modifier = Modifier.align(Alignment.Center), color = Color.Gray)
+                        Text("No results found for \"$query\"", modifier = Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(uiState.searchResults) { result ->
@@ -973,7 +982,10 @@ fun PostCard(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -982,7 +994,7 @@ fun PostCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.1f)),
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Rounded.Person, contentDescription = null, tint = personaColor)
@@ -990,7 +1002,7 @@ fun PostCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(post.author, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text("Just now", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text("Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -1015,10 +1027,10 @@ fun PostCard(
                             .fillMaxWidth()
                             .height(250.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.Gray.copy(alpha = 0.1f)),
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Rounded.PhotoLibrary, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
+                        Icon(Icons.Rounded.PhotoLibrary, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(48.dp))
                     }
                 }
             }
@@ -1088,7 +1100,7 @@ fun CommentsBottomSheet(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(post.author, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text("Just now", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text("Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -1170,16 +1182,16 @@ fun CommentsBottomSheet(
 fun CommentItem(comment: Comment) {
     Row(modifier = Modifier.fillMaxWidth()) {
         Box(
-            modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.LightGray),
+            modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.Person, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column {
             Text(comment.author, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
             Text(comment.content, style = MaterialTheme.typography.bodySmall)
-            Text(comment.timestamp, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            Text(comment.timestamp, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -1323,7 +1335,8 @@ fun PreviewDrawerGrowerV2() {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "v2_Social_Feed_Main")
+@Preview(showBackground = true, name = "Social Feed - Light", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Social Feed - Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun PreviewSocialFeedV2() {
     HabitFlowTheme {
@@ -1365,7 +1378,7 @@ fun PreviewSocialFeedV2() {
                     SocialContent(
                         uiState = SocialUiState(
                             posts = listOf(
-                                Post(1, "Alex", "Just completely crushed my deep work block! \ud83d\ude80", true, likeCount = 14),
+                                Post(1, "Alex", "Just completely crushed my deep work block! 🚀", true, likeCount = 14),
                                 Post(2, "Mia", "Woke up at 5am today. The sunrise was totally worth it.", false, likeCount = 5)
                             )
                         ),
@@ -1380,19 +1393,24 @@ fun PreviewSocialFeedV2() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Light Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Dark Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun SocialRoutePreview() {
-    SocialContent(
-        uiState = SocialUiState(
-            posts = listOf(
-                Post(1, "Alex", "Just completely crushed my deep work block! \ud83d\ude80", true, likeCount = 14),
-                Post(2, "Mia", "Woke up at 5am today. The sunrise was totally worth it.", false, likeCount = 5)
+    HabitFlowTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            SocialContent(
+                uiState = SocialUiState(
+                    posts = listOf(
+                        Post(1, "Alex", "Just completely crushed my deep work block! 🚀", true, likeCount = 14),
+                        Post(2, "Mia", "Woke up at 5am today. The sunrise was totally worth it.", false, likeCount = 5)
+                    )
+                ),
+                personaColor = Color(0xFF64B5F6),
+                onLikeClick = {},
+                onLoadMore = {},
+                onPostClick = {}
             )
-        ),
-        personaColor = Color(0xFF64B5F6),
-        onLikeClick = {},
-        onLoadMore = {},
-        onPostClick = {}
-    )
+        }
+    }
 }

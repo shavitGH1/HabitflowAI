@@ -1,5 +1,7 @@
 package com.habitflowai.domain.repository
 
+import com.habitflowai.data.model.AppUser
+import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.Post
 import com.habitflowai.data.model.ChatResponse
@@ -16,8 +18,8 @@ interface SocialRepository {
     suspend fun addMember(chatId: String, userId: String): Boolean
     suspend fun removeMember(chatId: String, userId: String): Boolean
     suspend fun leaveGroup(chatId: String): Boolean
-    suspend fun getMessages(chatId: String): List<com.habitflowai.data.model.ChatMessage>
-    suspend fun toggleMessageLike(chatId: String, messageId: String): com.habitflowai.data.model.ChatMessage?
+    suspend fun getMessages(chatId: String): List<ChatMessage>
+    suspend fun toggleMessageLike(chatId: String, messageId: String): ChatMessage?
     suspend fun markAsRead(chatId: String)
     suspend fun renameGroup(chatId: String, name: String): ChatResponse
     suspend fun updateGroupDescription(chatId: String, description: String): ChatResponse
@@ -27,5 +29,5 @@ interface SocialRepository {
     suspend fun getDirectChats(): List<ChatResponse>
     suspend fun createDirectChat(userId: String): ChatResponse
     suspend fun getFollowing(userId: String): List<String>
-    suspend fun getAllUsers(): List<com.habitflowai.data.model.AppUser>
+    suspend fun getAllUsers(): List<AppUser>
 }

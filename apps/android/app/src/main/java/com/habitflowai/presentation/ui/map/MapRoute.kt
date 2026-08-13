@@ -22,6 +22,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.luminance
 import com.habitflowai.data.model.ChatUiState
 import com.habitflowai.presentation.ui.chat.ChatOverlay
 import com.google.android.gms.maps.model.CameraPosition
@@ -52,7 +54,7 @@ fun MapRoute(
         viewModel.refreshMarkers()
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().imePadding()) {
         MapContent(
             uiState = uiState,
             personaType = personaType,
@@ -81,6 +83,7 @@ fun MapContent(
     onCameraMoved: () -> Unit = {},
     onToggleChat: () -> Unit = {}
 ) {
+    val isDark = isSystemInDarkTheme()
     val telAviv = LatLng(32.0853, 34.7818)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(telAviv, 13f)
@@ -135,7 +138,7 @@ fun MapContent(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                color = if (isDark) Color(0xFF1E1E1E).copy(alpha = 0.9f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                 shadowElevation = 8.dp
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
@@ -243,13 +246,14 @@ fun MapContent(
                 color = personaDetails.endColor,
                 shadowElevation = 6.dp
             ) {
+                val statsContentColor = if (personaDetails.endColor.luminance() > 0.5f) Color.Black else Color.White
                 Row(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "✨ ${filteredMarkers.size} tasks completed here",
-                        color = Color.White,
+                        color = statsContentColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -270,19 +274,24 @@ fun FilterChip(
         modifier = Modifier.clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) personaColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             style = MaterialTheme.typography.labelLarge,
-            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (isSelected) {
+                if (personaColor.luminance() > 0.5f) Color.Black else Color.White
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
         )
     }
 }
 
-@Preview(showBackground = true, name = "Map - Achiever")
+@Preview(showBackground = true, name = "Map - Achiever - Light", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Map - Achiever - Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun MapAchieverPreview() {
     HabitFlowTheme {

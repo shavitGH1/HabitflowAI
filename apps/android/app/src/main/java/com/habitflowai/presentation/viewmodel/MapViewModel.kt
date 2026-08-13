@@ -12,13 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class MapUiState(
-    val markers: List<HabitMarker> = emptyList(),
-    val isLoading: Boolean = false,
-    val searchQuery: String = "",
-    val searchResult: LatLng? = null
-)
-
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val locationRepository: LocationRepository

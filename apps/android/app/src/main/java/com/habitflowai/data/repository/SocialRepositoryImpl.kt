@@ -3,6 +3,8 @@ package com.habitflowai.data.repository
 import android.content.Context
 import android.net.Uri
 import com.habitflowai.data.model.AddMembersRequest
+import com.habitflowai.data.model.AppUser
+import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.data.model.ChatResponse
 import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.CreateChatRequest
@@ -205,10 +207,10 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getMessages(chatId: String): List<com.habitflowai.data.model.ChatMessage> {
+    override suspend fun getMessages(chatId: String): List<ChatMessage> {
         return try {
             val messages = api.getMessages(chatId).map { response ->
-                com.habitflowai.data.model.ChatMessage(
+                ChatMessage(
                     id = response.id,
                     text = response.text ?: "",
                     senderId = response.senderId,
@@ -228,10 +230,10 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun toggleMessageLike(chatId: String, messageId: String): com.habitflowai.data.model.ChatMessage? {
+    override suspend fun toggleMessageLike(chatId: String, messageId: String): ChatMessage? {
         return try {
             val response = api.toggleMessageLike(chatId, messageId)
-            com.habitflowai.data.model.ChatMessage(
+            ChatMessage(
                 id = response.id,
                 text = response.text ?: "",
                 senderId = response.senderId,
@@ -331,19 +333,19 @@ class SocialRepositoryImpl @Inject constructor(
         } catch (_: Exception) { emptyList() }
     }
 
-    override suspend fun getAllUsers(): List<com.habitflowai.data.model.AppUser> {
+    override suspend fun getAllUsers(): List<AppUser> {
         val testUsers = listOf(
-            com.habitflowai.data.model.AppUser("alex_id", "alex_pro@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("mia_id", "mia_zen@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("sam_id", "sam_fit@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("jordan_id", "jordan_dev@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("taylor_id", "taylor_coach@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("casey_id", "casey_explorer@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("habit_bot", "habit_bot@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("growth_guru", "growth_guru@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("marathon_man", "marathon_man@fitness.com"),
-            com.habitflowai.data.model.AppUser("yoga_girl", "yoga_girl@peace.io"),
-            com.habitflowai.data.model.AppUser("code_master", "code_master@tech.com")
+            AppUser("alex_id", "alex_pro@habitflow.ai"),
+            AppUser("mia_id", "mia_zen@habitflow.ai"),
+            AppUser("sam_id", "sam_fit@habitflow.ai"),
+            AppUser("jordan_id", "jordan_dev@habitflow.ai"),
+            AppUser("taylor_id", "taylor_coach@habitflow.ai"),
+            AppUser("casey_id", "casey_explorer@habitflow.ai"),
+            AppUser("habit_bot", "habit_bot@habitflow.ai"),
+            AppUser("growth_guru", "growth_guru@habitflow.ai"),
+            AppUser("marathon_man", "marathon_man@fitness.com"),
+            AppUser("yoga_girl", "yoga_girl@peace.io"),
+            AppUser("code_master", "code_master@tech.com")
         )
         return try {
             val remoteUsers = api.getUsers()
