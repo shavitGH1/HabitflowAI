@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.luminance
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.presentation.ui.persona.PersonaDetails
 import com.habitflowai.presentation.ui.persona.PersonaUiData
@@ -60,52 +62,58 @@ fun HabitsContent(
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
+    val isDark = isSystemInDarkTheme()
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Habit Hub", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onToggleChat) {
-                        Icon(
-                            Icons.Rounded.SmartToy,
-                            contentDescription = "AI Assistant",
-                            tint = details.endColor
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.Transparent
-                )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showCreateSheet = true },
-                containerColor = details.endColor,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Rounded.Add, contentDescription = "Add Habit")
-            }
-        },
-        containerColor = Color.Transparent
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                if (isDark) {
                     Brush.verticalGradient(
-                        colors = listOf(
-                            details.startColor.copy(alpha = 0.15f),
-                            Color.White
-                        )
+                        colors = listOf(Color(0xFF000000), Color(0xFF121212))
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        colors = listOf(details.startColor.copy(alpha = 0.15f), Color.White)
+                    )
+                }
+            )
+    ) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Habit Hub", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onToggleChat) {
+                            Icon(
+                                Icons.Rounded.SmartToy,
+                                contentDescription = "AI Assistant",
+                                tint = details.endColor
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = details.endColor
                     )
                 )
-        ) {
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { showCreateSheet = true },
+                    containerColor = details.endColor,
+                    contentColor = if (details.endColor.luminance() > 0.5f) Color.Black else Color.White
+                ) {
+                    Icon(Icons.Rounded.Add, contentDescription = "Add Habit")
+                }
+            },
+            containerColor = Color.Transparent
+        ) { paddingValues ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(paddingValues)
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.Start
             ) {
@@ -114,7 +122,7 @@ fun HabitsContent(
                 Text(
                     text = "Master your routine, one day at a time.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -125,7 +133,7 @@ fun HabitsContent(
                     }
                 } else if (uiState.habits.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No habits yet. Tap + to start!", style = MaterialTheme.typography.bodyLarge)
+                        Text("No habits yet. Tap + to start!", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                     }
                 } else {
                     LazyColumn(
@@ -195,7 +203,7 @@ fun HabitItem(
                     Text(
                         text = habit.description!!,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -203,7 +211,7 @@ fun HabitItem(
                 Icon(
                     Icons.Rounded.Delete,
                     contentDescription = "Delete Habit",
-                    tint = Color.Gray.copy(alpha = 0.6f)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             }
         }
@@ -227,6 +235,7 @@ fun HabitCreateBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .imePadding()
                 .padding(24.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -267,17 +276,25 @@ fun HabitCreateBottomSheet(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Light Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Dark Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun HabitsWithChatPreview() {
     HabitFlowTheme {
-        HabitsContent(
-            uiState = HabitsUiState(),
-            personaType = "Grower",
-            onHabitClick = {},
-            onAddHabit = { _, _, _ -> },
-            onDeleteHabit = {},
-            onToggleChat = {}
-        )
+        Surface(color = MaterialTheme.colorScheme.background) {
+            HabitsContent(
+                uiState = HabitsUiState(
+                    habits = listOf(
+                        HabitEntity("1", "Drink Water", "2L daily", "DAILY", "user1", false),
+                        HabitEntity("2", "Read Book", "10 pages", "DAILY", "user1", false)
+                    )
+                ),
+                personaType = "Grower",
+                onHabitClick = {},
+                onAddHabit = { _, _, _ -> },
+                onDeleteHabit = {},
+                onToggleChat = {}
+            )
+        }
     }
 }

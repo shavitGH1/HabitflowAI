@@ -21,18 +21,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class OnboardingUiState(
-    val email: String = "",
-    val password: String = "",
-    val goal: String = "",
-    val quizAnswers: List<String> = List(6) { "" },
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val personaResult: ClassifyPersonaResponse? = null,
-    val navigateToHome: Boolean = false,
-    val proceedToOnboarding: Boolean = false
-)
-
+/**
+ * ViewModel for the onboarding process, handling user goals, quiz answers,
+ * persona classification, and user registration.
+ */
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val repository: PersonaRepository,

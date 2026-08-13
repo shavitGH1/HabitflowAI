@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,8 +23,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.OnboardingUiState
 
+// Onboarding options data class
 data class Option(val text: String, val value: String, val color: Color)
 
 enum class QuestionType { OPEN, SINGLE_CHOICE, MULTI_CHOICE }
@@ -32,14 +35,14 @@ data class Question(
     val title: String,
     val type: QuestionType,
     val options: List<Option> = emptyList(),
-    val placeholder: String = ""
+    val placeholder: String = "",
 )
 
 val onboardingQuestions = listOf(
     Question(
         title = "What is your primary goal?",
         type = QuestionType.OPEN,
-        placeholder = "e.g. Run a marathon, study more..."
+        placeholder = "e.g. Run a marathon, study more...",
     ),
     Question(
         title = "Describe a recent goal you set for yourself. What pushed you to start it, and how did you measure progress?",
@@ -117,23 +120,35 @@ fun OnboardingScreen(
     val totalSteps = onboardingQuestions.size
     val scrollState = rememberScrollState()
 
+    val isDark = isSystemInDarkTheme()
+    val backgroundBrush = if (isDark) {
+        Brush.verticalGradient(
+            colors = listOf(Color(0xFF000000), Color(0xFF1A1A1A))
+        )
+    } else {
+        Brush.linearGradient(
+            colors = listOf(Color(0xFFE0C3FC), Color(0xFF8EC5FC))
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(Color(0xFFE0C3FC), Color(0xFF8EC5FC))
-                )
-            )
+            .background(backgroundBrush)
+            .imePadding() // Avoid keyboard blocking
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = Color.White)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Analyzing your vibe...", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Analyzing your vibe...",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         } else {
@@ -142,9 +157,10 @@ fun OnboardingScreen(
                 progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = Color.White.copy(alpha = 0.3f),
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = if (isDark) MaterialTheme.colorScheme.primary else Color.White,
+                trackColor = Color.White.copy(alpha = 0.2f),
                 strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
             )
 
@@ -153,7 +169,7 @@ fun OnboardingScreen(
             Text(
                 text = "Step ${currentStep + 1} of $totalSteps",
                 style = MaterialTheme.typography.labelLarge,
-                color = Color.White,
+                color = Color.White.copy(alpha = 0.9f),
                 fontWeight = FontWeight.Bold
             )
 
@@ -175,7 +191,7 @@ fun OnboardingScreen(
                 targetState = currentStep,
                 label = "QuestionCard",
                 transitionSpec = {
-                    fadeIn() + slideInHorizontally { it } togetherWith fadeOut() + slideOutHorizontally { -it }
+                    (fadeIn() + slideInHorizontally { it }) togetherWith (fadeOut() + slideOutHorizontally { -it })
                 },
                 modifier = Modifier.weight(1f)
             ) { step ->
@@ -184,7 +200,9 @@ fun OnboardingScreen(
                     modifier = Modifier
                         .fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f)),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDark) MaterialTheme.colorScheme.surface.copy(alpha = 0.95f) else Color.White
+                    ),
                     elevation = CardDefaults.cardElevation(8.dp)
                 ) {
                     Column(
@@ -199,7 +217,7 @@ fun OnboardingScreen(
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.ExtraBold,
                             textAlign = TextAlign.Center,
-                            color = Color(0xFF2C3E50)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Spacer(modifier = Modifier.height(32.dp))
@@ -218,7 +236,15 @@ fun OnboardingScreen(
                                     placeholder = { Text(question.placeholder) },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(16.dp),
-                                    minLines = if (step == 0) 1 else 3
+                                    minLines = if (step == 0) 1 else 3,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        focusedContainerColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Transparent,
+                                        unfocusedContainerColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Transparent
+                                    )
                                 )
                                 Spacer(modifier = Modifier.height(32.dp))
                                 Button(
@@ -246,12 +272,12 @@ fun OnboardingScreen(
                                             .padding(vertical = 8.dp)
                                             .clip(shape)
                                             .then(
-                                                if (isSelected) Modifier.background(Color(0xFF2C3E50).copy(alpha = 0.1f))
+                                                if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                                                 else Modifier
                                             )
                                             .border(
                                                 width = if (isSelected) 2.dp else 1.dp,
-                                                color = if (isSelected) Color(0xFF2C3E50) else Color.LightGray.copy(alpha = 0.5f),
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                                                 shape = shape
                                             )
                                             .background(
@@ -282,14 +308,14 @@ fun OnboardingScreen(
                                                 text = option.text,
                                                 style = MaterialTheme.typography.bodyLarge,
                                                 fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
-                                                color = Color(0xFF2C3E50),
+                                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                                 modifier = Modifier.weight(1f)
                                             )
                                             if (isSelected) {
                                                 Icon(
                                                     imageVector = Icons.Rounded.Check,
                                                     contentDescription = null,
-                                                    tint = Color(0xFF2C3E50),
+                                                    tint = MaterialTheme.colorScheme.primary,
                                                     modifier = Modifier.size(24.dp)
                                                 )
                                             }
@@ -308,12 +334,12 @@ fun OnboardingScreen(
                                             .padding(vertical = 8.dp)
                                             .clip(shape)
                                             .then(
-                                                if (isSelected) Modifier.background(Color(0xFF2C3E50).copy(alpha = 0.1f))
+                                                if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                                                 else Modifier
                                             )
                                             .border(
                                                 width = if (isSelected) 2.dp else 1.dp,
-                                                color = if (isSelected) Color(0xFF2C3E50) else Color.LightGray.copy(alpha = 0.5f),
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                                                 shape = shape
                                             )
                                             .background(
@@ -344,13 +370,13 @@ fun OnboardingScreen(
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
                                                 modifier = Modifier.weight(1f),
-                                                color = Color(0xFF2C3E50)
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                             if (isSelected) {
                                                 Icon(
                                                     imageVector = Icons.Rounded.Check,
                                                     contentDescription = null,
-                                                    tint = Color.White,
+                                                    tint = MaterialTheme.colorScheme.primary,
                                                     modifier = Modifier.size(24.dp)
                                                 )
                                             }
@@ -382,87 +408,136 @@ fun OnboardingScreen(
                     modifier = Modifier.height(32.dp),
                     contentPadding = PaddingValues(0.dp)
                 ) {
-                    Text("Back", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(
+                        "Back",
+                        color = if (isSystemInDarkTheme()) Color.White else MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
             }
         }
     }
 }
 
-@Preview(showBackground = true, name = "Step 1: Goal", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Step 1: Goal - Light", device = "spec:width=411dp,height=891dp", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Step 1: Goal - Dark", device = "spec:width=411dp,height=891dp", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun OnboardingStep1Preview() {
-    OnboardingScreen(
-        uiState = OnboardingUiState(goal = ""),
-        currentStep = 0,
-        onStepChange = {},
-        onGoalChange = {},
-        onQuizAnswerChange = { _, _ -> },
-        onSubmit = {},
-        onPersonaClassified = {},
-        onNavigationHandled = {}
-    )
+    HabitFlowTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            OnboardingScreen(
+                uiState = OnboardingUiState(goal = "I want to Run a marathon and stay fit"),
+                currentStep = 0,
+                onStepChange = {},
+                onGoalChange = {},
+                onQuizAnswerChange = { _, _ -> },
+                onSubmit = {},
+                onPersonaClassified = {},
+                onNavigationHandled = {}
+            )
+        }
+    }
 }
 
-@Preview(showBackground = true, name = "Step 2: Motivation", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Step 2: Motivation - Light", device = "spec:width=411dp,height=891dp", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Step 2: Motivation - Dark", device = "spec:width=411dp,height=891dp", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun OnboardingStep2Preview() {
-    OnboardingScreen(
-        uiState = OnboardingUiState(goal = "Run a marathon"),
-        currentStep = 1,
-        onStepChange = {},
-        onGoalChange = {},
-        onQuizAnswerChange = { _, _ -> },
-        onSubmit = {},
-        onPersonaClassified = {},
-        onNavigationHandled = {}
-    )
+    HabitFlowTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            OnboardingScreen(
+                uiState = OnboardingUiState(
+                    goal = "Run a marathon",
+                    quizAnswers = listOf("I want to Proof myself and be healthy") + List(5) { "" }
+                ),
+                currentStep = 1,
+                onStepChange = {},
+                onGoalChange = {},
+                onQuizAnswerChange = { _, _ -> },
+                onSubmit = {},
+                onPersonaClassified = {},
+                onNavigationHandled = {}
+            )
+        }
+    }
 }
 
-@Preview(showBackground = true, name = "Step 3: Tracking", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Step 3: Tracking - Light", device = "spec:width=411dp,height=891dp", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Step 3: Tracking - Dark", device = "spec:width=411dp,height=891dp", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun OnboardingStep3Preview() {
-    OnboardingScreen(
-        uiState = OnboardingUiState(
-            goal = "Run a marathon",
-            quizAnswers = List(6) { "" }
-        ),
-        currentStep = 2,
-        onStepChange = {},
-        onGoalChange = {},
-        onQuizAnswerChange = { _, _ -> },
-        onSubmit = {},
-        onPersonaClassified = {},
-        onNavigationHandled = {}
-    )
+    HabitFlowTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            OnboardingScreen(
+                uiState = OnboardingUiState(
+                    goal = "Run a marathon",
+                    quizAnswers = listOf(
+                        "Proof myself", 
+                        "I track my steps every single day with my watch",
+                        "Consistency",
+                        "Friends",
+                        "Exciting",
+                        "Family",
+                        "Structured"
+                    ) + List(2) { "" }
+                ),
+                currentStep = 2,
+                onStepChange = {},
+                onGoalChange = {},
+                onQuizAnswerChange = { _, _ -> },
+                onSubmit = {},
+                onPersonaClassified = {},
+                onNavigationHandled = {}
+            )
+        }
+    }
 }
 
-@Preview(showBackground = true, name = "Step 4: Reaction", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Step 4: Reaction - Light", device = "spec:width=411dp,height=891dp", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Step 4: Reaction - Dark", device = "spec:width=411dp,height=891dp", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun OnboardingStep4Preview() {
-    OnboardingScreen(
-        uiState = OnboardingUiState(goal = "Run a marathon"),
-        currentStep = 3,
-        onStepChange = {},
-        onGoalChange = {},
-        onQuizAnswerChange = { _, _ -> },
-        onSubmit = {},
-        onPersonaClassified = {},
-        onNavigationHandled = {}
-    )
+    HabitFlowTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            OnboardingScreen(
+                uiState = OnboardingUiState(
+                    goal = "Run a marathon",
+                    quizAnswers = listOf(
+                        "Proof myself", 
+                        "I track my steps every single day with my watch",
+                        "I usually run with a friend",
+                        "I try to change my route to keep it fresh"
+                    ) + List(2) { "" }
+                ),
+                currentStep = 3,
+                onStepChange = {},
+                onGoalChange = {},
+                onQuizAnswerChange = { _, _ -> },
+                onSubmit = {},
+                onPersonaClassified = {},
+                onNavigationHandled = {}
+            )
+        }
+    }
 }
 
-@Preview(showBackground = true, name = "Loading State", device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true, name = "Loading State - Light", device = "spec:width=411dp,height=891dp", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Loading State - Dark", device = "spec:width=411dp,height=891dp", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun OnboardingLoadingPreview() {
-    OnboardingScreen(
-        uiState = OnboardingUiState(isLoading = true),
-        currentStep = 3,
-        onStepChange = {},
-        onGoalChange = {},
-        onQuizAnswerChange = { _, _ -> },
-        onSubmit = {},
-        onPersonaClassified = {},
-        onNavigationHandled = {}
-    )
+    HabitFlowTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            OnboardingScreen(
+                uiState = OnboardingUiState(isLoading = true),
+                currentStep = 3,
+                onStepChange = {},
+                onGoalChange = {},
+                onQuizAnswerChange = { _, _ -> },
+                onSubmit = {},
+                onPersonaClassified = {},
+                onNavigationHandled = {}
+            )
+        }
+    }
 }

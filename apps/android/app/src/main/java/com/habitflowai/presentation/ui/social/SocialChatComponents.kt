@@ -37,6 +37,7 @@ import android.content.Context
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
+import androidx.compose.ui.graphics.luminance
 import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.data.model.ChatResponse
 import com.habitflowai.presentation.ui.persona.PersonaUiData
@@ -130,7 +131,7 @@ fun SocialGroupChatContent(
     var showDeleteDmConfirm by remember { mutableStateOf(false) }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().imePadding()) {
             SocialChatTopBar(
                 chat = chat,
                 personaColor = personaColor,
@@ -208,6 +209,7 @@ fun SocialChatTopBar(
     onDeleteConversation: () -> Unit = {}
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val contentColor = if (personaColor.luminance() > 0.5f) Color.Black else Color.White
 
     Row(
         modifier = Modifier
@@ -217,7 +219,7 @@ fun SocialChatTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = contentColor)
         }
 
         // Avatar + name row — tappable for group info
@@ -241,13 +243,13 @@ fun SocialChatTopBar(
                     )
                 } else {
                     Box(
-                        modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.2f)),
+                        modifier = Modifier.fillMaxSize().background(contentColor.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             if (chat.isGroup) Icons.Rounded.Groups else Icons.Rounded.Person,
                             contentDescription = null,
-                            tint = Color.White
+                            tint = contentColor
                         )
                     }
                 }
@@ -259,7 +261,7 @@ fun SocialChatTopBar(
                 Text(
                     text = chat.name ?: if (chat.isGroup) "Group Chat" else "Direct Message",
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = contentColor,
                     style = MaterialTheme.typography.titleMedium
                 )
                 val subtitle = when {
@@ -272,7 +274,7 @@ fun SocialChatTopBar(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.75f),
+                        color = contentColor.copy(alpha = 0.75f),
                         maxLines = 1
                     )
                 }
@@ -282,7 +284,7 @@ fun SocialChatTopBar(
         // Overflow
         Box {
             IconButton(onClick = { menuExpanded = true }) {
-                Icon(Icons.Rounded.MoreVert, contentDescription = "More options", tint = Color.White)
+                Icon(Icons.Rounded.MoreVert, contentDescription = "More options", tint = contentColor)
             }
             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                 if (chat.isGroup) {
@@ -537,7 +539,8 @@ fun EditGroupSheet(
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.92f),
+                .fillMaxHeight(0.92f)
+                .imePadding(),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             // ── Group Photo ──────────────────────────────
@@ -576,7 +579,7 @@ fun EditGroupSheet(
                             ) {
                                 Surface(
                                     color = Color.Black.copy(alpha = 0.5f),
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp)
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -922,6 +925,13 @@ fun SocialMessageBubble(
     // Users can't like their own messages
     val canLike = !isMe
 
+    val bubbleColor = if (isMe) personaColor else MaterialTheme.colorScheme.surfaceVariant
+    val bubbleContentColor = if (isMe) {
+        if (personaColor.luminance() > 0.5f) Color.Black else Color.White
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
@@ -947,7 +957,7 @@ fun SocialMessageBubble(
             }
 
             Surface(
-                color = if (isMe) personaColor else MaterialTheme.colorScheme.surfaceVariant,
+                color = bubbleColor,
                 shape = RoundedCornerShape(
                     topStart = 16.dp, topEnd = 16.dp,
                     bottomStart = if (isMe) 16.dp else 4.dp,
@@ -969,7 +979,7 @@ fun SocialMessageBubble(
                         Text(
                             text = message.text,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isMe) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = bubbleContentColor
                         )
                     }
 
@@ -996,8 +1006,7 @@ fun SocialMessageBubble(
                                 Text(
                                     text = "$likeCount",
                                     fontSize = 11.sp,
-                                    color = if (isMe) Color.White.copy(alpha = 0.7f)
-                                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    color = bubbleContentColor.copy(alpha = 0.7f)
                                 )
                             }
                         }
@@ -1059,7 +1068,7 @@ fun SocialChatInput(
                 onClick = { if (canSend) { onSendMessage(text.trim()); text = ""; onTypingChanged(false) } },
                 modifier = Modifier.size(44.dp),
                 containerColor = if (canSend) personaColor else MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = if (canSend) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                contentColor = if (canSend) (if (personaColor.luminance() > 0.5f) Color.Black else Color.White) else MaterialTheme.colorScheme.onSurfaceVariant,
                 shape = CircleShape,
                 elevation = FloatingActionButtonDefaults.elevation(0.dp)
             ) {
@@ -1129,8 +1138,9 @@ fun SocialGroupChatListItem(
         Spacer(modifier = Modifier.width(8.dp))
 
         if (unreadCount > 0) {
+            val badgeContentColor = if (personaColor.luminance() > 0.5f) Color.Black else Color.White
             Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(personaColor), contentAlignment = Alignment.Center) {
-                Text(text = if (unreadCount > 99) "99+" else "$unreadCount", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(text = if (unreadCount > 99) "99+" else "$unreadCount", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = badgeContentColor)
             }
         } else {
             Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.size(18.dp))
@@ -1312,6 +1322,7 @@ fun MemberPickerSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.85f)
+                .imePadding()
         ) {
             // Header
             Row(
@@ -1497,7 +1508,8 @@ fun MemberPickerSheet(
 // Previews — use SocialGroupChatContent (no Dialog wrapper)
 // ─────────────────────────────────────────────
 
-@Preview(showBackground = true, name = "Chat – admin with messages + typing")
+@Preview(showBackground = true, name = "Chat – Light Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
+@Preview(showBackground = true, name = "Chat – Dark Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun PreviewChatWithMessages() {
     HabitFlowTheme {
@@ -1520,7 +1532,7 @@ private fun PreviewChatWithMessages() {
     }
 }
 
-@Preview(showBackground = true, name = "Chat – empty / non-admin")
+@Preview(showBackground = true, name = "Chat – Empty Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun PreviewChatEmpty() {
     HabitFlowTheme {
@@ -1533,26 +1545,32 @@ private fun PreviewChatEmpty() {
     }
 }
 
-@Preview(showBackground = true, name = "Message bubbles")
+@Preview(showBackground = true, name = "Message bubbles - Light")
+@Preview(showBackground = true, name = "Message bubbles - Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun PreviewMessageBubbles() {
     HabitFlowTheme {
         val personaColor = PersonaUiData.getDetails("Grower").endColor
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SocialMessageBubble(ChatMessage(text = "Just hit a new PR! 🏃", senderId = "alex", likedBy = listOf("me")), personaColor) {}
-            SocialMessageBubble(ChatMessage(text = "That's awesome, congrats!", senderId = "me"), personaColor) {}
+        Surface {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SocialMessageBubble(ChatMessage(text = "Just hit a new PR! 🏃", senderId = "alex", likedBy = listOf("me")), personaColor) {}
+                SocialMessageBubble(ChatMessage(text = "That's awesome, congrats!", senderId = "me"), personaColor) {}
+            }
         }
     }
 }
 
-@Preview(showBackground = true, name = "Group list item – unread vs read")
+@Preview(showBackground = true, name = "Group item - Light")
+@Preview(showBackground = true, name = "Group item - Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun PreviewGroupListItem() {
     HabitFlowTheme {
         val personaColor = PersonaUiData.getDetails("Altruist").endColor
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            SocialGroupChatListItem(ChatResponse("1", "Mindfulness Tribe", true, "Today's gratitude ☀️", unreadCount = mapOf("Me" to 3)), personaColor, onClick = {})
-            SocialGroupChatListItem(ChatResponse("2", "Marathon Crew", true, "Let's run!"), personaColor, onClick = {})
+        Surface {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SocialGroupChatListItem(ChatResponse("1", "Mindfulness Tribe", true, "Today's gratitude ☀️", unreadCount = mapOf("Me" to 3)), personaColor, onClick = {})
+                SocialGroupChatListItem(ChatResponse("2", "Marathon Crew", true, "Let's run!"), personaColor, onClick = {})
+            }
         }
     }
 }

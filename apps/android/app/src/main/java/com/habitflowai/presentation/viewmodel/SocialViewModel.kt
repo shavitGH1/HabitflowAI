@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.Post
 import com.habitflowai.data.model.ChatResponse
+import com.habitflowai.data.model.ChatMessage
+import com.habitflowai.data.model.AppUser
 import com.habitflowai.data.repository.SocialChatSocketEvent
 import com.habitflowai.data.repository.SocialChatSocketService
 import com.habitflowai.data.local.ChatLocalStorage
@@ -20,7 +22,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class SearchResult {
-    data class User(val user: com.habitflowai.data.model.AppUser) : SearchResult()
+    data class User(val user: AppUser) : SearchResult()
     data class Group(val chat: ChatResponse) : SearchResult()
 }
 
@@ -29,10 +31,10 @@ data class SocialUiState(
     val comments: Map<Int, List<Comment>> = emptyMap(),
     val groupChats: List<ChatResponse> = emptyList(),
     val directChats: List<ChatResponse> = emptyList(),
-    val chatMessages: Map<String, List<com.habitflowai.data.model.ChatMessage>> = emptyMap(),
+    val chatMessages: Map<String, List<ChatMessage>> = emptyMap(),
     val typingUsers: Map<String, Set<String>> = emptyMap(),
     val currentUserId: String = "me",
-    val allUsers: List<com.habitflowai.data.model.AppUser> = emptyList(), // all app users for member picker
+    val allUsers: List<AppUser> = emptyList(), // all app users for member picker
     val searchResults: List<SearchResult> = emptyList(),
     val isSearching: Boolean = false,
     val isLoading: Boolean = false,
@@ -41,7 +43,7 @@ data class SocialUiState(
     val isLoadingMessages: Boolean = false,
     val isRefreshing: Boolean = false,
     val canLoadMore: Boolean = true,
-    val page: Int = 0
+    val page: Int = 0,
 )
 
 @HiltViewModel
@@ -66,11 +68,11 @@ class SocialViewModel @Inject constructor(
     init {
         // Seed with some test users immediately so the UI isn't empty while loading
         val initialTestUsers = listOf(
-            com.habitflowai.data.model.AppUser("alex_id", "alex_pro@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("mia_id", "mia_zen@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("sam_id", "sam_fit@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("jordan_id", "jordan_dev@habitflow.ai"),
-            com.habitflowai.data.model.AppUser("taylor_id", "taylor_coach@habitflow.ai")
+            AppUser("alex_id", "alex_pro@habitflow.ai"),
+            AppUser("mia_id", "mia_zen@habitflow.ai"),
+            AppUser("sam_id", "sam_fit@habitflow.ai"),
+            AppUser("jordan_id", "jordan_dev@habitflow.ai"),
+            AppUser("taylor_id", "taylor_coach@habitflow.ai")
         )
         _uiState.update { it.copy(allUsers = initialTestUsers) }
 
@@ -103,7 +105,7 @@ class SocialViewModel @Inject constructor(
                         kotlinx.coroutines.delay(800) // Staggered start
                         loadAllChats()
                     }
-                } else if (newUid != "me" && _uiState.value.groupChats.isEmpty()) {
+                } else if (newUid != "me" && (_uiState.value.groupChats.isEmpty())) {
                     // One-time sync for existing session
                     loadAllChats()
                 }
@@ -244,11 +246,12 @@ class SocialViewModel @Inject constructor(
         try {
             val users = repository.getAllUsers().filter { it.id != uid }
             _uiState.update { it.copy(allUsers = users) }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // Log or handle exception if needed
             // Fallback: build from chat participants
-            val fromChats = chats.flatMap { it.participantIds }.toMutableSet()
+            val fromChats = chats.asSequence().flatMap { it.participantIds }.toMutableSet()
             fromChats.remove(uid)
-            val fallbackUsers = fromChats.map { id -> com.habitflowai.data.model.AppUser(id, id) }
+            val fallbackUsers = fromChats.map { id -> AppUser(id, id) }
             if (fallbackUsers.isNotEmpty()) {
                 _uiState.update { it.copy(allUsers = fallbackUsers) }
             }
@@ -309,7 +312,9 @@ class SocialViewModel @Inject constructor(
             try {
                 val updated = repository.uploadGroupImage(chatId, imageUri)
                 _uiState.update { state ->
-                    val updatedGroups = state.groupChats.map { if (it.id == chatId) updated else it }
+                    val updatedGroups = state.groupChats.map { g -> 
+                        if (g.id == chatId) updated else g 
+                    }
                     state.copy(groupChats = updatedGroups)
                 }
                 // Also update local cache so it persists after restart
@@ -509,10 +514,10 @@ class SocialViewModel @Inject constructor(
             .map { SearchResult.Group(it) }
 
         _uiState.update { it.copy(
-            searchResults = (userResults + groupResults).sortedBy { 
-                when(it) {
-                    is SearchResult.User -> it.user.email
-                    is SearchResult.Group -> it.chat.name
+            searchResults = (userResults + groupResults).sortedBy { result ->
+                when(result) {
+                    is SearchResult.User -> result.user.email
+                    is SearchResult.Group -> result.chat.name ?: ""
                 }
             },
             isSearching = false
@@ -554,7 +559,7 @@ class SocialViewModel @Inject constructor(
     }
 
     fun sendMessage(chatId: String, content: String) {
-        val newMessage = com.habitflowai.data.model.ChatMessage(
+        val newMessage = ChatMessage(
             text = content,
             senderId = currentUserId,
             isFromBot = false
@@ -613,7 +618,7 @@ class SocialViewModel @Inject constructor(
     }
 
     private fun handleNewMessage(event: SocialChatSocketEvent.NewMessage) {
-        val incomingMessage = com.habitflowai.data.model.ChatMessage(
+        val incomingMessage = ChatMessage(
             id = event.messageId,
             text = event.text,
             senderId = event.senderId,
