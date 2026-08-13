@@ -294,13 +294,6 @@ fun SocialChatTopBar(
                 } else {
                     DropdownMenuItem(
                         text = { Text("Delete Conversation", color = MaterialTheme.colorScheme.error) },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Rounded.Delete,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        },
                         onClick = { menuExpanded = false; onDeleteConversation() }
                     )
                 }
@@ -1311,7 +1304,9 @@ fun MemberPickerSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
         Column(
             modifier = Modifier
@@ -1320,46 +1315,96 @@ fun MemberPickerSheet(
         ) {
             // Header
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                    if (multiSelect) {
+                        Text(
+                            if (selected.isEmpty()) "Select members to add" else "${selected.size} selected",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selected.isNotEmpty()) personaColor else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 if (multiSelect && selected.isNotEmpty()) {
-                    TextButton(onClick = { onConfirm(selected); onDismiss() }) {
-                        Text("Add (${selected.size})", color = personaColor, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = { onConfirm(selected); onDismiss() },
+                        colors = ButtonDefaults.buttonColors(containerColor = personaColor),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text("Add", fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
             // Search bar
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                placeholder = { Text("Search by username…") },
-                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                trailingIcon = if (search.isNotBlank()) {
-                    { IconButton(onClick = { search = "" }) { Icon(Icons.Rounded.Close, contentDescription = "Clear") } }
-                } else null,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                singleLine = true,
-                shape = RoundedCornerShape(24.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = personaColor, unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant)
-            )
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    placeholder = { Text("Search for friends…", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = personaColor) },
+                    trailingIcon = if (search.isNotBlank()) {
+                        { IconButton(onClick = { search = "" }) { Icon(Icons.Rounded.Close, contentDescription = "Clear") } }
+                    } else null,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        cursorColor = personaColor
+                    )
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
 
             // User list
-            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 8.dp)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 if (eligible.isEmpty()) {
                     item {
-                        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Icon(Icons.Rounded.PeopleOutline, contentDescription = null, tint = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.size(48.dp))
-                                Text("No users found", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Surface(
+                                    modifier = Modifier.size(80.dp),
+                                    shape = CircleShape,
+                                    color = personaColor.copy(alpha = 0.1f)
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.PeopleOutline, 
+                                        contentDescription = null, 
+                                        tint = personaColor.copy(alpha = 0.4f), 
+                                        modifier = Modifier.padding(20.dp)
+                                    )
+                                }
+                                Text(
+                                    "No users found", 
+                                    style = MaterialTheme.typography.titleMedium, 
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "Invite some friends to get started!", 
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
                             }
                         }
                     }
                 } else if (filtered.isEmpty()) {
                     item {
-                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
                             Text("No results for \"$search\"", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -1368,52 +1413,80 @@ fun MemberPickerSheet(
                 items(filtered, key = { it.id }) { user ->
                     val isSelected = user.id in selected
                     val username = user.email.substringBefore('@')
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                if (!multiSelect) {
-                                    onConfirm(setOf(user.id)); onDismiss()
-                                } else {
-                                    selected = if (isSelected) selected - user.id else selected + user.id
-                                }
+                    
+                    Surface(
+                        onClick = {
+                            if (!multiSelect) {
+                                onConfirm(setOf(user.id)); onDismiss()
+                            } else {
+                                selected = if (isSelected) selected - user.id else selected + user.id
                             }
-                            .padding(horizontal = 20.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isSelected) personaColor.copy(alpha = 0.08f) else Color.Transparent,
+                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, personaColor.copy(alpha = 0.3f)) else null,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Avatar with username initial
-                        SocialUserAvatar(name = username, personaColor = personaColor, size = 40)
-                        Column(modifier = Modifier.weight(1f)) {
-                            // Display username as main label
-                            Text(username, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
-                            // Show email as subtitle
-                            Text(user.email, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                        }
-                        if (multiSelect) {
-                            Checkbox(
-                                checked = isSelected,
-                                onCheckedChange = { selected = if (it) selected + user.id else selected - user.id },
-                                colors = CheckboxDefaults.colors(checkedColor = personaColor)
-                            )
-                        } else if (isSelected) {
-                            Icon(Icons.Rounded.Check, contentDescription = null, tint = personaColor)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            SocialUserAvatar(name = username, personaColor = personaColor, size = 44)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(username, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+                                Text(user.email, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1)
+                            }
+                            if (multiSelect) {
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = { selected = if (it) selected + user.id else selected - user.id },
+                                    colors = CheckboxDefaults.colors(checkedColor = personaColor)
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Rounded.ChevronRight, 
+                                    contentDescription = null, 
+                                    tint = MaterialTheme.colorScheme.outlineVariant
+                                )
+                            }
                         }
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 }
             }
 
             // Confirm button (multi-select)
             if (multiSelect) {
-                Button(
-                    onClick = { onConfirm(selected); onDismiss() },
-                    enabled = selected.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = personaColor),
-                    shape = RoundedCornerShape(14.dp)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    tonalElevation = 8.dp,
+                    shadowElevation = 8.dp,
+                    color = MaterialTheme.colorScheme.surface
                 ) {
-                    Text(if (selected.isEmpty()) "Select Members" else "Done — ${selected.size} selected", fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = { onConfirm(selected); onDismiss() },
+                        enabled = selected.isNotEmpty(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = personaColor,
+                            disabledContainerColor = personaColor.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (selected.isNotEmpty()) {
+                                Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
+                            }
+                            Text(
+                                if (selected.isEmpty()) "Select Members" else "Confirm Selection (${selected.size})",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
                 }
             }
         }
