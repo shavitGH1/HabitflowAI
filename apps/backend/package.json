@@ -10,7 +10,8 @@
     "dev": "ts-node-dev --respawn --transpile-only -r reflect-metadata src/main.ts",
     "build": "tsc",
     "test": "jest --runInBand",
-    "seed:articles": "ts-node -r reflect-metadata scripts/seed-articles.ts"
+    "seed:articles": "ts-node -r reflect-metadata scripts/seed-articles.ts",
+    "seed:research": "ts-node -r reflect-metadata scripts/seed-research-chunks.ts"
   },
   "jest": {
     "preset": "ts-jest",

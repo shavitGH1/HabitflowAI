@@ -21,6 +21,11 @@ import { TaskVerificationFeature, TaskVerificationInput } from './features/task-
 import { CoachingAgentFeature, CoachingAgentInput } from './features/coaching-agent.feature';
 import { RagSearchFeature, RagSearchInput, RankedArticle } from './features/rag-search.feature';
 import {
+  ResearchSearchFeature,
+  ResearchSearchInput,
+  RankedResearchChunk,
+} from './features/research-search.feature';
+import {
   MotivationFeedbackStore,
   MotivationVote,
   FeedbackTally,
@@ -50,6 +55,7 @@ export class AiService {
     private readonly taskVerification: TaskVerificationFeature,
     private readonly coachingAgent: CoachingAgentFeature,
     private readonly ragSearch: RagSearchFeature,
+    private readonly researchSearch: ResearchSearchFeature,
     private readonly feedbackStore: MotivationFeedbackStore,
   ) {}
 
@@ -107,6 +113,10 @@ export class AiService {
 
   searchArticles(input: RagSearchInput): Promise<RankedArticle[]> {
     return this.ragSearch.search(input);
+  }
+
+  searchResearch(input: ResearchSearchInput): Promise<RankedResearchChunk[]> {
+    return this.researchSearch.search(input);
   }
 
   recordMotivationFeedback(userId: string, vote: MotivationVote): FeedbackTally {

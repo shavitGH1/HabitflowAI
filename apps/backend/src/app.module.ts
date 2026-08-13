@@ -15,6 +15,7 @@ import { InsightsModule } from './insights/insights.module';
 import { PostsModule } from './posts/posts.module';
 import { LocationsModule } from './locations/locations.module';
 import { PersonasModule } from './personas/personas.module';
+import { ResearchChunksModule } from './research-chunks/research-chunks.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
 
@@ -61,6 +62,7 @@ import { UsersModule } from './users/users.module';
     GoalsModule,
     FollowsModule,
     ArticlesModule,
+    ResearchChunksModule,
   ],
 })
 export class AppModule {}

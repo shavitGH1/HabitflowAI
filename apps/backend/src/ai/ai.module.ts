@@ -10,6 +10,7 @@ import { HabitGoalRelevanceFeature } from './features/habit-goal-relevance.featu
 import { TaskVerificationFeature } from './features/task-verification.feature';
 import { CoachingAgentFeature } from './features/coaching-agent.feature';
 import { RagSearchFeature } from './features/rag-search.feature';
+import { ResearchSearchFeature } from './features/research-search.feature';
 import { MotivationFeedbackStore } from './feedback/motivation-feedback.store';
 import { GeminiClient } from './gemini.client';
 
@@ -27,6 +28,7 @@ import { GeminiClient } from './gemini.client';
     TaskVerificationFeature,
     CoachingAgentFeature,
     RagSearchFeature,
+    ResearchSearchFeature,
     MotivationFeedbackStore,
   ],
   exports: [
