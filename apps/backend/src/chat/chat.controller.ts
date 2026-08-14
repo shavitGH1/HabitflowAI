@@ -30,6 +30,7 @@ import { CreateChatDto } from './dto/create-chat.dto';
 import { RenameGroupDto } from './dto/rename-group.dto';
 import { TargetUserDto } from './dto/target-user.dto';
 import { UpdateDescriptionDto } from './dto/update-description.dto';
+import { UpdateVisibilityDto } from './dto/update-visibility.dto';
 import { ChatAdminGuard } from './guards/chat-admin.guard';
 import { ChatMemberGuard, ChatMemberRequest } from './guards/chat-member.guard';
 
@@ -158,6 +159,17 @@ export class ChatController {
   async updateDescription(@Param('chatId') chatId: string, @Body() dto: UpdateDescriptionDto) {
     const chat = await this.chatService.updateDescription(chatId, dto.description);
     this.chatGateway.emitToRoom(chatId, 'groupUpdated', { chatId, description: dto.description });
+    return chat;
+  }
+
+  @Patch(':chatId/visibility')
+  @UseGuards(ChatAdminGuard)
+  @ApiOperation({ summary: 'Change group visibility — public/private (admin only)' })
+  @ApiResponse({ status: 200, description: 'Visibility updated' })
+  @ApiResponse({ status: 403, description: 'Not a group admin' })
+  async updateVisibility(@Param('chatId') chatId: string, @Body() dto: UpdateVisibilityDto) {
+    const chat = await this.chatService.updateVisibility(chatId, dto.isPublic);
+    this.chatGateway.emitToRoom(chatId, 'groupUpdated', { chatId, isPublic: dto.isPublic });
     return chat;
   }
 

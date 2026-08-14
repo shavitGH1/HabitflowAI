@@ -14,6 +14,7 @@ const makeChat = (overrides: Partial<ChatData> = {}): ChatData => ({
   id: CHAT_ID,
   participantIds: [USER_ID],
   isGroup: false,
+  isPublic: false,
   admins: [],
   unreadCount: {},
   createdAt: new Date().toISOString(),

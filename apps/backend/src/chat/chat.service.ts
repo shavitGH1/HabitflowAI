@@ -35,6 +35,7 @@ export class ChatService {
     return this.chatRepository.createChat({
       participantIds,
       isGroup,
+      isPublic: dto.isPublic ?? false,
       name: dto.name,
       owner: requesterId,
       admins: [requesterId],
@@ -128,6 +129,11 @@ export class ChatService {
   async updateDescription(chatId: string, description: string): Promise<ChatData> {
     await this.getGroupChat(chatId);
     return (await this.chatRepository.updateChat(chatId, { description }))!;
+  }
+
+  async updateVisibility(chatId: string, isPublic: boolean): Promise<ChatData> {
+    await this.getGroupChat(chatId);
+    return (await this.chatRepository.updateChat(chatId, { isPublic }))!;
   }
 
   async addAdmin(chatId: string, targetUserId: string): Promise<ChatData> {
