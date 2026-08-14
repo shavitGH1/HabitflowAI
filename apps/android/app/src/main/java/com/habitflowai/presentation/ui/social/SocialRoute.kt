@@ -200,6 +200,7 @@ fun SocialRoute(
             },
             onRenameGroup = { name -> viewModel.renameGroup(activeChatId, name) },
             onUpdateDescription = { desc -> viewModel.updateGroupDescription(activeChatId, desc) },
+            onUpdateVisibility = { isPublic -> viewModel.updateGroupVisibility(activeChatId, isPublic) },
             onPromoteAdmin = { userId -> viewModel.promoteAdmin(activeChatId, userId) },
             onDemoteAdmin = { userId -> viewModel.demoteAdmin(activeChatId, userId) },
             onDeleteGroup = {
@@ -219,9 +220,9 @@ fun SocialRoute(
             personaColor = personaDetails.endColor,
             allUsers = uiState.allUsers,
             onDismiss = { showCreateGroupDialog = false },
-            onCreate = { name, description, participantIds, imageUri ->
+            onCreate = { name, description, participantIds, imageUri, isPublic ->
                 showCreateGroupDialog = false
-                viewModel.createGroup(name, description, participantIds, imageUri) { newChat ->
+                viewModel.createGroup(name, description, participantIds, imageUri, isPublic) { newChat ->
                     selectedChatForView = newChat
                     viewModel.loadMessages(newChat.id)
                 }
@@ -461,12 +462,13 @@ fun CreateGroupBottomSheet(
     personaColor: Color,
     allUsers: List<com.habitflowai.data.model.AppUser> = emptyList(),
     onDismiss: () -> Unit,
-    onCreate: (name: String, description: String, participantIds: List<String>, imageUri: Uri?) -> Unit
+    onCreate: (name: String, description: String, participantIds: List<String>, imageUri: Uri?, isPublic: Boolean) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var groupName by rememberSaveable { mutableStateOf("") }
     var groupDescription by rememberSaveable { mutableStateOf("") }
+    var isPublic by rememberSaveable { mutableStateOf(false) }
     var selectedImageUriStr by rememberSaveable { mutableStateOf("") }
     val selectedImageUri: Uri? = selectedImageUriStr.takeIf { it.isNotEmpty() }?.let { Uri.parse(it) }
     var selectedUsersStr by rememberSaveable { mutableStateOf("") }
@@ -691,6 +693,33 @@ fun CreateGroupBottomSheet(
                 }
             }
 
+            Spacer(Modifier.height(16.dp))
+
+            // Public Group Toggle
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Public Group", style = MaterialTheme.typography.labelMedium, color = personaColor, fontWeight = FontWeight.Bold)
+                        Text("Anyone can find and join via search", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = isPublic,
+                        onCheckedChange = { isPublic = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = personaColor
+                        )
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.weight(1f))
 
             // Create button - big and bold
@@ -704,11 +733,13 @@ fun CreateGroupBottomSheet(
                     val descToSave = groupDescription.trim()
                     val membersToSave = selectedUsers.toList()
                     val imageToSave = selectedImageUri
+                    val isPublicToSave = isPublic
                     groupName = ""
                     groupDescription = ""
                     selectedUsersStr = ""
                     selectedImageUriStr = ""
-                    onCreate(nameToSave, descToSave, membersToSave, imageToSave)
+                    isPublic = false
+                    onCreate(nameToSave, descToSave, membersToSave, imageToSave, isPublicToSave)
                 },
                 enabled = groupName.isNotBlank() || selectedUsers.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().height(60.dp),

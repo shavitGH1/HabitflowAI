@@ -12,6 +12,7 @@ import com.habitflowai.data.model.Post
 import com.habitflowai.data.model.RemoveMembersRequest
 import com.habitflowai.data.model.UpdateAdminsRequest
 import com.habitflowai.data.model.UpdateGroupDescriptionRequest
+import com.habitflowai.data.model.UpdateGroupVisibilityRequest
 import com.habitflowai.data.model.UpdateGroupNameRequest
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.data.local.ChatLocalStorage
@@ -133,7 +134,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createGroup(name: String, participantIds: List<String>): ChatResponse {
+    override suspend fun createGroup(name: String, participantIds: List<String>, isPublic: Boolean): ChatResponse {
         val tempId = (10..9999).random().toString()
         val tempChat = ChatResponse(
             id = tempId,
@@ -142,7 +143,8 @@ class SocialRepositoryImpl @Inject constructor(
             lastMessage = null,
             participantIds = participantIds + myId,
             admins = listOf(myId),
-            owner = myId
+            owner = myId,
+            isPublic = isPublic
         )
         
         // Optimistically save to local cache before network
@@ -151,7 +153,7 @@ class SocialRepositoryImpl @Inject constructor(
         } catch (_: Exception) {}
 
         return try {
-            val chat = api.createChat(CreateChatRequest(name = name, participantIds = participantIds))
+            val chat = api.createChat(CreateChatRequest(name = name, participantIds = participantIds, isPublic = isPublic))
             // Replace temp with real server data
             try {
                 chatLocalStorage.deleteChat(tempId)
@@ -271,6 +273,9 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun updateGroupDescription(chatId: String, description: String): ChatResponse =
         api.updateGroupDescription(chatId, UpdateGroupDescriptionRequest(description))
+
+    override suspend fun updateGroupVisibility(chatId: String, isPublic: Boolean): ChatResponse =
+        api.updateGroupVisibility(chatId, UpdateGroupVisibilityRequest(isPublic))
 
     override suspend fun promoteAdmin(chatId: String, userId: String): ChatResponse =
         api.promoteAdmin(chatId, UpdateAdminsRequest(listOf(userId)))

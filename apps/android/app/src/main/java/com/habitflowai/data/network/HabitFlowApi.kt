@@ -137,6 +137,12 @@ interface HabitFlowApi {
         @Body request: com.habitflowai.data.model.UpdateGroupDescriptionRequest
     ): com.habitflowai.data.model.ChatResponse
 
+    @PATCH("api/v1/chats/{chatId}/visibility")
+    suspend fun updateGroupVisibility(
+        @Path("chatId") chatId: String,
+        @Body request: com.habitflowai.data.model.UpdateGroupVisibilityRequest
+    ): com.habitflowai.data.model.ChatResponse
+
     @PATCH("api/v1/chats/{chatId}/admins")
     suspend fun promoteAdmin(
         @Path("chatId") chatId: String,

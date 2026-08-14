@@ -64,6 +64,7 @@ fun SocialGroupChatScreen(
     onLeaveGroup: () -> Unit = {},
     onRenameGroup: (String) -> Unit = {},
     onUpdateDescription: (String) -> Unit = {},
+    onUpdateVisibility: (Boolean) -> Unit = {},
     onPromoteAdmin: (String) -> Unit = {},
     onDemoteAdmin: (String) -> Unit = {},
     onDeleteGroup: () -> Unit = {},
@@ -88,6 +89,7 @@ fun SocialGroupChatScreen(
             onLeaveGroup = onLeaveGroup,
             onRenameGroup = onRenameGroup,
             onUpdateDescription = onUpdateDescription,
+            onUpdateVisibility = onUpdateVisibility,
             onPromoteAdmin = onPromoteAdmin,
             onDemoteAdmin = onDemoteAdmin,
             onDeleteGroup = onDeleteGroup,
@@ -116,6 +118,7 @@ fun SocialGroupChatContent(
     onLeaveGroup: () -> Unit = {},
     onRenameGroup: (String) -> Unit = {},
     onUpdateDescription: (String) -> Unit = {},
+    onUpdateVisibility: (Boolean) -> Unit = {},
     onPromoteAdmin: (String) -> Unit = {},
     onDemoteAdmin: (String) -> Unit = {},
     onDeleteGroup: () -> Unit = {},
@@ -175,6 +178,7 @@ fun SocialGroupChatContent(
             onDismiss = { showGroupInfoSheet = false },
             onRenameGroup = onRenameGroup,
             onUpdateDescription = onUpdateDescription,
+            onUpdateVisibility = onUpdateVisibility,
             onUploadGroupPhoto = onUploadGroupPhoto,
             onAddMember = { showGroupInfoSheet = false; onAddMember() },
             onRemoveMember = onRemoveMember,
@@ -436,6 +440,7 @@ fun EditGroupSheet(
     onDismiss: () -> Unit,
     onRenameGroup: (String) -> Unit,
     onUpdateDescription: (String) -> Unit,
+    onUpdateVisibility: (Boolean) -> Unit,
     onUploadGroupPhoto: (android.net.Uri) -> Unit,
     onAddMember: () -> Unit,
     onRemoveMember: (String) -> Unit,
@@ -695,6 +700,37 @@ fun EditGroupSheet(
                                         personaColor else MaterialTheme.colorScheme.outlineVariant
                                 )
                             }
+                        }
+                    }
+                    HorizontalDivider()
+                }
+            }
+
+            // ── Group Visibility (admin only) ─────────────
+            if (canManage) {
+                item {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Public Group",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Anyone can find and join this group via search.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = chat.isPublic,
+                                onCheckedChange = { onUpdateVisibility(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = personaColor
+                                )
+                            )
                         }
                     }
                     HorizontalDivider()

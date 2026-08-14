@@ -276,11 +276,12 @@ class SocialViewModel @Inject constructor(
         description: String = "",
         participantIds: List<String> = emptyList(),
         imageUri: android.net.Uri? = null,
+        isPublic: Boolean = false,
         onCreated: (ChatResponse) -> Unit = {}
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingChats = true) }
-            val newChat = repository.createGroup(name, participantIds)
+            val newChat = repository.createGroup(name, participantIds, isPublic)
             
             // Immediately update description if provided
             val chatWithDesc = if (description.isNotBlank()) {
@@ -431,6 +432,23 @@ class SocialViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val updated = repository.updateGroupDescription(chatId, description)
+                _uiState.update { state ->
+                    state.copy(groupChats = state.groupChats.map { if (it.id == chatId) updated else it })
+                }
+            } catch (_: Exception) { /* optimistic update already applied */ }
+            try { chatLocalStorage.saveGroupChats(currentUserId, _uiState.value.groupChats) } catch (_: Exception) {}
+        }
+    }
+
+    fun updateGroupVisibility(chatId: String, isPublic: Boolean) {
+        _uiState.update { state ->
+            state.copy(groupChats = state.groupChats.map {
+                if (it.id == chatId) it.copy(isPublic = isPublic) else it
+            })
+        }
+        viewModelScope.launch {
+            try {
+                val updated = repository.updateGroupVisibility(chatId, isPublic)
                 _uiState.update { state ->
                     state.copy(groupChats = state.groupChats.map { if (it.id == chatId) updated else it })
                 }
@@ -608,7 +626,7 @@ class SocialViewModel @Inject constructor(
                     is SocialChatSocketEvent.MemberRemoved -> loadGroupChats()
                     is SocialChatSocketEvent.MemberLeft -> loadGroupChats()
                     is SocialChatSocketEvent.GroupRenamed -> handleGroupRenamed(event)
-                    is SocialChatSocketEvent.GroupUpdated -> loadGroupChats()
+                    is SocialChatSocketEvent.GroupUpdated -> handleGroupUpdated(event)
                     is SocialChatSocketEvent.AdminAdded -> loadGroupChats()
                     is SocialChatSocketEvent.AdminRemoved -> loadGroupChats()
                     is SocialChatSocketEvent.GroupDeleted -> handleGroupDeleted(event)
@@ -663,6 +681,24 @@ class SocialViewModel @Inject constructor(
             state.copy(groupChats = state.groupChats.map { chat ->
                 if (chat.id == event.chatId) chat.copy(name = event.name) else chat
             })
+        }
+    }
+
+    private fun handleGroupUpdated(event: SocialChatSocketEvent.GroupUpdated) {
+        _uiState.update { state ->
+            state.copy(groupChats = state.groupChats.map { chat ->
+                if (chat.id == event.chatId) {
+                    chat.copy(
+                        description = event.description ?: chat.description,
+                        isPublic = event.isPublic ?: chat.isPublic,
+                        imageUrl = event.imageUrl ?: chat.imageUrl
+                    )
+                } else chat
+            })
+        }
+        // If it was a major update (like image), might still want to refresh or at least ensure local storage is updated
+        viewModelScope.launch {
+            try { chatLocalStorage.saveGroupChats(currentUserId, _uiState.value.groupChats) } catch (_: Exception) {}
         }
     }
 
