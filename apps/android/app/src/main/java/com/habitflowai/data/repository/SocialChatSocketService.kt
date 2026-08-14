@@ -26,7 +26,12 @@ sealed class SocialChatSocketEvent {
     data class MemberRemoved(val chatId: String) : SocialChatSocketEvent()
     data class MemberLeft(val chatId: String) : SocialChatSocketEvent()
     data class GroupRenamed(val chatId: String, val name: String) : SocialChatSocketEvent()
-    data class GroupUpdated(val chatId: String) : SocialChatSocketEvent()
+    data class GroupUpdated(
+        val chatId: String,
+        val description: String? = null,
+        val isPublic: Boolean? = null,
+        val imageUrl: String? = null
+    ) : SocialChatSocketEvent()
     data class AdminAdded(val chatId: String) : SocialChatSocketEvent()
     data class AdminRemoved(val chatId: String) : SocialChatSocketEvent()
     data class GroupDeleted(val chatId: String) : SocialChatSocketEvent()
@@ -119,8 +124,15 @@ class SocialChatSocketService @Inject constructor(
                 }
             }
             client.on("groupUpdated") { args ->
-                (args.getOrNull(0) as? JSONObject)?.let {
-                    _events.tryEmit(SocialChatSocketEvent.GroupUpdated(it.optString("chatId")))
+                (args.getOrNull(0) as? JSONObject)?.let { data ->
+                    _events.tryEmit(
+                        SocialChatSocketEvent.GroupUpdated(
+                            chatId = data.optString("chatId"),
+                            description = data.optString("description").takeIf { it.isNotBlank() },
+                            isPublic = if (data.has("isPublic")) data.optBoolean("isPublic") else null,
+                            imageUrl = data.optString("imageUrl").takeIf { it.isNotBlank() }
+                        )
+                    )
                 }
             }
             client.on("adminAdded") { args ->

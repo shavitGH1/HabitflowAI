@@ -34,13 +34,15 @@ data class ChatResponse(
     val owner: String? = null,
     val description: String? = null,
     val imageUrl: String? = null,
-    val unreadCount: Map<String, Int> = emptyMap()
+    val unreadCount: Map<String, Int> = emptyMap(),
+    val isPublic: Boolean = false
 )
 
 data class CreateChatRequest(
     val name: String?,
     val participantIds: List<String>,
-    val isGroup: Boolean = true
+    val isGroup: Boolean = true,
+    val isPublic: Boolean = false
 )
 
 data class AddMembersRequest(val userIds: List<String>)
@@ -50,6 +52,8 @@ data class RemoveMembersRequest(val userIds: List<String>)
 data class UpdateGroupNameRequest(val name: String)
 
 data class UpdateGroupDescriptionRequest(val description: String)
+
+data class UpdateGroupVisibilityRequest(val isPublic: Boolean)
 
 data class UpdateAdminsRequest(val userIds: List<String>)
 

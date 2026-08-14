@@ -12,7 +12,7 @@ interface SocialRepository {
     fun getComments(postId: Int): Flow<List<Comment>>
     suspend fun getAllChats(): List<ChatResponse>
     suspend fun getGroupChats(): List<ChatResponse>
-    suspend fun createGroup(name: String, participantIds: List<String> = emptyList()): ChatResponse
+    suspend fun createGroup(name: String, participantIds: List<String> = emptyList(), isPublic: Boolean = false): ChatResponse
     suspend fun uploadGroupImage(chatId: String, imageUri: android.net.Uri): ChatResponse
     suspend fun joinGroup(chatId: String): Boolean
     suspend fun addMember(chatId: String, userId: String): Boolean
@@ -23,6 +23,7 @@ interface SocialRepository {
     suspend fun markAsRead(chatId: String)
     suspend fun renameGroup(chatId: String, name: String): ChatResponse
     suspend fun updateGroupDescription(chatId: String, description: String): ChatResponse
+    suspend fun updateGroupVisibility(chatId: String, isPublic: Boolean): ChatResponse
     suspend fun promoteAdmin(chatId: String, userId: String): ChatResponse
     suspend fun demoteAdmin(chatId: String, userId: String): ChatResponse
     suspend fun deleteGroup(chatId: String): Boolean
