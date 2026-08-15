@@ -59,7 +59,6 @@ class SocialViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SocialUiState())
     val uiState: StateFlow<SocialUiState> = _uiState.asStateFlow()
 
-    private val initialChatId: String? = savedStateHandle.get<String>("chatId")
     val autoOpenChatId = MutableStateFlow<String?>(null)
 
     private val pageSize = 10
@@ -70,7 +69,38 @@ class SocialViewModel @Inject constructor(
         get() = authManager.currentUserId.value ?: "me"
 
     init {
-        autoOpenChatId.value = initialChatId
+        // Observe chatId from savedStateHandle to support navigation with arguments even if ViewModel is reused
+        viewModelScope.launch {
+            savedStateHandle.getStateFlow<String?>("chatId", null).collect { chatId ->
+                if (chatId != null) {
+                    // Try to find in current UI state first
+                    val found = _uiState.value.groupChats.find { it.id == chatId }
+                        ?: _uiState.value.directChats.find { it.id == chatId }
+                    
+                    if (found != null) {
+                        autoOpenChatId.value = chatId
+                    } else {
+                        // Not in current list, try to fetch specifically or refresh all
+                        val fetched = repository.getChat(chatId)
+                        if (fetched != null) {
+                            if (fetched.isGroup) {
+                                _uiState.update { it.copy(groupChats = (it.groupChats.filter { it.id != chatId } + fetched)) }
+                            } else {
+                                _uiState.update { it.copy(directChats = (it.directChats.filter { it.id != chatId } + fetched)) }
+                            }
+                            autoOpenChatId.value = chatId
+                        } else {
+                            // Last resort: refresh everything
+                            loadAllChats()
+                            autoOpenChatId.value = chatId
+                        }
+                    }
+                    // Clear the chatId in savedStateHandle so that navigating with the same ID again triggers a new emission
+                    savedStateHandle["chatId"] = null
+                }
+            }
+        }
+
         // Start socket and load posts once
         socketService.connect()
         collectSocketEvents()

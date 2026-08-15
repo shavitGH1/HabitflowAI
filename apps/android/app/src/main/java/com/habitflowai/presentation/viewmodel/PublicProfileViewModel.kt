@@ -24,6 +24,7 @@ data class PublicProfileUiState(
     val isFollowing: Boolean = false,
     val isLoading: Boolean = false,
     val isMe: Boolean = false,
+    val isCreatingChat: Boolean = false,
     val error: String? = null
 )
 
@@ -118,11 +119,18 @@ class PublicProfileViewModel @Inject constructor(
     }
 
     fun startDm(onChatReady: (String) -> Unit) {
+        if (_uiState.value.isCreatingChat) return
+        
         viewModelScope.launch {
+            _uiState.update { it.copy(isCreatingChat = true) }
             try {
                 val chat = repository.createDirectChat(targetUserId)
                 onChatReady(chat.id)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Could not start chat") }
+            } finally {
+                _uiState.update { it.copy(isCreatingChat = false) }
+            }
         }
     }
 }

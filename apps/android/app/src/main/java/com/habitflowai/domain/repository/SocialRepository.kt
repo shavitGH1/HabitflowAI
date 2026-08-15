@@ -34,6 +34,7 @@ interface SocialRepository {
     suspend fun deleteGroup(chatId: String): Boolean
     suspend fun getDirectChats(): List<ChatResponse>
     suspend fun createDirectChat(userId: String): ChatResponse
+    suspend fun getChat(chatId: String): ChatResponse?
     suspend fun getFollowing(userId: String): List<String>
     suspend fun getAllUsers(): List<AppUser>
 }

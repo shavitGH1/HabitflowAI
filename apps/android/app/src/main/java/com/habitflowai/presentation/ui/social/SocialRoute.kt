@@ -82,7 +82,7 @@ fun SocialRoute(
     var selectedChatForView by remember { mutableStateOf<ChatResponse?>(null) }
     var showAddMemberDialog by remember { mutableStateOf<ChatResponse?>(null) }
 
-    LaunchedEffect(autoOpenChatId) {
+    LaunchedEffect(autoOpenChatId, uiState.groupChats, uiState.directChats, uiState.isLoadingChats) {
         autoOpenChatId?.let { chatId ->
             val chat = uiState.groupChats.find { it.id == chatId }
                 ?: uiState.directChats.find { it.id == chatId }
@@ -91,9 +91,10 @@ fun SocialRoute(
                 selectedChatForView = chat
                 viewModel.loadMessages(chatId)
                 viewModel.autoOpenChatId.value = null
-            } else if (uiState.isLoadingChats == false) {
-                // If not found and not loading, maybe we need to fetch it specifically or it doesn't exist
-                // For now, if it's a DM we just created, it should be in directChats
+            } else if (!uiState.isLoadingChats) {
+                // If we have an ID to open but it's not in the list and we're not loading,
+                // something is out of sync. But SocialViewModel should have handled specific fetch.
+                // We'll call loadAllChats just in case, but usually we should have found it.
                 viewModel.loadAllChats()
             }
         }

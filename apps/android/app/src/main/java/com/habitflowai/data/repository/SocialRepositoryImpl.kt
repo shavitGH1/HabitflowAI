@@ -133,26 +133,43 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getAllChats(): List<ChatResponse> {
+        val serverChats = try { api.getChats() } catch (e: Exception) { emptyList() }
+        
+        if (serverChats.isNotEmpty()) {
+            try {
+                chatLocalStorage.saveGroupChats(myId, serverChats.filter { it.isGroup })
+                chatLocalStorage.saveDirectChats(myId, serverChats.filter { !it.isGroup })
+            } catch (_: Exception) {}
+        }
+
         val cachedGroups = try { chatLocalStorage.loadGroupChats(myId) } catch (_: Exception) { emptyList() }
         val cachedDms = try { chatLocalStorage.loadDirectChats(myId) } catch (_: Exception) { emptyList() }
-        val initialResult = cachedGroups + cachedDms
+        val allCached = cachedGroups + cachedDms
 
+        // Merge: Prefer server data, but keep local-only chats (e.g. optimistic creations)
+        val serverIds = serverChats.map { it.id }.toSet()
+        val localOnly = allCached.filter { it.id !in serverIds }
+        return serverChats + localOnly
+    }
+
+    override suspend fun getChat(chatId: String): ChatResponse? {
+        // Try local cache first
+        val cached = try {
+            val groups = chatLocalStorage.loadGroupChats(myId)
+            val dms = chatLocalStorage.loadDirectChats(myId)
+            (groups + dms).find { it.id == chatId }
+        } catch (_: Exception) { null }
+        
+        if (cached != null) return cached
+
+        // Try server
         return try {
-            val serverChats = api.getChats()
-            val groups = serverChats.filter { it.isGroup }
-            val dms = serverChats.filter { !it.isGroup }
-            try {
-                chatLocalStorage.saveGroupChats(myId, groups)
-                chatLocalStorage.saveDirectChats(myId, dms)
-            } catch (_: Exception) {}
-            
-            // Merge: Prefer server data, but keep local-only chats (e.g. optimistic creations)
-            val serverIds = serverChats.map { it.id }.toSet()
-            val localOnly = initialResult.filter { it.id !in serverIds }
-            serverChats + localOnly
-        } catch (e: Exception) {
-            initialResult
-        }
+            val all = api.getChats()
+            all.find { it.id == chatId }?.also { chat ->
+                if (chat.isGroup) chatLocalStorage.saveGroupChats(myId, listOf(chat))
+                else chatLocalStorage.saveDirectChats(myId, listOf(chat))
+            }
+        } catch (_: Exception) { null }
     }
 
     override suspend fun getGroupChats(): List<ChatResponse> {

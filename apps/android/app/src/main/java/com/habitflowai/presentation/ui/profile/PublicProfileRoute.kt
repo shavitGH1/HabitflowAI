@@ -64,6 +64,7 @@ fun PublicProfileRoute(
                 ProfileHeader(
                     username = uiState.username,
                     isMe = uiState.isMe,
+                    isLoading = uiState.isCreatingChat,
                     personaColor = personaColor,
                     onSendMessage = {
                         viewModel.startDm { chatId ->
@@ -113,6 +114,7 @@ fun PublicProfileRoute(
 fun ProfileHeader(
     username: String,
     isMe: Boolean,
+    isLoading: Boolean,
     personaColor: Color,
     onSendMessage: () -> Unit
 ) {
@@ -149,14 +151,17 @@ fun ProfileHeader(
                 fontWeight = FontWeight.Bold
             )
 
-            if (!isMe) {
-                Spacer(Modifier.height(24.dp))
-                Button(
-                    onClick = onSendMessage,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = personaColor)
-                ) {
+            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = onSendMessage,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = personaColor),
+                enabled = !isLoading
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
                     Icon(Icons.AutoMirrored.Rounded.Message, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Send Message", fontWeight = FontWeight.Bold, fontSize = 16.sp)
