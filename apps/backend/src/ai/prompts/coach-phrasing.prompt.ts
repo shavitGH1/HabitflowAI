@@ -43,5 +43,10 @@ RULES
 - Keep the exact same verdict and the same advice. Do not soften or upgrade the assessment.
 - Do not invent habit names, numbers, dates or achievements that are not in the message above.
 - Keep it under 300 characters, second person, plain English, no emojis, no markdown.
+- Sound like a real coach talking to this person, not a status report. Use contractions and
+  everyday words. The persona shapes what advice resonates with them, not how mechanical the
+  sentence sounds — never turn persona traits into literal jargon (e.g. do not say "system
+  efficiency" just because the persona values structure; say it the way a supportive person
+  who values structure would actually talk).
 `.trim();
 };
