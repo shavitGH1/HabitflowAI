@@ -62,7 +62,7 @@ class HabitsViewModelTest {
         coEvery { habitsRepository.createHabit(any()) } just runs
         coEvery { habitsRepository.deleteHabit(any()) } just runs
         coEvery { habitsRepository.completeHabit(any()) } returns true
-        coEvery { locationRepository.captureAndSaveLocation(any(), any()) } just runs
+        coEvery { locationRepository.captureAndSaveLocation(any(), any(), any()) } just runs
 
         viewModel = HabitsViewModel(habitsRepository, locationRepository)
     }
@@ -149,14 +149,14 @@ class HabitsViewModelTest {
         assertTrue(callbackResult!!)
         assertTrue(viewModel.uiState.value.habits.find { it.id == "h1" }?.completed == true)
         coVerify { habitsRepository.completeHabit(match { it.id == "h1" }) }
-        coVerify { locationRepository.captureAndSaveLocation("h1", true) }
+        coVerify { locationRepository.captureAndSaveLocation("h1", true, "habit") }
     }
 
     @Test
     fun `completeHabit success captures private location when toggled off`() {
         viewModel.completeHabit("h1", isPublic = false)
 
-        coVerify { locationRepository.captureAndSaveLocation("h1", false) }
+        coVerify { locationRepository.captureAndSaveLocation("h1", false, "habit") }
     }
 
     @Test
@@ -168,7 +168,7 @@ class HabitsViewModelTest {
 
         assertFalse(callbackResult!!)
         assertTrue(viewModel.uiState.value.habits.find { it.id == "h1" }?.completed == false)
-        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any()) }
+        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
     }
 
     @Test
@@ -178,6 +178,6 @@ class HabitsViewModelTest {
 
         assertFalse(callbackResult!!)
         coVerify(exactly = 0) { habitsRepository.completeHabit(any()) }
-        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any()) }
+        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
     }
 }

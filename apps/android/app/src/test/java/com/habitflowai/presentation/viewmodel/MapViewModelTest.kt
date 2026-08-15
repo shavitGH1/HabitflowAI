@@ -34,7 +34,8 @@ class MapViewModelTest {
             taskDescription = "Morning Run",
             timestamp = 1000,
             isPublic = true,
-            username = "shavi"
+            username = "shavi",
+            type = "habit"
         ),
         LocationResponse(
             id = "loc-2",
@@ -45,7 +46,8 @@ class MapViewModelTest {
             placeName = "Home",
             timestamp = 2000,
             isPublic = false,
-            username = "yossi"
+            username = "yossi",
+            type = "task"
         )
     )
 
@@ -83,6 +85,13 @@ class MapViewModelTest {
         val markers = viewModel.uiState.value.markers
         assertEquals("shavi", markers[0].username)
         assertEquals("yossi", markers[1].username)
+    }
+
+    @Test
+    fun `marker type maps habit vs task`() {
+        val markers = viewModel.uiState.value.markers
+        assertEquals("habit", markers[0].habitType)
+        assertEquals("task", markers[1].habitType)
     }
 
     @Test
