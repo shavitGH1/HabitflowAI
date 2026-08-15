@@ -29,7 +29,9 @@ class LocationSyncWorker @AssistedInject constructor(
                         habitId = location.habitId,
                         latitude = location.latitude,
                         longitude = location.longitude,
-                        timestamp = location.timestamp
+                        timestamp = location.timestamp,
+                        isPublic = location.isPublic,
+                        type = location.type
                     )
                     val response = api.recordLocation(request)
                     if (response.isSuccessful) {

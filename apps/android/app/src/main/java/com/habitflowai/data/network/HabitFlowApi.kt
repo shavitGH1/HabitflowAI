@@ -71,6 +71,9 @@ interface HabitFlowApi {
     @PUT("api/v1/habits/{id}")
     suspend fun updateHabit(@Path("id") id: String, @Body habit: HabitRequest): HabitResponse
 
+    @PATCH("api/v1/habits/{id}/complete")
+    suspend fun completeHabit(@Path("id") id: String): Response<HabitResponse>
+
     @DELETE("api/v1/habits/{id}")
     suspend fun deleteHabit(@Path("id") id: String): Response<Unit>
 
@@ -88,6 +91,14 @@ interface HabitFlowApi {
 
     @GET("api/v1/locations/mine")
     suspend fun getMyLocations(): List<LocationResponse>
+
+    @GET("api/v1/locations")
+    suspend fun getPublicLocations(
+        @Query("minLat") minLat: Double,
+        @Query("maxLat") maxLat: Double,
+        @Query("minLng") minLng: Double,
+        @Query("maxLng") maxLng: Double
+    ): List<LocationResponse>
 
     // Chat
     @GET("api/v1/coach/chat")

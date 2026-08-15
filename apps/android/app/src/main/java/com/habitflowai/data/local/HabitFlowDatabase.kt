@@ -26,7 +26,7 @@ import com.habitflowai.data.local.entity.UserEntity
         ChatEntity::class,
         MessageEntity::class,
     ],
-    version = 6
+    version = 8
 )
 @TypeConverters(Converters::class)
 abstract class HabitFlowDatabase : RoomDatabase() {
@@ -37,6 +37,16 @@ abstract class HabitFlowDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
 
     companion object {
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `locations` ADD COLUMN `type` TEXT NOT NULL DEFAULT 'task'")
+            }
+        }
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `locations` ADD COLUMN `isPublic` INTEGER NOT NULL DEFAULT 1")
+            }
+        }
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE habits ADD COLUMN completionHistory TEXT NOT NULL DEFAULT '[]'")

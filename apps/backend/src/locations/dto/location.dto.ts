@@ -41,4 +41,9 @@ export class LocationDto {
   @IsBoolean()
   @ApiPropertyOptional({ description: 'Whether this location is visible on the public map', default: true })
   isPublic?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional({ description: 'Whether this location came from a habit or a task completion', default: 'task', enum: ['habit', 'task'] })
+  type?: 'habit' | 'task';
 }

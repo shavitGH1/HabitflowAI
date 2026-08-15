@@ -24,6 +24,7 @@ import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.domain.repository.LocationRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
+import java.util.Calendar
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -40,11 +41,24 @@ class LocationRepositoryImpl @Inject constructor(
         LocationServices.getFusedLocationProviderClient(context)
     }
 
-    override suspend fun captureAndSaveLocation(habitId: String?) {
+    override suspend fun captureAndSaveLocation(
+        habitId: String?,
+        isPublic: Boolean,
+        type: String
+    ) {
         val location = getCurrentLocation()
         if (location == null) {
             Log.w(TAG, "captureAndSaveLocation: no location available, skipping (habitId=$habitId)")
             return
+        }
+        if (habitId != null) {
+            val now = System.currentTimeMillis()
+            val alreadyRecordedToday = locationDao.getLocationsByHabitId(habitId)
+                .any { isSameLocalDay(it.timestamp, now) }
+            if (alreadyRecordedToday) {
+                Log.w(TAG, "captureAndSaveLocation: location already recorded for habitId=$habitId today, skipping")
+                return
+            }
         }
         val entity = LocationEntity(
             id = UUID.randomUUID().toString(),
@@ -52,16 +66,20 @@ class LocationRepositoryImpl @Inject constructor(
             latitude = location.latitude,
             longitude = location.longitude,
             timestamp = System.currentTimeMillis(),
-            syncStatus = SyncStatus.PENDING_CREATE
+            syncStatus = SyncStatus.PENDING_CREATE,
+            isPublic = isPublic,
+            type = type
         )
         locationDao.insert(entity)
-        Log.d(TAG, "captureAndSaveLocation: saved ${location.latitude},${location.longitude} (habitId=$habitId)")
+        Log.d(TAG, "captureAndSaveLocation: saved ${location.latitude},${location.longitude} (habitId=$habitId, isPublic=$isPublic, type=$type)")
 
         val request = LocationSyncRequest(
             habitId = entity.habitId,
             latitude = entity.latitude,
             longitude = entity.longitude,
-            timestamp = entity.timestamp
+            timestamp = entity.timestamp,
+            isPublic = entity.isPublic,
+            type = entity.type
         )
         val uploaded = try {
             val response = api.recordLocation(request)
@@ -105,6 +123,21 @@ class LocationRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getPublicLocations(
+        minLat: Double,
+        maxLat: Double,
+        minLng: Double,
+        maxLng: Double
+    ): List<LocationResponse> {
+        return try {
+            api.getPublicLocations(minLat, maxLat, minLng, maxLng)
+                .also { Log.d(TAG, "getPublicLocations: ${it.size} records") }
+        } catch (e: Exception) {
+            Log.w(TAG, "getPublicLocations failed: ${e.message}")
+            emptyList()
+        }
+    }
+
     private suspend fun getCurrentLocation(): Location? {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) !=
             PackageManager.PERMISSION_GRANTED
@@ -139,6 +172,13 @@ class LocationRepositoryImpl @Inject constructor(
             .build()
 
         workManager.enqueue(syncRequest)
+    }
+
+    private fun isSameLocalDay(firstMillis: Long, secondMillis: Long): Boolean {
+        val first = Calendar.getInstance().apply { timeInMillis = firstMillis }
+        val second = Calendar.getInstance().apply { timeInMillis = secondMillis }
+        return first.get(Calendar.YEAR) == second.get(Calendar.YEAR) &&
+            first.get(Calendar.DAY_OF_YEAR) == second.get(Calendar.DAY_OF_YEAR)
     }
 
     companion object {

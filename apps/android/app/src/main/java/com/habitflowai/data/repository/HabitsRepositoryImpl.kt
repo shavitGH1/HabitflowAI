@@ -7,12 +7,14 @@ import androidx.work.WorkManager
 import com.habitflowai.data.local.dao.HabitDao
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
+import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.domain.repository.HabitsRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class HabitsRepositoryImpl @Inject constructor(
     private val habitDao: HabitDao,
+    private val api: HabitFlowApi,
     private val workManager: WorkManager
 ) : HabitsRepository {
 
@@ -38,6 +40,26 @@ class HabitsRepositoryImpl @Inject constructor(
     override suspend fun deleteHabit(habit: HabitEntity) {
         habitDao.updateSyncStatus(habit.id, SyncStatus.PENDING_DELETE)
         enqueueSync()
+    }
+
+    override suspend fun completeHabit(habit: HabitEntity): Boolean {
+        return try {
+            val serverId = habit.serverId ?: habit.id
+            val response = api.completeHabit(serverId)
+            if (response.isSuccessful) {
+                habitDao.update(
+                    habit.copy(
+                        completed = true,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                )
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun enqueueSync() {

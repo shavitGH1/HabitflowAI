@@ -38,7 +38,8 @@ fun HabitDetailRoute(
     habitId: String,
     viewModel: HabitsViewModel,
     personaType: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onComplete: (Boolean) -> Unit = { isPublic -> viewModel.completeHabit(habitId, isPublic) }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val habit = uiState.habits.find { it.id == habitId }
@@ -46,7 +47,8 @@ fun HabitDetailRoute(
     HabitDetailContent(
         habit = habit,
         personaType = personaType,
-        onBack = onBack
+        onBack = onBack,
+        onComplete = onComplete
     )
 }
 
@@ -55,7 +57,8 @@ fun HabitDetailRoute(
 fun HabitDetailContent(
     habit: HabitEntity?,
     personaType: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onComplete: (Boolean) -> Unit = {}
 ) {
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
 
@@ -76,6 +79,8 @@ fun HabitDetailContent(
                 Text("Habit not found")
             }
         } else {
+            var shareOnPublicMap by remember { mutableStateOf(true) }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -125,6 +130,66 @@ fun HabitDetailContent(
                             fontWeight = FontWeight.Bold,
                             color = if (habit.completed) Color(0xFF2E7D32) else Color(0xFFF57F17)
                         )
+                    }
+                }
+
+                if (!habit.completed) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "Mark as Complete",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Record this completion and save your location on the map.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Share location on public map",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        text = "Off = private, only visible to you",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray
+                                    )
+                                }
+                                Switch(
+                                    checked = shareOnPublicMap,
+                                    onCheckedChange = { shareOnPublicMap = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedTrackColor = details.endColor,
+                                        checkedThumbColor = Color.White
+                                    )
+                                )
+                            }
+                            Button(
+                                onClick = { onComplete(shareOnPublicMap) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = details.endColor)
+                            ) {
+                                Text("Mark Complete", fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
 
