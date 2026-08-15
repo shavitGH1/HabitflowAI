@@ -170,4 +170,34 @@ interface HabitFlowApi {
 
     @GET("api/v1/users")
     suspend fun getUsers(): List<com.habitflowai.data.model.AppUser>
+
+    // Social Feed
+    @GET("api/v1/posts")
+    suspend fun getPosts(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int
+    ): List<com.habitflowai.data.model.Post>
+
+    @Multipart
+    @POST("api/v1/posts")
+    suspend fun createPost(
+        @Part("habitName") habitName: okhttp3.RequestBody,
+        @Part("completionNote") completionNote: okhttp3.RequestBody,
+        @Part image: MultipartBody.Part? = null
+    ): com.habitflowai.data.model.Post
+
+    @POST("api/v1/posts/{id}/like")
+    suspend fun togglePostLike(@Path("id") id: String): com.habitflowai.data.model.Post
+
+    @DELETE("api/v1/posts/{id}/like")
+    suspend fun unlikePost(@Path("id") id: String): com.habitflowai.data.model.Post
+
+    @GET("api/v1/posts/{id}/comments")
+    suspend fun getComments(@Path("id") id: String): List<com.habitflowai.data.model.Comment>
+
+    @POST("api/v1/posts/{id}/comments")
+    suspend fun addComment(
+        @Path("id") id: String,
+        @Body request: com.habitflowai.data.model.CommentRequest
+    ): com.habitflowai.data.model.Comment
 }

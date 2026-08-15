@@ -37,9 +37,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.luminance
-import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.Post
+import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.ChatResponse
+import com.habitflowai.data.model.AppUser
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.SocialUiState
@@ -167,8 +168,8 @@ fun SocialRoute(
     if (showCreateSheet) {
         CreatePostBottomSheet(
             onDismiss = { showCreateSheet = false },
-            onPostCreated = { content, imageUri ->
-                viewModel.addPost(content, imageUri?.toString())
+            onPostCreated = { habitName, completionNote, imageUri ->
+                viewModel.addPost(habitName, completionNote, imageUri)
                 showCreateSheet = false
             }
         )
@@ -446,7 +447,7 @@ fun GroupChatsDrawerContent(
 @Composable
 fun NewDirectMessageSheet(
     personaColor: Color,
-    allUsers: List<com.habitflowai.data.model.AppUser> = emptyList(),
+    allUsers: List<AppUser> = emptyList(),
     onDismiss: () -> Unit,
     onStart: (String) -> Unit
 ) {
@@ -464,7 +465,7 @@ fun NewDirectMessageSheet(
 @Composable
 fun CreateGroupBottomSheet(
     personaColor: Color,
-    allUsers: List<com.habitflowai.data.model.AppUser> = emptyList(),
+    allUsers: List<AppUser> = emptyList(),
     onDismiss: () -> Unit,
     onCreate: (name: String, description: String, participantIds: List<String>, imageUri: Uri?, isPublic: Boolean) -> Unit
 ) {
@@ -556,18 +557,20 @@ fun CreateGroupBottomSheet(
         )
     }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        // Material3's own back-press dismissal fires *before* any BackHandler we
-        // add inside content can reliably win priority over it (confirmed on
-        // device — inconsistent across sheets). Disable it at the source and let
-        // our own BackHandler below be the only thing back presses reach.
-        properties = ModalBottomSheetDefaults.properties(shouldDismissOnBackPress = false)
-    ) {
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = sheetState,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            // Material3's own back-press dismissal fires *before* any BackHandler we
+            // add inside content can reliably win priority over it (confirmed on
+            // device — inconsistent across sheets). Disable it at the source and let
+            // our own BackHandler below be the only thing back presses reach.
+            properties = ModalBottomSheetDefaults.properties(
+                shouldDismissOnBackPress = false
+            )
+        ) {
         // First back press should only dismiss the keyboard; only close the
         // sheet on a second press once the IME is already hidden.
         val keyboardController = LocalSoftwareKeyboardController.current
@@ -966,7 +969,7 @@ fun SearchItemRow(
 fun AddMemberDialog(
     chat: ChatResponse,
     personaColor: Color,
-    allUsers: List<com.habitflowai.data.model.AppUser> = emptyList(),
+    allUsers: List<AppUser> = emptyList(),
     onDismiss: () -> Unit,
     onAdd: (String) -> Unit
 ) {
@@ -991,7 +994,7 @@ fun SocialContent(
     uiState: SocialUiState,
     personaColor: Color,
     modifier: Modifier = Modifier,
-    onLikeClick: (Int) -> Unit,
+    onLikeClick: (String) -> Unit,
     onLoadMore: () -> Unit,
     onPostClick: (Post) -> Unit
 ) {
@@ -1074,38 +1077,27 @@ fun PostCard(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(post.author, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text("Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val displayName = post.authorName ?: post.authorEmail?.substringBefore('@') ?: "User"
+                    Text(displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text(post.createdAt ?: "Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
             
-            Text(post.content, style = MaterialTheme.typography.bodyLarge)
+            Text(post.habitName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = personaColor)
+            Text(post.completionNote, style = MaterialTheme.typography.bodyLarge)
             
-            if (post.hasPhoto || post.imageUri != null) {
+            if (post.imageUrl != null) {
                 Spacer(modifier = Modifier.height(12.dp))
-                if (post.imageUri != null) {
-                    AsyncImage(
-                        model = post.imageUri,
-                        contentDescription = "Post image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(250.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(250.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Rounded.PhotoLibrary, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(48.dp))
-                    }
-                }
+                AsyncImage(
+                    model = post.imageUrl,
+                    contentDescription = "Post image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(250.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -1173,17 +1165,19 @@ fun CommentsBottomSheet(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(post.author, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text("Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val displayName = post.authorName ?: post.authorEmail?.substringBefore('@') ?: "User"
+                    Text(displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text(post.createdAt ?: "Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            Text(post.content, style = MaterialTheme.typography.bodyLarge)
+            Text(post.habitName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(post.completionNote, style = MaterialTheme.typography.bodyLarge)
             
-            if (post.imageUri != null) {
+            if (post.imageUrl != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 AsyncImage(
-                    model = post.imageUri,
+                    model = post.imageUrl,
                     contentDescription = null,
                     modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
@@ -1263,9 +1257,9 @@ fun CommentItem(comment: Comment) {
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column {
-            Text(comment.author, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-            Text(comment.content, style = MaterialTheme.typography.bodySmall)
-            Text(comment.timestamp, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(comment.userId, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+            Text(comment.text, style = MaterialTheme.typography.bodySmall)
+            Text(comment.createdAt ?: "Just now", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -1274,9 +1268,10 @@ fun CommentItem(comment: Comment) {
 @Composable
 fun CreatePostBottomSheet(
     onDismiss: () -> Unit,
-    onPostCreated: (String, Uri?) -> Unit
+    onPostCreated: (String, String, Uri?) -> Unit
 ) {
-    var content by remember { mutableStateOf("") }
+    var habitName by remember { mutableStateOf("") }
+    var completionNote by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -1298,7 +1293,9 @@ fun CreatePostBottomSheet(
         // add inside content can reliably win priority over it (confirmed on
         // device — inconsistent across sheets). Disable it at the source and let
         // our own BackHandler below be the only thing back presses reach.
-        properties = ModalBottomSheetDefaults.properties(shouldDismissOnBackPress = false)
+        properties = ModalBottomSheetDefaults.properties(
+            shouldDismissOnBackPress = false
+        )
     ) {
         // First back press should only dismiss the keyboard; only close the
         // sheet on a second press once the IME is already hidden.
@@ -1333,10 +1330,19 @@ fun CreatePostBottomSheet(
             }
 
             OutlinedTextField(
-                value = content,
-                onValueChange = { content = it },
-                placeholder = { Text("What's on your mind?") },
-                modifier = Modifier.fillMaxWidth().height(120.dp),
+                value = habitName,
+                onValueChange = { habitName = it },
+                placeholder = { Text("What habit did you complete? (e.g. Morning Run)") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = completionNote,
+                onValueChange = { completionNote = it },
+                placeholder = { Text("How did it go?") },
+                modifier = Modifier.fillMaxWidth().height(100.dp),
                 shape = RoundedCornerShape(12.dp)
             )
 
@@ -1365,10 +1371,10 @@ fun CreatePostBottomSheet(
             }
 
             Button(
-                onClick = { onPostCreated(content, selectedImageUri) },
+                onClick = { onPostCreated(habitName, completionNote, selectedImageUri) },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                enabled = content.isNotBlank()
+                enabled = habitName.isNotBlank() && completionNote.isNotBlank()
             ) {
                 Text("Post", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
@@ -1387,10 +1393,21 @@ fun PreviewChatDetailV2() {
             messages = emptyList(),
             personaColor = personaColor,
             currentUserId = "me",
+            typingUserIds = emptySet(),
             onDismiss = {},
             onSendMessage = {},
+            onTypingChanged = {},
             onLikeMessage = {},
-            onAddMember = {}
+            onAddMember = {},
+            onRemoveMember = {},
+            onLeaveGroup = {},
+            onRenameGroup = {},
+            onUpdateDescription = {},
+            onUpdateVisibility = {},
+            onPromoteAdmin = {},
+            onDemoteAdmin = {},
+            onDeleteGroup = {},
+            onUploadGroupPhoto = {}
         )
     }
 }
@@ -1483,8 +1500,8 @@ fun PreviewSocialFeedV2() {
                     SocialContent(
                         uiState = SocialUiState(
                             posts = listOf(
-                                Post(1, "Alex", "Just completely crushed my deep work block! 🚀", true, likeCount = 14),
-                                Post(2, "Mia", "Woke up at 5am today. The sunrise was totally worth it.", false, likeCount = 5)
+                                Post(id = "1", authorId = "Alex", authorEmail = null, authorName = "Alex", habitName = "Deep Work", completionNote = "Just completely crushed my deep work block! 🚀", likes = listOf("1", "2")),
+                                Post(id = "2", authorId = "Mia", authorEmail = null, authorName = "Mia", habitName = "Morning Run", completionNote = "Woke up at 5am today. The sunrise was totally worth it.", likes = listOf("1"))
                             )
                         ),
                         personaColor = personaDetails.endColor,
@@ -1507,8 +1524,8 @@ fun SocialRoutePreview() {
             SocialContent(
                 uiState = SocialUiState(
                     posts = listOf(
-                        Post(1, "Alex", "Just completely crushed my deep work block! 🚀", true, likeCount = 14),
-                        Post(2, "Mia", "Woke up at 5am today. The sunrise was totally worth it.", false, likeCount = 5)
+                        Post(id = "1", authorId = "Alex", authorEmail = null, authorName = "Alex", habitName = "Deep Work", completionNote = "Just completely crushed my deep work block! 🚀", likes = listOf("1", "2")),
+                        Post(id = "2", authorId = "Mia", authorEmail = null, authorName = "Mia", habitName = "Morning Run", completionNote = "Woke up at 5am today. The sunrise was totally worth it.", likes = listOf("1"))
                     )
                 ),
                 personaColor = Color(0xFF64B5F6),

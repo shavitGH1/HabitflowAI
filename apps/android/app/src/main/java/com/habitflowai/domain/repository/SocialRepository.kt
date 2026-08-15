@@ -9,7 +9,11 @@ import kotlinx.coroutines.flow.Flow
 
 interface SocialRepository {
     fun getPosts(page: Int, pageSize: Int): Flow<List<Post>>
-    fun getComments(postId: Int): Flow<List<Comment>>
+    fun getComments(postId: String): Flow<List<Comment>>
+    suspend fun createPost(habitName: String, completionNote: String, imageUri: android.net.Uri? = null): Post?
+    suspend fun likePost(postId: String): Boolean
+    suspend fun unlikePost(postId: String): Boolean
+    suspend fun addComment(postId: String, content: String): Comment?
     suspend fun getAllChats(): List<ChatResponse>
     suspend fun getGroupChats(): List<ChatResponse>
     suspend fun createGroup(name: String, participantIds: List<String> = emptyList(), isPublic: Boolean = false): ChatResponse

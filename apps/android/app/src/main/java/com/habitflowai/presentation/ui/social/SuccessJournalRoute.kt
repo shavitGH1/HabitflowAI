@@ -39,8 +39,8 @@ fun SuccessJournalRoute(
 
     var selectedPostForComments by remember { mutableStateOf<Post?>(null) }
     
-    val personalPosts = remember(uiState.posts) {
-        uiState.posts.filter { it.author == "Me" || it.author == "Alex" } // Simulating personal posts
+    val personalPosts = remember(uiState.posts, uiState.currentUserId) {
+        uiState.posts.filter { it.authorId == uiState.currentUserId }
     }
 
     Scaffold(

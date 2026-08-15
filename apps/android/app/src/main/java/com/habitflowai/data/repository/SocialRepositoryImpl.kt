@@ -19,7 +19,6 @@ import com.habitflowai.data.local.ChatLocalStorage
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.SocialRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -38,46 +37,76 @@ class SocialRepositoryImpl @Inject constructor(
 
     private val myId get() = authManager.currentUserId.value ?: "me"
 
-    private val mockAuthors = listOf("Alex", "Mia", "Sam", "Jordan", "Taylor", "Casey")
-    private val mockContents = listOf(
-        "Just completely crushed my deep work block! 🚀",
-        "Woke up at 5am today. The sunrise was totally worth it.",
-        "Hit a 10 day streak on fitness goals! Consistency pays off.",
-        "Reflecting on my progress this week. Feeling grateful. 🙏",
-        "New personal record in the gym today! Hard work works.",
-        "Anyone else struggling with consistent meditation? Let's stay motivated!"
-    )
-
     override fun getPosts(page: Int, pageSize: Int): Flow<List<Post>> = flow {
-        // Simulate network delay
-        delay(1000)
-        
-        val posts = List(pageSize) { index ->
-            val globalIndex = page * pageSize + index
-            Post(
-                id = globalIndex,
-                author = mockAuthors[globalIndex % mockAuthors.size],
-                content = mockContents[globalIndex % mockContents.size],
-                hasPhoto = globalIndex % 2 == 0,
-                likeCount = (0..50).random(),
-                commentCount = (0..10).random(),
-                isLiked = false
-            )
+        try {
+            val posts = api.getPosts(page + 1, pageSize).map { p ->
+                p.copy(
+                    isLiked = p.likes.contains(myId),
+                    likeCount = p.likes.size
+                )
+            }
+            emit(posts)
+        } catch (e: Exception) {
+            emit(emptyList())
         }
-        emit(posts)
     }
 
-    override fun getComments(postId: Int): Flow<List<Comment>> = flow {
-        delay(500)
-        val comments = List((1..5).random()) { index ->
-            Comment(
-                id = index + (postId * 100),
-                postId = postId,
-                author = mockAuthors[index % mockAuthors.size],
-                content = "Great job! Keep it up. 👍"
-            )
+    override fun getComments(postId: String): Flow<List<Comment>> = flow {
+        try {
+            val comments = api.getComments(postId)
+            emit(comments)
+        } catch (e: Exception) {
+            emit(emptyList())
         }
-        emit(comments)
+    }
+
+    override suspend fun createPost(habitName: String, completionNote: String, imageUri: Uri?): Post? {
+        return try {
+            val hName = habitName.toRequestBody("text/plain".toMediaTypeOrNull())
+            val cNote = completionNote.toRequestBody("text/plain".toMediaTypeOrNull())
+            
+            var imagePart: MultipartBody.Part? = null
+            if (imageUri != null) {
+                val mimeType = context.contentResolver.getType(imageUri) ?: "image/jpeg"
+                context.contentResolver.openInputStream(imageUri)?.use { inputStream ->
+                    val bytes = inputStream.readBytes()
+                    val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+                    imagePart = MultipartBody.Part.createFormData("image", "post_${System.currentTimeMillis()}.jpg", requestBody)
+                }
+            }
+            
+            api.createPost(hName, cNote, imagePart).let { p ->
+                p.copy(isLiked = p.likes.contains(myId), likeCount = p.likes.size)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun likePost(postId: String): Boolean {
+        return try {
+            api.togglePostLike(postId)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun unlikePost(postId: String): Boolean {
+        return try {
+            api.unlikePost(postId)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun addComment(postId: String, content: String): Comment? {
+        return try {
+            api.addComment(postId, com.habitflowai.data.model.CommentRequest(content))
+        } catch (e: Exception) {
+            null
+        }
     }
 
     override suspend fun getAllChats(): List<ChatResponse> {
@@ -99,16 +128,7 @@ class SocialRepositoryImpl @Inject constructor(
             val localOnly = initialResult.filter { it.id !in serverIds }
             serverChats + localOnly
         } catch (e: Exception) {
-            if (initialResult.isNotEmpty()) {
-                initialResult
-            } else {
-                // Hardcoded fallback for testing/demo if cache is empty and network fails
-                listOf(
-                    ChatResponse("1", "Marathon Crew", true, "Let's run!", participantIds = listOf(myId, "alex_id", "mia_id")),
-                    ChatResponse("2", "Meditators", true, "Zen mode on", participantIds = listOf(myId, "sam_id")),
-                    ChatResponse("dm_alex", "Alex", false, "Hey there!", participantIds = listOf(myId, "alex_id"))
-                )
-            }
+            initialResult
         }
     }
 
@@ -119,15 +139,9 @@ class SocialRepositoryImpl @Inject constructor(
             try { chatLocalStorage.saveGroupChats(myId, chats) } catch (_: Exception) {}
             chats
         } catch (e: Exception) {
-            // Return cached data if available, otherwise fall back to mock
+            // Return cached data if available
             try {
-                val cached = chatLocalStorage.loadGroupChats(myId)
-                if (cached.isNotEmpty()) cached
-                else listOf(
-                    ChatResponse("1", "Marathon Crew", true, "Let's run!"),
-                    ChatResponse("2", "Meditators", true, "Zen mode on"),
-                    ChatResponse("3", "Deep Work Squad", true, "Focused session starting")
-                )
+                chatLocalStorage.loadGroupChats(myId)
             } catch (_: Exception) {
                 emptyList()
             }
@@ -193,10 +207,10 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun joinGroup(chatId: String): Boolean {
         return try {
-            delay(500)
+            api.addMembers(chatId, AddMembersRequest(listOf(myId)))
             true
-        } catch (_: Exception) {
-            true
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -339,24 +353,10 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getAllUsers(): List<AppUser> {
-        val testUsers = listOf(
-            AppUser("alex_id", "alex_pro@habitflow.ai"),
-            AppUser("mia_id", "mia_zen@habitflow.ai"),
-            AppUser("sam_id", "sam_fit@habitflow.ai"),
-            AppUser("jordan_id", "jordan_dev@habitflow.ai"),
-            AppUser("taylor_id", "taylor_coach@habitflow.ai"),
-            AppUser("casey_id", "casey_explorer@habitflow.ai"),
-            AppUser("habit_bot", "habit_bot@habitflow.ai"),
-            AppUser("growth_guru", "growth_guru@habitflow.ai"),
-            AppUser("marathon_man", "marathon_man@fitness.com"),
-            AppUser("yoga_girl", "yoga_girl@peace.io"),
-            AppUser("code_master", "code_master@tech.com")
-        )
         return try {
-            val remoteUsers = api.getUsers()
-            if (remoteUsers.isEmpty()) testUsers else (testUsers + remoteUsers).distinctBy { it.id }
+            api.getUsers()
         } catch (e: Exception) {
-            testUsers
+            emptyList()
         }
     }
 }
