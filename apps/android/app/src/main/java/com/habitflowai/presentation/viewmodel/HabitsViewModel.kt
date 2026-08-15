@@ -7,6 +7,7 @@ import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.data.model.ActiveGoalResponse
 import com.habitflowai.domain.repository.HabitsRepository
 import com.habitflowai.domain.repository.GoalsRepository
+import com.habitflowai.domain.repository.LocationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,8 @@ data class HabitsUiState(
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
     private val habitsRepository: HabitsRepository,
-    private val goalsRepository: GoalsRepository
+    private val goalsRepository: GoalsRepository,
+    private val locationRepository: LocationRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
@@ -64,9 +66,16 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
-    fun completeHabit(habitId: String) {
+    fun completeHabit(habitId: String, isPublic: Boolean = true, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
-            habitsRepository.completeHabit(habitId)
+            val habit = _uiState.value.habits.find { it.id == habitId } ?: return@launch
+            val success = habitsRepository.completeHabit(habit)
+            if (success) {
+                locationRepository.captureAndSaveLocation(habitId)
+                onResult(true)
+            } else {
+                onResult(false)
+            }
         }
     }
 

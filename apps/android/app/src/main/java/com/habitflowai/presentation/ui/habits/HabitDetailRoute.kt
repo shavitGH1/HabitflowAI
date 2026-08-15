@@ -52,6 +52,7 @@ fun HabitDetailRoute(
         habit = habit,
         stats = stats,
         personaType = personaType,
+        onComplete = { viewModel.completeHabit(habitId) },
         onBack = onBack
     )
 }
@@ -62,6 +63,7 @@ fun HabitDetailContent(
     habit: HabitEntity?,
     stats: Map<String, Any>?,
     personaType: String,
+    onComplete: () -> Unit,
     onBack: () -> Unit
 ) {
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
@@ -132,6 +134,17 @@ fun HabitDetailContent(
                             fontWeight = FontWeight.Bold,
                             color = if (habit.completed) Color(0xFF2E7D32) else Color(0xFFF57F17)
                         )
+                    }
+                }
+
+                if (habit.completed.not()) {
+                    Button(
+                        onClick = onComplete,
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = details.endColor)
+                    ) {
+                        Text("Mark as Complete", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                 }
 
@@ -314,6 +327,7 @@ fun HabitDetailAchieverPreview() {
             ),
             stats = mapOf("consistency" to "85%", "total completions" to 12),
             personaType = "Achiever",
+            onComplete = {},
             onBack = {}
         )
     }
@@ -340,6 +354,7 @@ fun HabitDetailGrowerPreview() {
             ),
             stats = mapOf("streak" to 5),
             personaType = "Grower",
+            onComplete = {},
             onBack = {}
         )
     }
@@ -367,6 +382,7 @@ fun HabitDetailRegulatorPreview() {
             ),
             stats = mapOf("on time" to "90%"),
             personaType = "Regulator",
+            onComplete = {},
             onBack = {}
         )
     }

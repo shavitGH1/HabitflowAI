@@ -80,15 +80,20 @@ class HabitsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun completeHabit(habitId: String) {
-        try {
-            api.completeHabit(habitId)
+    override suspend fun completeHabit(habit: HabitEntity): Boolean {
+        return try {
+            api.completeHabit(habit.id)
             refreshHabits()
+            true
         } catch (e: Exception) {
-            val habit = habitDao.getHabitById(habitId)
-            habit?.let {
-                updateHabit(it.copy(completed = true))
-            }
+            val entity = habit.copy(
+                completed = true,
+                syncStatus = SyncStatus.PENDING_UPDATE,
+                updatedAt = System.currentTimeMillis()
+            )
+            habitDao.update(entity)
+            enqueueSync()
+            true
         }
     }
 
