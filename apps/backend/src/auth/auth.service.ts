@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { AiService } from '../ai/ai.service';
+import { HabitRepository } from '../habits/habit.repository';
 import { UserRepository } from '../users/user.repository';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
@@ -14,6 +15,7 @@ import { logger } from '../logger';
 export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly habitRepository: HabitRepository,
     private readonly ai: AiService,
     private readonly config: ConfigService,
   ) {}
@@ -50,6 +52,12 @@ export class AuthService {
       failurePatterns: portfolio.failurePatterns,
       confidenceScore,
       fcmToken: fcmToken ?? undefined,
+    });
+
+    await this.habitRepository.createHabit({
+      userId: newUser.id,
+      title: goal,
+      frequency: 'daily',
     });
 
     logger.info({ userId: newUser.id }, 'user registered');
