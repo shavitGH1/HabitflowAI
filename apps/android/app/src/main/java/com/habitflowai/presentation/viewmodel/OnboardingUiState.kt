@@ -12,5 +12,7 @@ data class OnboardingUiState(
     val personaResult: ClassifyPersonaResponse? = null,
     val navigateToHome: Boolean = false,
     val proceedToOnboarding: Boolean = false,
-    val isRetakeMode: Boolean = false
+    val isRetakeMode: Boolean = false,
+    val suggestionsByQuestionId: Map<Int, List<String>> = emptyMap(),
+    val suggestionsForGoal: String? = null
 )

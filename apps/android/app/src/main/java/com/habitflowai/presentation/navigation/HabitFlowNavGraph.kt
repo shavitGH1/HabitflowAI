@@ -138,6 +138,7 @@ fun HabitFlowNavGraph(
                         uiState = uiState,
                         onGoalChange = onboardingViewModel::onGoalChange,
                         onQuizAnswerChange = onboardingViewModel::onQuizAnswerChange,
+                        onGoalSubmitted = onboardingViewModel::fetchOnboardingSuggestions,
                         onSubmit = {
                             if (uiState.isRetakeMode) onboardingViewModel.reclassifyPersona() else onboardingViewModel.registerUser()
                         },
