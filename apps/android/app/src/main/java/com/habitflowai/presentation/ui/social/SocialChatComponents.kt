@@ -40,11 +40,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.luminance
+import com.habitflowai.data.model.AppUser
 import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.data.model.ChatResponse
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import java.io.File
+
+// Users don't have a name/displayName field yet — fall back to the part of
+// their email before '@'. If we don't have a matching user record at all,
+// fall back to the raw id rather than showing nothing.
+fun resolveDisplayName(userId: String, allUsers: List<AppUser>): String =
+    allUsers.find { it.id == userId }?.email?.substringBefore('@') ?: userId
 
 // ─────────────────────────────────────────────
 // SocialGroupChatScreen
@@ -57,6 +64,7 @@ fun SocialGroupChatScreen(
     personaColor: Color,
     currentUserId: String = "me",
     typingUserIds: Set<String> = emptySet(),
+    allUsers: List<AppUser> = emptyList(),
     onDismiss: () -> Unit,
     onSendMessage: (String) -> Unit,
     onTypingChanged: (Boolean) -> Unit = {},
@@ -82,6 +90,7 @@ fun SocialGroupChatScreen(
             personaColor = personaColor,
             currentUserId = currentUserId,
             typingUserIds = typingUserIds,
+            allUsers = allUsers,
             onDismiss = onDismiss,
             onSendMessage = onSendMessage,
             onTypingChanged = onTypingChanged,
@@ -111,6 +120,7 @@ fun SocialGroupChatContent(
     personaColor: Color,
     currentUserId: String = "me",
     typingUserIds: Set<String> = emptySet(),
+    allUsers: List<AppUser> = emptyList(),
     onDismiss: () -> Unit,
     onSendMessage: (String) -> Unit,
     onTypingChanged: (Boolean) -> Unit = {},
@@ -152,12 +162,13 @@ fun SocialGroupChatContent(
                     messages = messages,
                     personaColor = personaColor,
                     currentUserId = currentUserId,
+                    allUsers = allUsers,
                     onLikeMessage = onLikeMessage
                 )
             }
 
             AnimatedVisibility(visible = typingUserIds.isNotEmpty(), enter = fadeIn(), exit = fadeOut()) {
-                SocialTypingIndicator(typingUserIds = typingUserIds, personaColor = personaColor)
+                SocialTypingIndicator(typingUserIds = typingUserIds, allUsers = allUsers, personaColor = personaColor)
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -175,6 +186,7 @@ fun SocialGroupChatContent(
             chat = chat,
             currentUserId = currentUserId,
             personaColor = personaColor,
+            allUsers = allUsers,
             canManage = isAdmin,
             isOwner = isOwner,
             onDismiss = { showGroupInfoSheet = false },
@@ -320,6 +332,7 @@ fun SocialMembersSheet(
     chat: ChatResponse,
     currentUserId: String,
     personaColor: Color,
+    allUsers: List<AppUser> = emptyList(),
     canManage: Boolean = false,
     onDismiss: () -> Unit,
     onRemoveMember: (String) -> Unit,
@@ -349,6 +362,7 @@ fun SocialMembersSheet(
                     val isOwnerMark = userId == chat.owner
                     SocialMemberRow(
                         userId = userId,
+                        displayName = resolveDisplayName(userId, allUsers),
                         isAdmin = isAlreadyAdmin,
                         isOwner = isOwnerMark,
                         isSelf = userId == currentUserId,
@@ -371,6 +385,7 @@ fun SocialMembersSheet(
 @Composable
 fun SocialMemberRow(
     userId: String,
+    displayName: String = userId,
     isAdmin: Boolean,
     isOwner: Boolean = false,
     isSelf: Boolean = false,
@@ -385,12 +400,12 @@ fun SocialMemberRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SocialUserAvatar(name = if (isSelf) "me" else userId, personaColor = personaColor, size = 36)
+        SocialUserAvatar(name = if (isSelf) "me" else displayName, personaColor = personaColor, size = 36)
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = if (isSelf) "$userId (You)" else userId,
+                    text = if (isSelf) "$displayName (You)" else displayName,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
@@ -437,6 +452,7 @@ fun EditGroupSheet(
     chat: ChatResponse,
     currentUserId: String,
     personaColor: Color,
+    allUsers: List<AppUser> = emptyList(),
     canManage: Boolean,
     isOwner: Boolean,
     onDismiss: () -> Unit,
@@ -800,6 +816,7 @@ fun EditGroupSheet(
                 val isSelf = userId == currentUserId
                 SocialMemberRow(
                     userId = userId,
+                    displayName = resolveDisplayName(userId, allUsers),
                     isAdmin = isAlreadyAdmin,
                     isOwner = isOwnerMark,
                     isSelf = isSelf,
@@ -860,6 +877,7 @@ fun SocialMessageList(
     messages: List<ChatMessage>,
     personaColor: Color,
     currentUserId: String = "me",
+    allUsers: List<AppUser> = emptyList(),
     onLikeMessage: (String) -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -885,6 +903,7 @@ fun SocialMessageList(
                 items(messages, key = { it.id }) { message ->
                     SocialMessageBubble(
                         message = message,
+                        senderDisplayName = resolveDisplayName(message.senderId, allUsers),
                         personaColor = personaColor,
                         currentUserId = currentUserId,
                         onLikeClick = { onLikeMessage(message.id) }
@@ -929,10 +948,11 @@ fun SocialChatEmptyState(personaColor: Color) {
 // SocialTypingIndicator
 // ─────────────────────────────────────────────
 @Composable
-fun SocialTypingIndicator(typingUserIds: Set<String>, personaColor: Color) {
-    val label = when (typingUserIds.size) {
-        1 -> "${typingUserIds.first()} is typing…"
-        2 -> "${typingUserIds.first()} and ${typingUserIds.last()} are typing…"
+fun SocialTypingIndicator(typingUserIds: Set<String>, allUsers: List<AppUser> = emptyList(), personaColor: Color) {
+    val names = typingUserIds.map { resolveDisplayName(it, allUsers) }
+    val label = when (names.size) {
+        1 -> "${names.first()} is typing…"
+        2 -> "${names.first()} and ${names.last()} are typing…"
         else -> "Several people are typing…"
     }
     Surface(color = MaterialTheme.colorScheme.surface) {
@@ -953,6 +973,7 @@ fun SocialTypingIndicator(typingUserIds: Set<String>, personaColor: Color) {
 @Composable
 fun SocialMessageBubble(
     message: ChatMessage,
+    senderDisplayName: String = message.senderId,
     personaColor: Color,
     currentUserId: String = "me",
     onLikeClick: () -> Unit
@@ -976,7 +997,7 @@ fun SocialMessageBubble(
         verticalAlignment = Alignment.Bottom
     ) {
         if (!isMe) {
-            SocialUserAvatar(name = message.senderId, personaColor = personaColor, size = 32)
+            SocialUserAvatar(name = senderDisplayName, personaColor = personaColor, size = 32)
             Spacer(modifier = Modifier.width(8.dp))
         }
 
@@ -986,7 +1007,7 @@ fun SocialMessageBubble(
         ) {
             if (!isMe) {
                 Text(
-                    text = message.senderId,
+                    text = senderDisplayName,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = personaColor,
@@ -1614,8 +1635,8 @@ private fun PreviewMessageBubbles() {
         val personaColor = PersonaUiData.getDetails("Grower").endColor
         Surface {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SocialMessageBubble(ChatMessage(text = "Just hit a new PR! 🏃", senderId = "alex", likedBy = listOf("me")), personaColor) {}
-                SocialMessageBubble(ChatMessage(text = "That's awesome, congrats!", senderId = "me"), personaColor) {}
+                SocialMessageBubble(message = ChatMessage(text = "Just hit a new PR! 🏃", senderId = "alex", likedBy = listOf("me")), personaColor = personaColor, onLikeClick = {})
+                SocialMessageBubble(message = ChatMessage(text = "That's awesome, congrats!", senderId = "me"), personaColor = personaColor, onLikeClick = {})
             }
         }
     }

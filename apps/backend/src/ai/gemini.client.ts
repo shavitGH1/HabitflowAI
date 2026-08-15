@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Content, FunctionDeclaration, GoogleGenAI } from '@google/genai';
+import { Content, FunctionCallingConfigMode, FunctionDeclaration, GoogleGenAI } from '@google/genai';
 import { ZodSchema } from 'zod';
 import { logger } from '../logger';
 
@@ -14,6 +14,7 @@ export interface ToolTurnInput {
   systemInstruction: string;
   contents: Content[];
   functionDeclarations: FunctionDeclaration[];
+  forceToolCall?: boolean;
 }
 
 export interface ToolTurn {
@@ -54,12 +55,19 @@ export class GeminiClient {
     systemInstruction,
     contents,
     functionDeclarations,
+    forceToolCall,
   }: ToolTurnInput): Promise<ToolTurn> {
     return this.withModelFallback(async (model) => {
       const response = await this.ai.models.generateContent({
         model,
         contents,
-        config: { systemInstruction, tools: [{ functionDeclarations }] },
+        config: {
+          systemInstruction,
+          tools: [{ functionDeclarations }],
+          ...(forceToolCall && {
+            toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } },
+          }),
+        },
       });
 
       const parts = response.candidates?.[0]?.content?.parts ?? [];

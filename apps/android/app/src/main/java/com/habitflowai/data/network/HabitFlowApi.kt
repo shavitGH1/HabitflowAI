@@ -16,6 +16,8 @@ import com.habitflowai.data.model.LocationResponse
 import com.habitflowai.data.model.LocationSyncRequest
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.model.LoginResponse
+import com.habitflowai.data.model.ReclassifyRequest
+import com.habitflowai.data.model.ReclassifyResponse
 import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.model.RegisterResponse
 import com.habitflowai.data.model.TokenRefreshRequest
@@ -53,6 +55,9 @@ interface HabitFlowApi {
 
     @POST("api/v1/personas/classify")
     suspend fun classifyPersona(@Body request: ClassifyPersonaRequest): ClassifyPersonaResponse
+
+    @POST("api/v1/personas/reclassify")
+    suspend fun reclassifyPersona(@Body request: ReclassifyRequest): ReclassifyResponse
 
     @POST("api/v1/goals/generate")
     suspend fun generateGoals(@Body request: GenerateGoalsRequest): GenerateGoalsResponse
