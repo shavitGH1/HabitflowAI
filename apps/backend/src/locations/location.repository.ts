@@ -14,6 +14,7 @@ export interface LocationData {
   timestamp: number;
   personaType: string;
   isPublic: boolean;
+  type: 'habit' | 'task';
   username?: string;
   createdAt: string;
 }
@@ -28,6 +29,7 @@ export interface CreateLocationInput {
   timestamp?: number;
   personaType?: string;
   isPublic?: boolean;
+  type?: 'habit' | 'task';
 }
 
 @Injectable()
@@ -80,6 +82,7 @@ export class LocationRepository {
       timestamp: doc.timestamp,
       personaType: doc.personaType,
       isPublic: doc.isPublic,
+      type: (doc.type === 'habit' ? 'habit' : 'task'),
       createdAt: (doc as unknown as { createdAt: Date }).createdAt.toISOString(),
     };
   }

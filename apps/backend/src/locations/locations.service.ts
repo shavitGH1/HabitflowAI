@@ -33,6 +33,7 @@ export class LocationsService {
       timestamp: dto.timestamp ?? Date.now(),
       personaType: dto.personaType,
       isPublic: dto.isPublic,
+      type: dto.type ?? 'task',
     });
 
     logger.info(

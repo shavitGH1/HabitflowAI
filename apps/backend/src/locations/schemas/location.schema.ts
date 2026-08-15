@@ -31,6 +31,9 @@ export class LocationRecord {
 
   @Prop({ default: true })
   isPublic: boolean;
+
+  @Prop({ default: 'task' })
+  type: string;
 }
 
 export const LocationRecordSchema = SchemaFactory.createForClass(LocationRecord);
