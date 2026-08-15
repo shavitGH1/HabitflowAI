@@ -45,4 +45,8 @@ class GoalsRepositoryImpl @Inject constructor(
         val response = api.completeTask(taskId)
         return response.isSuccessful
     }
+
+    override suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse {
+        return api.getActiveGoal()
+    }
 }

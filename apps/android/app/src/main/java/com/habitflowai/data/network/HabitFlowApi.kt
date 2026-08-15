@@ -51,6 +51,9 @@ interface HabitFlowApi {
     @GET("api/v1/users/me/home")
     suspend fun getHome(): HomeResponse
 
+    @GET("api/v1/goals/active")
+    suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse
+
     @POST("api/v1/personas/classify")
     suspend fun classifyPersona(@Body request: ClassifyPersonaRequest): ClassifyPersonaResponse
 
@@ -71,6 +74,12 @@ interface HabitFlowApi {
 
     @GET("api/v1/habits")
     suspend fun getHabits(): List<HabitResponse>
+
+    @PATCH("api/v1/habits/{id}/complete")
+    suspend fun completeHabit(@Path("id") id: String): HabitResponse
+
+    @GET("api/v1/habits/{id}/stats")
+    suspend fun getHabitStats(@Path("id") id: String): Map<String, Any>
 
     @POST("api/v1/personas/drift-check")
     suspend fun driftCheck(@Body request: DriftCheckRequest): DriftCheckResponse

@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
+import com.habitflowai.data.model.ActiveGoalResponse
 import com.habitflowai.domain.repository.HabitsRepository
+import com.habitflowai.domain.repository.GoalsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,13 +19,17 @@ import javax.inject.Inject
 
 data class HabitsUiState(
     val habits: List<HabitEntity> = emptyList(),
+    val activeGoal: ActiveGoalResponse? = null,
+    val onboardingGoal: String? = null,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val habitStats: Map<String, Map<String, Any>> = emptyMap()
 )
 
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
-    private val habitsRepository: HabitsRepository
+    private val habitsRepository: HabitsRepository,
+    private val goalsRepository: GoalsRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
@@ -31,6 +37,10 @@ class HabitsViewModel @Inject constructor(
     private val userId = "local_user"
 
     init {
+        fetchActiveGoal()
+        viewModelScope.launch {
+            habitsRepository.refreshHabits()
+        }
         viewModelScope.launch {
             habitsRepository.getHabits(userId)
                 .map { entities -> HabitsUiState(habits = entities, isLoading = false) }
@@ -54,10 +64,42 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
+    fun completeHabit(habitId: String) {
+        viewModelScope.launch {
+            habitsRepository.completeHabit(habitId)
+        }
+    }
+
+    fun fetchHabitStats(habitId: String) {
+        viewModelScope.launch {
+            val stats = habitsRepository.getHabitStats(habitId)
+            val currentStats = _uiState.value.habitStats.toMutableMap()
+            currentStats[habitId] = stats
+            _uiState.value = _uiState.value.copy(habitStats = currentStats)
+        }
+    }
+
     fun deleteHabit(habitId: String) {
         viewModelScope.launch {
             val current = _uiState.value.habits.find { it.id == habitId } ?: return@launch
             habitsRepository.deleteHabit(current)
+        }
+    }
+
+    fun fetchActiveGoal() {
+        viewModelScope.launch {
+            try {
+                val goal = goalsRepository.getActiveGoal()
+                _uiState.value = _uiState.value.copy(activeGoal = goal)
+            } catch (e: Exception) {
+                // If no actionable goal, try to get the onboarding goal from home data
+                try {
+                    val homeData = goalsRepository.getHomeData()
+                    _uiState.value = _uiState.value.copy(onboardingGoal = homeData.goal)
+                } catch (e2: Exception) {
+                    // Ignore
+                }
+            }
         }
     }
 }
