@@ -77,7 +77,7 @@ class HabitsViewModel @Inject constructor(
                         if (it.id == habitId) it.copy(completed = true) else it
                     }
                 )
-                locationRepository.captureAndSaveLocation(habit.id, isPublic)
+                locationRepository.captureAndSaveLocation(habit.id, isPublic, "habit")
                 onResult(true)
             } else {
                 onResult(false)

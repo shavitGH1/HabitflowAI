@@ -63,7 +63,7 @@ class MapViewModel @Inject constructor(
                     id = location.id,
                     habitName = taskName ?: placeName ?: "Completed task",
                     personaEmoji = "📍",
-                    habitType = "Completed",
+                    habitType = location.type,
                     latLng = LatLng(location.latitude, location.longitude),
                     username = displayName,
                     isPublic = location.isPublic
