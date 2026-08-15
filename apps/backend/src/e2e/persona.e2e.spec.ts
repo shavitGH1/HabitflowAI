@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { KNOWN_PERSONA_TYPES, OPEN_ANSWERS, agent, closeTestApp, createTestApp } from './app.helper';
+import { GOAL, KNOWN_PERSONA_TYPES, OPEN_ANSWERS, agent, closeTestApp, createTestApp } from './app.helper';
 
 describe('Persona classification (e2e)', () => {
   let app: INestApplication;
@@ -20,6 +20,7 @@ describe('Persona classification (e2e)', () => {
       .send({
         email: 'e2e-persona@test.com',
         password: 'Password123',
+        goal: GOAL,
         openAnswers: OPEN_ANSWERS,
       })
       .expect(201);
@@ -33,6 +34,7 @@ describe('Persona classification (e2e)', () => {
       .send({
         email: 'e2e-persona-2@test.com',
         password: 'Password123',
+        goal: GOAL,
         openAnswers: OPEN_ANSWERS,
       })
       .expect(201);
@@ -48,6 +50,7 @@ describe('Persona classification (e2e)', () => {
       .send({
         email: 'e2e-persona-bad@test.com',
         password: 'Password123',
+        goal: GOAL,
         openAnswers: ['Only one answer'],
       })
       .expect(400);

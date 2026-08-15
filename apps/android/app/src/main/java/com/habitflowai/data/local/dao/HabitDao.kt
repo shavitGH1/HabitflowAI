@@ -24,7 +24,7 @@ interface HabitDao {
     @Update
     suspend fun update(habit: HabitEntity)
 
-    @Query("SELECT * FROM habits WHERE userId = :userId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM habits WHERE userId = :userId AND syncStatus != 'PENDING_DELETE' ORDER BY createdAt DESC")
     fun getHabitsByUserId(userId: String): Flow<List<HabitEntity>>
 
     @Query("SELECT * FROM habits WHERE id = :habitId")

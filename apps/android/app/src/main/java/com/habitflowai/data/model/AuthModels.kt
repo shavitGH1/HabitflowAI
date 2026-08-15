@@ -24,12 +24,24 @@ data class TokenRefreshResponse(
 data class RegisterRequest(
     val email: String,
     val password: String,
+    val goal: String,
     val openAnswers: List<String>,
     val fcmToken: String? = null
 )
 
 data class CheckEmailRequest(val email: String)
 data class CheckEmailResponse(val available: Boolean)
+
+data class OnboardingSuggestionsRequest(val goal: String)
+
+data class OnboardingSuggestionItem(
+    @SerializedName("questionId") val questionId: Int,
+    @SerializedName("options") val options: List<String>
+)
+
+data class OnboardingSuggestionsResponse(
+    @SerializedName("suggestions") val suggestions: List<OnboardingSuggestionItem>
+)
 
 data class RegisterResponse(
     val message: String,

@@ -8,6 +8,8 @@ import { AiService } from '../ai/ai.service';
 import { AppModule } from '../app.module';
 import { FIREBASE_MESSAGING } from '../notifications/firebase.module';
 
+export const GOAL = 'Run a marathon';
+
 export const OPEN_ANSWERS = [
   'I want to build a consistent study routine and track real progress each week',
   'I stuck with Duolingo for months because daily streaks kept me accountable',

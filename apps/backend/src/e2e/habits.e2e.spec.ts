@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { OPEN_ANSWERS, agent, closeTestApp, createTestApp } from './app.helper';
+import { GOAL, OPEN_ANSWERS, agent, closeTestApp, createTestApp } from './app.helper';
 
 describe('Habits (e2e)', () => {
   let app: INestApplication;
@@ -13,7 +13,7 @@ describe('Habits (e2e)', () => {
 
     await agent(app)
       .post('/api/v1/auth/register')
-      .send({ email: 'e2e-habits@test.com', password: 'Password123', openAnswers: OPEN_ANSWERS });
+      .send({ email: 'e2e-habits@test.com', password: 'Password123', goal: GOAL, openAnswers: OPEN_ANSWERS });
 
     const res = await agent(app)
       .post('/api/v1/auth/login')
