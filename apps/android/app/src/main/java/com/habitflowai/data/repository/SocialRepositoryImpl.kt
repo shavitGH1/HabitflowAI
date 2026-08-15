@@ -39,16 +39,20 @@ class SocialRepositoryImpl @Inject constructor(
     private val myId get() = authManager.currentUserId.value ?: "me"
     private val cachedPosts = MutableStateFlow<List<Post>>(emptyList())
 
-    override fun getPosts(page: Int, pageSize: Int): Flow<List<Post>> = flow {
+    override fun getPosts(page: Int, pageSize: Int, friendsOnly: Boolean?): Flow<List<Post>> = flow {
         try {
-            val posts = api.getPosts(page + 1, pageSize).map { p ->
+            val posts = api.getPosts(page + 1, pageSize, friendsOnly).map { p ->
                 p.copy(
                     isLiked = p.likes.contains(myId),
                     likeCount = p.likes.size
                 )
             }
-            if (page == 0) cachedPosts.value = posts
-            else cachedPosts.value = (cachedPosts.value + posts).distinctBy { it.id }
+            // Always update cache with any posts we've seen to improve profile navigation speed
+            if (page == 0 && friendsOnly == null) {
+                cachedPosts.value = posts
+            } else {
+                cachedPosts.value = (cachedPosts.value + posts).distinctBy { it.id }
+            }
             emit(posts)
         } catch (e: Exception) {
             emit(emptyList())

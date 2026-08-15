@@ -184,7 +184,8 @@ interface HabitFlowApi {
     @GET("api/v1/posts")
     suspend fun getPosts(
         @Query("page") page: Int,
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int,
+        @Query("friendsOnly") friendsOnly: Boolean? = null
     ): List<com.habitflowai.data.model.Post>
 
     @GET("api/v1/posts/user/{userId}")

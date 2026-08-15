@@ -8,7 +8,7 @@ import com.habitflowai.data.model.ChatResponse
 import kotlinx.coroutines.flow.Flow
 
 interface SocialRepository {
-    fun getPosts(page: Int, pageSize: Int): Flow<List<Post>>
+    fun getPosts(page: Int, pageSize: Int, friendsOnly: Boolean? = null): Flow<List<Post>>
     fun getPostsByUserId(userId: String): Flow<List<Post>>
     fun getComments(postId: String): Flow<List<Comment>>
     suspend fun createPost(habitName: String, completionNote: String, imageUri: android.net.Uri? = null): Post?

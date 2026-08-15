@@ -27,6 +27,10 @@ sealed class SearchResult {
     data class Group(val chat: ChatResponse) : SearchResult()
 }
 
+enum class FeedFilter {
+    ALL, FRIENDS, MINE
+}
+
 data class SocialUiState(
     val posts: List<Post> = emptyList(),
     val comments: Map<String, List<Comment>> = emptyMap(),
@@ -37,6 +41,8 @@ data class SocialUiState(
     val currentUserId: String = "me",
     val allUsers: List<AppUser> = emptyList(), // all app users for member picker
     val searchResults: List<SearchResult> = emptyList(),
+    val filter: FeedFilter = FeedFilter.ALL,
+    val followingIds: List<String> = emptyList(),
     val isSearching: Boolean = false,
     val isLoading: Boolean = false,
     val isLoadingComments: Boolean = false,
@@ -122,11 +128,13 @@ class SocialViewModel @Inject constructor(
                         _uiState.update { it.copy(
                             groupChats = emptyList(),
                             directChats = emptyList(),
-                            chatMessages = emptyMap()
+                            chatMessages = emptyMap(),
+                            followingIds = emptyList()
                         ) }
                     } else {
                         // Logged in: Reconnect socket and sync data
                         socketService.connect()
+                        loadFollowingIds()
                         kotlinx.coroutines.delay(800) // Staggered start
                         loadAllChats()
                     }
@@ -140,31 +148,104 @@ class SocialViewModel @Inject constructor(
 
     // ─── Posts ───────────────────────────────────────────────────────────
 
+    fun setFilter(filter: FeedFilter) {
+        if (_uiState.value.filter == filter) return
+        _uiState.update { it.copy(filter = filter, posts = emptyList(), page = 0, canLoadMore = true) }
+        if (filter == FeedFilter.FRIENDS) {
+            loadFollowingIds()
+        }
+        loadMorePosts()
+    }
+
+    private fun loadFollowingIds() {
+        val uid = currentUserId
+        if (uid == "me") return
+        viewModelScope.launch {
+            try {
+                val following = repository.getFollowing(uid)
+                _uiState.update { it.copy(followingIds = following) }
+            } catch (_: Exception) {}
+        }
+    }
+
     fun loadMorePosts() {
         if (_uiState.value.isLoading || !_uiState.value.canLoadMore) return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            repository.getPosts(_uiState.value.page, pageSize).collectLatest { newPosts ->
-                _uiState.value = _uiState.value.copy(
-                    posts = _uiState.value.posts + newPosts,
-                    isLoading = false,
-                    page = _uiState.value.page + 1,
-                    canLoadMore = newPosts.size == pageSize
-                )
+            _uiState.update { it.copy(isLoading = true) }
+            val currentFilter = _uiState.value.filter
+            val page = _uiState.value.page
+            val uid = currentUserId
+            
+            val postsFlow = when (currentFilter) {
+                FeedFilter.ALL -> repository.getPosts(page, pageSize, friendsOnly = null)
+                FeedFilter.FRIENDS -> repository.getPosts(page, pageSize, friendsOnly = true)
+                FeedFilter.MINE -> repository.getPostsByUserId(uid)
+            }
+
+            postsFlow.collectLatest { newPosts ->
+                if (currentFilter == FeedFilter.FRIENDS && newPosts.isEmpty() && page == 0) {
+                    // Fallback for friends: if backend returns empty, try manual filtering once
+                    repository.getPosts(0, 100, friendsOnly = null).collectLatest { allPosts ->
+                        val following = _uiState.value.followingIds
+                        val manualFiltered = allPosts.filter { it.authorId in following || it.authorId == uid }
+                        _uiState.update { state ->
+                            state.copy(
+                                posts = manualFiltered,
+                                isLoading = false,
+                                page = state.page + 1,
+                                canLoadMore = false
+                            )
+                        }
+                    }
+                } else {
+                    _uiState.update { state ->
+                        val updatedPosts = if (currentFilter == FeedFilter.MINE) newPosts else state.posts + newPosts
+                        state.copy(
+                            posts = updatedPosts,
+                            isLoading = false,
+                            page = state.page + 1,
+                            canLoadMore = if (currentFilter == FeedFilter.MINE) false else newPosts.size == pageSize
+                        )
+                    }
+                }
             }
         }
     }
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isRefreshing = true, page = 0, canLoadMore = true)
-            repository.getPosts(0, pageSize).collectLatest { newPosts ->
-                _uiState.value = _uiState.value.copy(
-                    posts = newPosts,
-                    isRefreshing = false,
-                    page = 1,
-                    canLoadMore = newPosts.size == pageSize
-                )
+            _uiState.update { it.copy(isRefreshing = true, page = 0, canLoadMore = true) }
+            val currentFilter = _uiState.value.filter
+            val uid = currentUserId
+            
+            val postsFlow = when (currentFilter) {
+                FeedFilter.ALL -> repository.getPosts(0, pageSize, friendsOnly = null)
+                FeedFilter.FRIENDS -> repository.getPosts(0, pageSize, friendsOnly = true)
+                FeedFilter.MINE -> repository.getPostsByUserId(uid)
+            }
+
+            postsFlow.collectLatest { newPosts ->
+                if (currentFilter == FeedFilter.FRIENDS && newPosts.isEmpty()) {
+                    repository.getPosts(0, 100, friendsOnly = null).collectLatest { allPosts ->
+                        val following = _uiState.value.followingIds
+                        val manualFiltered = allPosts.filter { it.authorId in following || it.authorId == uid }
+                        _uiState.update { it.copy(
+                            posts = manualFiltered,
+                            isRefreshing = false,
+                            page = 1,
+                            canLoadMore = false
+                        ) }
+                    }
+                } else {
+                    _uiState.update { state ->
+                        state.copy(
+                            posts = newPosts,
+                            isRefreshing = false,
+                            page = 1,
+                            canLoadMore = if (currentFilter == FeedFilter.MINE) false else newPosts.size == pageSize
+                        )
+                    }
+                }
             }
         }
     }

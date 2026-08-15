@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.rounded.Message
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -46,6 +47,7 @@ import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.SocialUiState
 import com.habitflowai.presentation.viewmodel.SocialViewModel
 import com.habitflowai.presentation.viewmodel.SearchResult
+import com.habitflowai.presentation.viewmodel.FeedFilter
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
 
@@ -91,8 +93,6 @@ fun SocialRoute(
                 selectedChatForView = chat
                 viewModel.loadMessages(chatId)
                 viewModel.autoOpenChatId.value = null
-            } else if (!uiState.isLoadingChats) {
-                viewModel.loadAllChats()
             }
         }
     }
@@ -174,6 +174,7 @@ fun SocialRoute(
                     modifier = Modifier.fillMaxSize(),
                     onLikeClick = viewModel::toggleLike,
                     onLoadMore = viewModel::loadMorePosts,
+                    onFilterChange = viewModel::setFilter,
                     onUserClick = onUserClick,
                     onPostClick = { post ->
                         selectedPostForComments = post
@@ -1030,6 +1031,7 @@ fun SocialContent(
     modifier: Modifier = Modifier,
     onLikeClick: (String) -> Unit,
     onLoadMore: () -> Unit,
+    onFilterChange: (FeedFilter) -> Unit,
     onUserClick: (String) -> Unit,
     onPostClick: (Post) -> Unit
 ) {
@@ -1051,6 +1053,36 @@ fun SocialContent(
 
     Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // Feed Filter
+            TabRow(
+                selectedTabIndex = uiState.filter.ordinal,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = personaColor,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.filter.ordinal]),
+                        color = personaColor
+                    )
+                }
+            ) {
+                FeedFilter.entries.forEach { filter ->
+                    Tab(
+                        selected = uiState.filter == filter,
+                        onClick = { onFilterChange(filter) },
+                        text = {
+                            Text(
+                                text = when (filter) {
+                                    FeedFilter.ALL -> "All"
+                                    FeedFilter.FRIENDS -> "Friends"
+                                    FeedFilter.MINE -> "Mine"
+                                },
+                                fontWeight = if (uiState.filter == filter) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
+
             // Temporary ID Search for Profile
             var searchId by remember { mutableStateOf("") }
             Row(
@@ -1080,26 +1112,51 @@ fun SocialContent(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                itemsIndexed(
-                    items = uiState.posts,
-                    key = { _, post -> post.id }
-                ) { _, post ->
-                    PostCard(
-                        post = post,
-                        personaColor = personaColor,
-                        onLikeClick = { onLikeClick(post.id) },
-                        onUserClick = { onUserClick(post.authorId) },
-                        onClick = { onPostClick(post) }
-                    )
-                }
-
-                if (uiState.isLoading) {
+                if (uiState.posts.isEmpty() && !uiState.isLoading) {
                     item {
                         Box(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            modifier = Modifier.fillParentMaxSize().padding(bottom = 100.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            val emptyMessage = when (uiState.filter) {
+                                FeedFilter.FRIENDS -> {
+                                    if (uiState.followingIds.isEmpty()) "Seems like you didn't connect with friends yet"
+                                    else "Looks like your friends didn't post anything yet"
+                                }
+                                FeedFilter.MINE -> "You haven't posted anything yet"
+                                FeedFilter.ALL -> "No posts found"
+                            }
+                            Text(
+                                text = emptyMessage,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 32.dp)
+                            )
+                        }
+                    }
+                } else {
+                    itemsIndexed(
+                        items = uiState.posts,
+                        key = { _, post -> post.id }
+                    ) { _, post ->
+                        PostCard(
+                            post = post,
+                            personaColor = personaColor,
+                            onLikeClick = { onLikeClick(post.id) },
+                            onUserClick = { onUserClick(post.authorId) },
+                            onClick = { onPostClick(post) }
+                        )
+                    }
+
+                    if (uiState.isLoading) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
                         }
                     }
                 }
@@ -1590,6 +1647,7 @@ fun PreviewSocialFeedV2() {
                         personaColor = personaDetails.endColor,
                         onLikeClick = {},
                         onLoadMore = {},
+                        onFilterChange = {},
                         onUserClick = { _ -> },
                         onPostClick = {}
                     )
@@ -1615,6 +1673,7 @@ fun SocialRoutePreview() {
                 personaColor = Color(0xFF64B5F6),
                 onLikeClick = {},
                 onLoadMore = {},
+                onFilterChange = {},
                 onUserClick = { _ -> },
                 onPostClick = {}
             )
