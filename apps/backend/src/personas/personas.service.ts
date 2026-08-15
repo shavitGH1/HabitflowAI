@@ -34,11 +34,10 @@ export class PersonasService {
     @Inject(FIREBASE_MESSAGING) private readonly messaging: Messaging,
   ) {}
 
-  async reclassify(userId: string, { openAnswers }: ReclassifyDto) {
+  async reclassify(userId: string, { goal, openAnswers }: ReclassifyDto) {
     const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
-    const goal = openAnswers[0];
     const classification = await this.ai.classifyPersonaWeighted({ goal, openAnswers });
     if (!classification.isValid) {
       throw new BadRequestException(`Invalid input: ${classification.errorReason}`);

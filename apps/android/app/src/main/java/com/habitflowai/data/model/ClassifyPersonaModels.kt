@@ -16,6 +16,7 @@ data class ClassifyPersonaResponse(
 )
 
 data class ReclassifyRequest(
+    @SerializedName("goal") val goal: String,
     @SerializedName("openAnswers") val openAnswers: List<String>
 )
 

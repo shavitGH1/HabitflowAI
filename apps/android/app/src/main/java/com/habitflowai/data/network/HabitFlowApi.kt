@@ -16,6 +16,8 @@ import com.habitflowai.data.model.LocationResponse
 import com.habitflowai.data.model.LocationSyncRequest
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.model.LoginResponse
+import com.habitflowai.data.model.OnboardingSuggestionsRequest
+import com.habitflowai.data.model.OnboardingSuggestionsResponse
 import com.habitflowai.data.model.ReclassifyRequest
 import com.habitflowai.data.model.ReclassifyResponse
 import com.habitflowai.data.model.RegisterRequest
@@ -49,6 +51,9 @@ interface HabitFlowApi {
 
     @POST("api/v1/auth/register")
     suspend fun register(@Body request: RegisterRequest): RegisterResponse
+
+    @POST("api/v1/auth/onboarding-suggestions")
+    suspend fun getOnboardingSuggestions(@Body request: OnboardingSuggestionsRequest): OnboardingSuggestionsResponse
 
     @GET("api/v1/users/me/home")
     suspend fun getHome(): HomeResponse

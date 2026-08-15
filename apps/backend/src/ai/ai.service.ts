@@ -18,6 +18,7 @@ import {
   HabitGoalRelevanceInput,
 } from './features/habit-goal-relevance.feature';
 import { TaskVerificationFeature, TaskVerificationInput } from './features/task-verification.feature';
+import { OnboardingSuggestionsFeature } from './features/onboarding-suggestions.feature';
 import {
   MotivationFeedbackStore,
   MotivationVote,
@@ -29,6 +30,7 @@ import { DailyMotivationOutput } from './schemas/daily-motivation.schema';
 import { HabitInsightsOutput } from './schemas/habit-insights.schema';
 import { HabitGoalRelevanceOutput } from './schemas/habit-goal-relevance.schema';
 import { TaskVerificationOutput } from './schemas/task-verification.schema';
+import { OnboardingSuggestionsOutput } from './schemas/onboarding-suggestions.schema';
 import { GeminiClient } from './gemini.client';
 
 type GoalInput = Pick<UserData, 'goal' | 'personaType' | 'email'>;
@@ -45,6 +47,7 @@ export class AiService {
     private readonly coachPhrasing: CoachPhrasingFeature,
     private readonly habitGoalRelevance: HabitGoalRelevanceFeature,
     private readonly taskVerification: TaskVerificationFeature,
+    private readonly onboardingSuggestions: OnboardingSuggestionsFeature,
     private readonly feedbackStore: MotivationFeedbackStore,
   ) {}
 
@@ -68,7 +71,7 @@ export class AiService {
     user: UserData,
     dayOfWeek: number,
     difficultyBias?: 'increase' | 'decrease',
-  ): Promise<GoalTask[]> {
+  ): Promise<Omit<GoalTask, 'id' | 'completed'>[]> {
     return generateDailyVariations(this.client, user, dayOfWeek, difficultyBias);
   }
 
@@ -94,6 +97,10 @@ export class AiService {
 
   checkTaskVerification(input: TaskVerificationInput): Promise<TaskVerificationOutput> {
     return this.taskVerification.check(input);
+  }
+
+  getOnboardingSuggestions(goal: string): Promise<OnboardingSuggestionsOutput> {
+    return this.onboardingSuggestions.generate({ goal });
   }
 
   recordMotivationFeedback(userId: string, vote: MotivationVote): FeedbackTally {

@@ -8,6 +8,8 @@ import { AiService } from '../ai/ai.service';
 import { AppModule } from '../app.module';
 import { FIREBASE_MESSAGING } from '../notifications/firebase.module';
 
+export const GOAL = 'Run a marathon';
+
 export const OPEN_ANSWERS = [
   'I want to build a consistent study routine and track real progress each week',
   'I stuck with Duolingo for months because daily streaks kept me accountable',
@@ -33,13 +35,21 @@ const mockAiService = {
     tips: ['Set daily targets', 'Track streaks', 'Celebrate small wins'],
     failurePatterns: ['Losing momentum when progress feels invisible'],
     coreGoals: [
-      { description: 'Morning run', points: 20 },
-      { description: 'Read 30 minutes', points: 15 },
+      { description: 'Morning run', points: 20, genre: 'goal' },
+      { description: 'Read 30 minutes', points: 15, genre: 'goal' },
     ],
-    dailyVariations: [{ description: 'Stretch for 10 min', points: 10 }],
+    dailyVariations: [
+      { description: 'Stretch for 10 min', points: 10, genre: 'goal' },
+      { description: 'Plan tomorrow', points: 10, genre: 'goal' },
+      { description: 'Journal for 5 minutes', points: 5, genre: 'persona' },
+      { description: 'Tidy your workspace', points: 5, genre: 'persona' },
+    ],
   }),
   generateDailyVariations: jest.fn().mockResolvedValue([
-    { description: 'Daily stretch', points: 10 },
+    { description: 'Daily stretch', points: 10, genre: 'goal' },
+    { description: 'Review progress', points: 10, genre: 'goal' },
+    { description: 'Journal for 5 minutes', points: 5, genre: 'persona' },
+    { description: 'Tidy your workspace', points: 5, genre: 'persona' },
   ]),
   detectDrift: jest.fn().mockResolvedValue({
     driftDetected: false,

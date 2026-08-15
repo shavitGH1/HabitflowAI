@@ -7,6 +7,7 @@ import com.habitflowai.data.model.CheckEmailRequest
 import com.habitflowai.data.model.ClassifyPersonaRequest
 import com.habitflowai.data.model.ClassifyPersonaResponse
 import com.habitflowai.data.model.LoginRequest
+import com.habitflowai.data.model.OnboardingSuggestionsRequest
 import com.habitflowai.data.model.ReclassifyRequest
 import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.network.HabitFlowApi
@@ -69,6 +70,22 @@ class OnboardingViewModel @Inject constructor(
         if (index in updatedAnswers.indices) {
             updatedAnswers[index] = answer
             _uiState.value = _uiState.value.copy(quizAnswers = updatedAnswers)
+        }
+    }
+
+    fun fetchOnboardingSuggestions() {
+        val goal = _uiState.value.goal
+        if (goal.isBlank() || goal == _uiState.value.suggestionsForGoal) return
+        _uiState.value = _uiState.value.copy(suggestionsForGoal = goal)
+
+        viewModelScope.launch {
+            try {
+                val response = api.getOnboardingSuggestions(OnboardingSuggestionsRequest(goal))
+                val byQuestionId = response.suggestions.associate { it.questionId to it.options }
+                _uiState.value = _uiState.value.copy(suggestionsByQuestionId = byQuestionId)
+            } catch (_: Exception) {
+                // Best-effort only — free-text input still works without suggestions.
+            }
         }
     }
 
@@ -153,6 +170,7 @@ class OnboardingViewModel @Inject constructor(
                 val request = RegisterRequest(
                     email = currentState.email,
                     password = currentState.password,
+                    goal = currentState.goal,
                     openAnswers = currentState.quizAnswers,
                     fcmToken = fcmToken
                 )
@@ -250,7 +268,9 @@ class OnboardingViewModel @Inject constructor(
             _uiState.value = currentState.copy(isLoading = true, errorMessage = null, navigateToHome = false)
 
             try {
-                val response = repository.reclassifyPersona(ReclassifyRequest(currentState.quizAnswers))
+                val response = repository.reclassifyPersona(
+                    ReclassifyRequest(goal = currentState.goal, openAnswers = currentState.quizAnswers)
+                )
 
                 if (response is Resource.Success && response.data != null) {
                     val homeData = api.getHome()
