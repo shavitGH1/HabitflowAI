@@ -55,6 +55,10 @@ export class AgentLoop {
         systemInstruction,
         contents,
         functionDeclarations,
+        // Force at least one tool call on the very first turn of a brand-new
+        // conversation, so the model can't skip grounding itself in the
+        // user's real persona/habit data before its first reply.
+        forceToolCall: step === 0 && history.length === 0,
       });
 
       if (!turn.toolCalls.length) {
