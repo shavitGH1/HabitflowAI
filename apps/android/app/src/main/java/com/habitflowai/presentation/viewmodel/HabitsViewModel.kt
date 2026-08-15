@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.domain.repository.HabitsRepository
+import com.habitflowai.domain.repository.LocationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +24,8 @@ data class HabitsUiState(
 
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
-    private val habitsRepository: HabitsRepository
+    private val habitsRepository: HabitsRepository,
+    private val locationRepository: LocationRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
@@ -58,6 +60,28 @@ class HabitsViewModel @Inject constructor(
         viewModelScope.launch {
             val current = _uiState.value.habits.find { it.id == habitId } ?: return@launch
             habitsRepository.deleteHabit(current)
+        }
+    }
+
+    fun completeHabit(habitId: String, isPublic: Boolean = true, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val habit = _uiState.value.habits.find { it.id == habitId }
+            if (habit == null) {
+                onResult(false)
+                return@launch
+            }
+            val success = habitsRepository.completeHabit(habit)
+            if (success) {
+                _uiState.value = _uiState.value.copy(
+                    habits = _uiState.value.habits.map {
+                        if (it.id == habitId) it.copy(completed = true) else it
+                    }
+                )
+                locationRepository.captureAndSaveLocation(habit.id, isPublic)
+                onResult(true)
+            } else {
+                onResult(false)
+            }
         }
     }
 }
