@@ -64,6 +64,14 @@ export class UserRepository {
     return docs.map((doc) => this.toUserData(doc));
   }
 
+  async findUserEmailsByIds(ids: string[]): Promise<{ id: string; email: string }[]> {
+    const docs = await this.userModel
+      .find({ _id: { $in: ids } })
+      .select('_id email')
+      .exec();
+    return docs.map(doc => ({ id: (doc._id as unknown as string).toString(), email: doc.email }));
+  }
+
   async updateUserDailyTasks(userId: string, newDailyTasks: GoalTask[]): Promise<UserData | null> {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,

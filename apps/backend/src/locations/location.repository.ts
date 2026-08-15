@@ -14,6 +14,7 @@ export interface LocationData {
   timestamp: number;
   personaType: string;
   isPublic: boolean;
+  username?: string;
   createdAt: string;
 }
 

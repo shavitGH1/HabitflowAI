@@ -54,7 +54,16 @@ export class LocationsService {
     minLng: number,
     maxLng: number,
   ): Promise<LocationData[]> {
-    return this.locationRepository.findByBbox(minLat, maxLat, minLng, maxLng);
+    const records = await this.locationRepository.findByBbox(minLat, maxLat, minLng, maxLng);
+    return this.attachUsernames(records);
+  }
+
+  private async attachUsernames(records: LocationData[]): Promise<LocationData[]> {
+    if (records.length === 0) return records;
+    const ids = [...new Set(records.map(r => r.userId))];
+    const users = await this.userRepository.findUserEmailsByIds(ids);
+    const usernameById = new Map(users.map(u => [u.id, u.email.split('@')[0] || u.email]));
+    return records.map(r => ({ ...r, username: usernameById.get(r.userId) }));
   }
 
   private async resolveTaskDescription(userId: string, taskId: string): Promise<string> {
