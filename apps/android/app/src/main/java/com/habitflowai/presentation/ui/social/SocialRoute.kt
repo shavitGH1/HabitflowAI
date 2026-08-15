@@ -4,6 +4,10 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,6 +31,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -36,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.luminance
 import com.habitflowai.data.model.Post
@@ -43,7 +50,7 @@ import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.ChatResponse
 import com.habitflowai.data.model.AppUser
 import com.habitflowai.presentation.ui.persona.PersonaUiData
-import com.habitflowai.presentation.ui.theme.HabitFlowTheme
+import com.habitflowai.presentation.ui.theme.*
 import com.habitflowai.presentation.viewmodel.SocialUiState
 import com.habitflowai.presentation.viewmodel.SocialViewModel
 import com.habitflowai.presentation.viewmodel.SearchResult
@@ -73,6 +80,16 @@ fun SocialRoute(
     
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val focusRequester = remember { FocusRequester() }
+
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    
+    LaunchedEffect(isSearchActive) {
+        if (isSearchActive) {
+            focusRequester.requestFocus()
+        }
+    }
 
     val autoOpenChatId by viewModel.autoOpenChatId.collectAsState()
     
@@ -138,6 +155,13 @@ fun SocialRoute(
                         }
                     },
                     actions = {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(
+                                Icons.Rounded.Search,
+                                contentDescription = "Search",
+                                tint = personaDetails.endColor
+                            )
+                        }
                         IconButton(onClick = { 
                             scope.launch { drawerState.open() }
                         }) {
@@ -181,6 +205,181 @@ fun SocialRoute(
                         viewModel.loadComments(post.id)
                     }
                 )
+
+                // Floating Search Bar Overlay
+                AnimatedVisibility(
+                    visible = isSearchActive,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    val isExpanded = searchQuery.isNotEmpty() || uiState.isSearching || uiState.searchResults.isNotEmpty()
+                    DockedSearchBar(
+                        query = searchQuery,
+                        onQueryChange = { 
+                            searchQuery = it
+                            viewModel.search(it)
+                        },
+                        onSearch = { /* Search as we type */ },
+                        active = isSearchActive && isExpanded,
+                        onActiveChange = { active -> 
+                            if (!active) {
+                                if (searchQuery.isEmpty()) isSearchActive = false
+                            }
+                        },
+                        placeholder = { Text("Search friends, groups, messages...") },
+                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = personaDetails.endColor) },
+                        trailingIcon = {
+                            IconButton(onClick = { 
+                                if (searchQuery.isNotEmpty()) {
+                                    searchQuery = ""
+                                    viewModel.search("")
+                                } else {
+                                    isSearchActive = false
+                                }
+                            }) {
+                                Icon(Icons.Rounded.Close, contentDescription = "Close")
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .widthIn(max = 500.dp)
+                            .align(Alignment.TopCenter)
+                            .focusRequester(focusRequester),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = SearchBarDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .animateContentSize()
+                                .background(Color.Transparent)
+                        ) {
+                            if (uiState.isSearching) {
+                                Box(modifier = Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = personaDetails.endColor, strokeWidth = 3.dp)
+                                }
+                            } else if (searchQuery.isNotBlank() && uiState.searchResults.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                                    Text("No results for \"$searchQuery\"", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 400.dp)
+                                        .background(Color.Transparent),
+                                    contentPadding = PaddingValues(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(uiState.searchResults) { result ->
+                                        when (result) {
+                                            is SearchResult.User -> {
+                                                val displayName = if (result.user.firstName != null || result.user.lastName != null) {
+                                                    "${result.user.firstName ?: ""} ${result.user.lastName ?: ""}".trim()
+                                                } else {
+                                                    result.user.email.substringBefore('@')
+                                                }
+                                                SearchItemRow(
+                                                    title = displayName,
+                                                    subtitle = result.user.email,
+                                                    icon = Icons.Rounded.Person,
+                                                    personaColor = personaDetails.endColor,
+                                                    onClick = { 
+                                                        onUserClick(result.user.id)
+                                                        isSearchActive = false
+                                                    },
+                                                    trailing = {
+                                                        Row {
+                                                            IconButton(onClick = { onUserClick(result.user.id); isSearchActive = false }) {
+                                                                Icon(Icons.Rounded.PersonAdd, contentDescription = "View Profile", tint = personaDetails.endColor)
+                                                            }
+                                                            IconButton(onClick = { 
+                                                                // Start DM logic
+                                                                val existingDm = uiState.directChats.find { result.user.id in it.participantIds }
+                                                                if (existingDm != null) {
+                                                                    selectedChatForView = existingDm
+                                                                    viewModel.loadMessages(existingDm.id)
+                                                                } else {
+                                                                    viewModel.createDirectChat(result.user.id) { chat ->
+                                                                        selectedChatForView = chat
+                                                                        viewModel.loadMessages(chat.id)
+                                                                    }
+                                                                }
+                                                                isSearchActive = false
+                                                            }) {
+                                                                Icon(Icons.AutoMirrored.Rounded.Message, contentDescription = "Message", tint = personaDetails.endColor)
+                                                            }
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                            is SearchResult.Group -> {
+                                                val isMember = uiState.currentUserId in result.chat.participantIds
+                                                SearchItemRow(
+                                                    title = result.chat.name ?: "Unnamed Group",
+                                                    subtitle = "${result.chat.participantIds.size} members" + if (isMember) " • Joined" else "",
+                                                    icon = Icons.Rounded.Groups,
+                                                    personaColor = personaDetails.endColor,
+                                                    onClick = { 
+                                                        if (isMember) {
+                                                            selectedChatForView = result.chat
+                                                            viewModel.loadMessages(result.chat.id)
+                                                        } else {
+                                                            viewModel.joinGroup(result.chat.id) { updatedChat ->
+                                                                selectedChatForView = updatedChat
+                                                                viewModel.loadMessages(updatedChat.id)
+                                                            }
+                                                        }
+                                                        isSearchActive = false
+                                                    },
+                                                    trailing = {
+                                                        if (isMember) {
+                                                            Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outlineVariant)
+                                                        } else {
+                                                            Button(
+                                                                onClick = { 
+                                                                    viewModel.joinGroup(result.chat.id) { updatedChat ->
+                                                                        selectedChatForView = updatedChat
+                                                                        viewModel.loadMessages(updatedChat.id)
+                                                                    }
+                                                                    isSearchActive = false
+                                                                },
+                                                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                                                modifier = Modifier.height(32.dp),
+                                                                colors = ButtonDefaults.buttonColors(containerColor = personaDetails.endColor),
+                                                                shape = RoundedCornerShape(8.dp)
+                                                            ) {
+                                                                Text("Join", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                            }
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                            is SearchResult.Message -> {
+                                                SearchItemRow(
+                                                    title = result.message.text,
+                                                    subtitle = "in ${result.chatName ?: "Chat"}",
+                                                    icon = Icons.Rounded.ChatBubble,
+                                                    personaColor = personaDetails.endColor,
+                                                    onClick = {
+                                                        val chat = uiState.groupChats.find { it.id == result.chatId }
+                                                            ?: uiState.directChats.find { it.id == result.chatId }
+                                                        if (chat != null) {
+                                                            selectedChatForView = chat
+                                                            viewModel.loadMessages(chat.id)
+                                                        }
+                                                        isSearchActive = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -504,13 +703,13 @@ fun CreateGroupBottomSheet(
     var groupDescription by rememberSaveable { mutableStateOf("") }
     var isPublic by rememberSaveable { mutableStateOf(false) }
     var selectedImageUriStr by rememberSaveable { mutableStateOf("") }
-    val selectedImageUri: Uri? = selectedImageUriStr.takeIf { it.isNotEmpty() }?.let { Uri.parse(it) }
+    val selectedImageUri: Uri? = selectedImageUriStr.takeIf { it.isNotEmpty() }?.toUri()
     var selectedUsersStr by rememberSaveable { mutableStateOf("") }
     val selectedUsers: Set<String> = selectedUsersStr.split(",").filter { it.isNotEmpty() }.toSet()
     var showPhotoDialog by rememberSaveable { mutableStateOf(false) }
     var showMemberPicker by remember { mutableStateOf(false) }
     var pendingCameraUriStr by rememberSaveable { mutableStateOf("") }
-    val pendingCameraUri: Uri? = pendingCameraUriStr.takeIf { it.isNotEmpty() }?.let { Uri.parse(it) }
+    val pendingCameraUri: Uri? = pendingCameraUriStr.takeIf { it.isNotEmpty() }?.toUri()
 
     val cameraPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
@@ -897,17 +1096,19 @@ fun JoinGroupDialog(
                             items(uiState.searchResults) { result ->
                                 when (result) {
                                     is SearchResult.User -> {
-                                        val username = result.user.email.substringBefore('@')
+                                        val displayName = if (result.user.firstName != null || result.user.lastName != null) {
+                                            "${result.user.firstName ?: ""} ${result.user.lastName ?: ""}".trim()
+                                        } else {
+                                            result.user.email.substringBefore('@')
+                                        }
                                         SearchItemRow(
-                                            title = username,
+                                            title = displayName,
                                             subtitle = result.user.email,
                                             icon = Icons.Rounded.Person,
                                             personaColor = personaColor,
                                             onClick = { onUserClick(result.user.id) },
                                             trailing = {
                                                 Row {
-                                                    // Follow icon could be added here if we had follow state in SearchResult
-                                                    // For now, let's keep it simple with just DM, or add a generic "View Profile" + icon
                                                     IconButton(onClick = { onUserClick(result.user.id) }) {
                                                         Icon(Icons.Rounded.PersonAdd, contentDescription = "View Profile", tint = personaColor)
                                                     }
@@ -940,6 +1141,19 @@ fun JoinGroupDialog(
                                                         Text("Join", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                                     }
                                                 }
+                                            }
+                                        )
+                                    }
+                                    is SearchResult.Message -> {
+                                        SearchItemRow(
+                                            title = result.message.text,
+                                            subtitle = "in ${result.chatName ?: "Chat"}",
+                                            icon = Icons.Rounded.ChatBubble,
+                                            personaColor = personaColor,
+                                            onClick = {
+                                                val chat = uiState.groupChats.find { it.id == result.chatId }
+                                                    ?: uiState.directChats.find { it.id == result.chatId }
+                                                if (chat != null) onJoinGroup(chat)
                                             }
                                         )
                                     }
@@ -1081,29 +1295,6 @@ fun SocialContent(
                             )
                         }
                     )
-                }
-            }
-
-            // Temporary ID Search for Profile
-            var searchId by remember { mutableStateOf("") }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = searchId,
-                    onValueChange = { searchId = it },
-                    placeholder = { Text("Search User ID...") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true
-                )
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = { if (searchId.isNotBlank()) onUserClick(searchId) },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Rounded.Search, contentDescription = null)
                 }
             }
 
@@ -1398,7 +1589,8 @@ fun CommentItem(
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column {
-            Text(comment.userId, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+            val displayName = comment.userName ?: comment.userEmail?.substringBefore('@') ?: comment.userId
+            Text(displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
             Text(comment.text, style = MaterialTheme.typography.bodySmall)
             Text(comment.createdAt ?: "Just now", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -1628,7 +1820,7 @@ fun PreviewSocialFeedV2() {
                             IconButton(onClick = {}) {
                                 Icon(
                                     Icons.Rounded.Forum, 
-                                    contentDescription = "Community Chats", 
+                                    contentDescription = "Community Chats",
                                     tint = personaDetails.endColor
                                 )
                             }

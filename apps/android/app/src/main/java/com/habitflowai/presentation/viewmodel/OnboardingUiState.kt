@@ -5,6 +5,8 @@ import com.habitflowai.data.model.ClassifyPersonaResponse
 data class OnboardingUiState(
     val email: String = "",
     val password: String = "",
+    val firstName: String = "",
+    val lastName: String = "",
     val goal: String = "",
     val quizAnswers: List<String> = List(6) { "" },
     val isLoading: Boolean = false,

@@ -61,6 +61,14 @@ class OnboardingViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(password = password)
     }
 
+    fun onFirstNameChange(firstName: String) {
+        _uiState.value = _uiState.value.copy(firstName = firstName)
+    }
+
+    fun onLastNameChange(lastName: String) {
+        _uiState.value = _uiState.value.copy(lastName = lastName)
+    }
+
     fun onGoalChange(goal: String) {
         _uiState.value = _uiState.value.copy(goal = goal)
     }
@@ -127,6 +135,8 @@ class OnboardingViewModel @Inject constructor(
                 if (homeData.success) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
+                        firstName = homeData.firstName ?: "",
+                        lastName = homeData.lastName ?: "",
                         personaResult = ClassifyPersonaResponse(
                             id = "",
                             personaType = homeData.personaType ?: "Achiever",
@@ -172,7 +182,9 @@ class OnboardingViewModel @Inject constructor(
                     password = currentState.password,
                     goal = currentState.goal,
                     openAnswers = currentState.quizAnswers,
-                    fcmToken = fcmToken
+                    fcmToken = fcmToken,
+                    firstName = currentState.firstName,
+                    lastName = currentState.lastName
                 )
                 val response = authRepository.register(request)
 
