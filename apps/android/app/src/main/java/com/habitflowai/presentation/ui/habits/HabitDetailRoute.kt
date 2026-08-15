@@ -43,9 +43,15 @@ fun HabitDetailRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val habit = uiState.habits.find { it.id == habitId }
+    val stats = uiState.habitStats[habitId]
+
+    LaunchedEffect(habitId) {
+        viewModel.fetchHabitStats(habitId)
+    }
 
     HabitDetailContent(
         habit = habit,
+        stats = stats,
         personaType = personaType,
         onBack = onBack,
         onComplete = onComplete
@@ -56,6 +62,7 @@ fun HabitDetailRoute(
 @Composable
 fun HabitDetailContent(
     habit: HabitEntity?,
+    stats: Map<String, Any>?,
     personaType: String,
     onBack: () -> Unit,
     onComplete: (Boolean) -> Unit = {}
@@ -188,6 +195,33 @@ fun HabitDetailContent(
                                 colors = ButtonDefaults.buttonColors(containerColor = details.endColor)
                             ) {
                                 Text("Mark Complete", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                if (stats != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Statistics",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            stats.forEach { (key, value) ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(text = key.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodyMedium)
+                                    Text(text = value.toString(), fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
@@ -343,7 +377,9 @@ fun HabitDetailAchieverPreview() {
                     LocalDate.now().minusDays(5).toString()
                 )
             ),
+            stats = mapOf("consistency" to "85%", "total completions" to 12),
             personaType = "Achiever",
+            onComplete = {},
             onBack = {}
         )
     }
@@ -368,7 +404,9 @@ fun HabitDetailGrowerPreview() {
                     LocalDate.now().minusDays(4).toString()
                 )
             ),
+            stats = mapOf("streak" to 5),
             personaType = "Grower",
+            onComplete = {},
             onBack = {}
         )
     }
@@ -394,7 +432,9 @@ fun HabitDetailRegulatorPreview() {
                     LocalDate.now().minusDays(4).toString()
                 )
             ),
+            stats = mapOf("on time" to "90%"),
             personaType = "Regulator",
+            onComplete = {},
             onBack = {}
         )
     }

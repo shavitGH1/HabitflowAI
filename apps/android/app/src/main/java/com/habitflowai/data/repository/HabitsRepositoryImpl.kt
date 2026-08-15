@@ -8,13 +8,14 @@ import com.habitflowai.data.local.dao.HabitDao
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.data.network.HabitFlowApi
+import com.habitflowai.data.model.HabitRequest
 import com.habitflowai.domain.repository.HabitsRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class HabitsRepositoryImpl @Inject constructor(
-    private val habitDao: HabitDao,
     private val api: HabitFlowApi,
+    private val habitDao: HabitDao,
     private val workManager: WorkManager
 ) : HabitsRepository {
 
@@ -22,43 +23,89 @@ class HabitsRepositoryImpl @Inject constructor(
         return habitDao.getHabitsByUserId(userId)
     }
 
+    override suspend fun refreshHabits() {
+        try {
+            val response = api.getHabits()
+            val entities = response.map { res ->
+                HabitEntity(
+                    id = res.id,
+                    title = res.title,
+                    description = res.description,
+                    frequency = res.frequency,
+                    userId = "me", // Should ideally be current user id
+                    completed = res.completed,
+                    syncStatus = SyncStatus.SYNCED,
+                    completionHistory = res.completionHistory ?: emptyList()
+                )
+            }
+            habitDao.upsertAll(entities)
+        } catch (e: Exception) {
+            // Log error
+        }
+    }
+
     override suspend fun createHabit(habit: HabitEntity) {
-        val entity = habit.copy(syncStatus = if (hasNetwork()) SyncStatus.PENDING_CREATE else SyncStatus.PENDING_CREATE)
-        habitDao.insert(entity)
-        enqueueSync()
+        try {
+            val request = HabitRequest(habit.title, habit.description, habit.frequency, habit.completed)
+            api.createHabit(request)
+            refreshHabits()
+        } catch (e: Exception) {
+            habitDao.insert(habit.copy(syncStatus = SyncStatus.PENDING_CREATE))
+            enqueueSync()
+        }
     }
 
     override suspend fun updateHabit(habit: HabitEntity) {
-        val entity = habit.copy(
-            syncStatus = SyncStatus.PENDING_UPDATE,
-            updatedAt = System.currentTimeMillis()
-        )
-        habitDao.update(entity)
-        enqueueSync()
+        try {
+            val request = HabitRequest(habit.title, habit.description, habit.frequency, habit.completed)
+            api.updateHabit(habit.id, request)
+            refreshHabits()
+        } catch (e: Exception) {
+            val entity = habit.copy(
+                syncStatus = SyncStatus.PENDING_UPDATE,
+                updatedAt = System.currentTimeMillis()
+            )
+            habitDao.update(entity)
+            enqueueSync()
+        }
     }
 
     override suspend fun deleteHabit(habit: HabitEntity) {
-        habitDao.updateSyncStatus(habit.id, SyncStatus.PENDING_DELETE)
-        enqueueSync()
+        try {
+            api.deleteHabit(habit.id)
+            habitDao.delete(habit)
+        } catch (e: Exception) {
+            habitDao.updateSyncStatus(habit.id, SyncStatus.PENDING_DELETE)
+            enqueueSync()
+        }
     }
 
     override suspend fun completeHabit(habit: HabitEntity): Boolean {
         return try {
-            val serverId = habit.serverId ?: habit.id
-            val response = api.completeHabit(serverId)
+            val response = api.completeHabit(habit.id)
             if (response.isSuccessful) {
-                habitDao.update(
-                    habit.copy(
-                        completed = true,
-                        updatedAt = System.currentTimeMillis()
-                    )
-                )
+                refreshHabits()
                 true
             } else {
                 false
             }
         } catch (e: Exception) {
-            false
+            val entity = habit.copy(
+                completed = true,
+                syncStatus = SyncStatus.PENDING_UPDATE,
+                updatedAt = System.currentTimeMillis()
+            )
+            habitDao.update(entity)
+            enqueueSync()
+            true
+        }
+    }
+
+    override suspend fun getHabitStats(habitId: String): Map<String, Any> {
+        return try {
+            api.getHabitStats(habitId)
+        } catch (e: Exception) {
+            emptyMap()
         }
     }
 

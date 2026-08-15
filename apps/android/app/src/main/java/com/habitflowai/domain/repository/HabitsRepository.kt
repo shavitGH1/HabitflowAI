@@ -5,8 +5,10 @@ import kotlinx.coroutines.flow.Flow
 
 interface HabitsRepository {
     fun getHabits(userId: String): Flow<List<HabitEntity>>
+    suspend fun refreshHabits()
     suspend fun createHabit(habit: HabitEntity)
     suspend fun updateHabit(habit: HabitEntity)
     suspend fun deleteHabit(habit: HabitEntity)
     suspend fun completeHabit(habit: HabitEntity): Boolean
+    suspend fun getHabitStats(habitId: String): Map<String, Any>
 }

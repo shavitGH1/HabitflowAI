@@ -252,17 +252,13 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(24.dp)
                     )
-                }
 
-                when (actualPersonaType) {
-                    "Achiever" -> AchieverHome()
-                    "Grower" -> GrowerHome()
-                    "Socializer" -> SocializerHome()
-                    "Explorer" -> ExplorerHome()
-                    "Altruist" -> AltruistHome()
-                    "Regulator" -> RegulatorHome()
-                    "Architect" -> ArchitectHome()
-                    else -> RegulatorHome()
+                    // Data-driven Persona Dashboard
+                    PersonaDashboard(
+                        personaType = actualPersonaType,
+                        homeData = homeData,
+                        personaColor = endColor
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -296,11 +292,11 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    ProgressPhaseSection(actualPersonaType)
+                    ProgressPhaseSection(actualPersonaType, homeData?.confidenceScore ?: 0.0)
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    PlanExplanationSection(actualPersonaType)
+                    PlanExplanationSection(actualPersonaType, homeData?.portfolioSummary)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -505,7 +501,7 @@ fun HistoryCalendarSection(
 }
 
 @Composable
-fun ProgressPhaseSection(personaType: String) {
+fun ProgressPhaseSection(personaType: String, confidenceScore: Double) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -518,8 +514,9 @@ fun ProgressPhaseSection(personaType: String) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
+                val scorePercent = (confidenceScore * 100).toInt()
                 Text(
-                    text = "Current Phase: Foundation (Days 1-7)",
+                    text = "Consistency Score: $scorePercent%",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -527,13 +524,13 @@ fun ProgressPhaseSection(personaType: String) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Your plan updates automatically every 7 days to ensure you keep making progress. Next week, we'll intensify the $personaType routine by introducing secondary habits.",
+                text = "Your plan updates automatically every 7 days to ensure you keep making progress. Next week, we'll intensify the $personaType routine.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
             )
             Spacer(modifier = Modifier.height(12.dp))
             LinearProgressIndicator(
-                progress = { 0.5f },
+                progress = { confidenceScore.toFloat() },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
@@ -544,10 +541,7 @@ fun ProgressPhaseSection(personaType: String) {
 }
 
 @Composable
-fun PlanExplanationSection(personaType: String) {
-    val dailyExpl = "Your daily focus is consistency. Complete your scheduled core habits. Failure is okay; the goal is to show up."
-    val monthlyExpl = "By day 30, the $personaType template will transition you into automatic pilot. You will have built neural pathways making these habits effortless."
-
+fun PlanExplanationSection(personaType: String, portfolioSummary: String?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -567,13 +561,13 @@ fun PlanExplanationSection(personaType: String) {
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            Text(text = "Daily Strategy", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-            Text(text = dailyExpl, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(text = "Monthly Overview", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-            Text(text = monthlyExpl, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!portfolioSummary.isNullOrBlank()) {
+                Text(text = "Strategic Overview", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text(text = portfolioSummary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Text(text = "Daily Strategy", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text(text = "Your daily focus is consistency. Complete your scheduled core habits. Failure is okay; the goal is to show up.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -633,170 +627,51 @@ fun InteractiveGoalItem(
 }
 
 @Composable
-fun RegulatorHome() {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "STRUCTURE & ROUTINE", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-            }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            Text(text = "Current Consistency Score", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            LinearProgressIndicator(
-                progress = { 0.88f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(14.dp)
-                    .clip(RoundedCornerShape(7.dp)),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.primaryContainer,
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-            )
-            Text(text = "88% Excellent", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(text = "Today's Prescribed Hours", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
-
-            TimeSlotCard("06:00 AM", "Morning Protocol & Hydration")
-            TimeSlotCard("08:00 AM", "Deep Work Block")
-            TimeSlotCard("01:00 PM", "Nutrition & Movement")
-            TimeSlotCard("09:00 PM", "Evening Wind Down")
-        }
-}
-
-@Composable
-fun TimeSlotCard(time: String, activity: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+fun PersonaDashboard(
+    personaType: String,
+    homeData: HomeResponse,
+    personaColor: Color
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(text = time, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-        Text(text = activity, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
-fun AchieverHome() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Rounded.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "GLOBAL COMPETITION", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            Text(text = "You are competing against 4,203 Achievers globally.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-            LeaderboardRow(rank = 1, name = "Strider AI", score = 14500, highlight = false)
-            LeaderboardRow(rank = 2, name = "Sarah.H", score = 14220, highlight = false)
-            LeaderboardRow(rank = 3, name = "Kev99", score = 13800, highlight = false)
-            LeaderboardRow(rank = 4, name = "You", score = 13150, highlight = true)
-            LeaderboardRow(rank = 5, name = "UnknownGamer", score = 12900, highlight = false)
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = {},
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("View Full Leaderboard", fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-fun LeaderboardRow(rank: Int, name: String, score: Int, highlight: Boolean) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(if (highlight) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, RoundedCornerShape(8.dp))
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (!homeData.tips.isNullOrEmpty()) {
             Text(
-                text = "$rank. $name",
-                fontWeight = if (highlight) FontWeight.ExtraBold else FontWeight.Medium,
-                color = if (highlight) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                text = "Personalized Tips",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = personaColor
             )
+            homeData.tips.forEach { tip ->
+                Row(verticalAlignment = Alignment.Top) {
+                    Icon(
+                        Icons.Rounded.Star,
+                        contentDescription = null,
+                        tint = personaColor,
+                        modifier = Modifier.size(16.dp).padding(top = 4.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(text = tip, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
-        Text(
-            text = "$score pts",
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (highlight) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
 
-@Composable
-fun GrowerHome() {
-    BaseTemplate(
-        title = "GROWER TEMPLATE",
-        lines = listOf("🌱 Daily Reflection Log", "📚 Skills Acquired", "📈 Effort Graph")
-    )
-}
-
-@Composable
-fun SocializerHome() {
-    BaseTemplate(
-        title = "SOCIALIZER TEMPLATE",
-        lines = listOf("👥 Team Challenges", "🗣️ Community Feed", "🙌 Supportive Cheers Sent: 12")
-    )
-}
-
-@Composable
-fun ExplorerHome() {
-    BaseTemplate(
-        title = "EXPLORER TEMPLATE",
-        lines = listOf("🧭 New Habits Discovered", "🗺️ Unknown Territory Unlocked", "🚀 Curiosity Quests")
-    )
-}
-
-@Composable
-fun AltruistHome() {
-    BaseTemplate(
-        title = "ALTRUIST TEMPLATE",
-        lines = listOf("🤝 Points Donated to Charity", "❤️ Friends Assisted", "🌟 Community Impact Score")
-    )
-}
-
-@Composable
-fun ArchitectHome() {
-    BaseTemplate(
-        title = "ARCHITECT TEMPLATE",
-        lines = listOf("🏗️ Foundation Habits", "📐 Daily Blueprint", "☑️ Checklists")
-    )
-}
-
-@Composable
-fun BaseTemplate(title: String, lines: List<String>) {
-    Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-        }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        lines.forEach { line ->
-            Text(text = line, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
+        if (!homeData.failurePatterns.isNullOrEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Pattern Insights",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error
+            )
+            homeData.failurePatterns.forEach { pattern ->
+                Text(
+                    text = "• $pattern",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -860,11 +735,11 @@ fun ComponentGalleryPreview() {
 
             HorizontalDivider()
             Text("Progress Section", style = MaterialTheme.typography.titleLarge)
-            ProgressPhaseSection("Achiever")
+            ProgressPhaseSection("Achiever", 0.5)
 
             HorizontalDivider()
             Text("Plan Explanation", style = MaterialTheme.typography.titleLarge)
-            PlanExplanationSection("Explorer")
+            PlanExplanationSection("Explorer", "This is a sample summary.")
         }
     }
 }

@@ -18,3 +18,11 @@ data class HabitResponse(
     @SerializedName("createdAt") val createdAt: String? = null,
     @SerializedName("completionHistory") val completionHistory: List<String>? = emptyList()
 )
+
+data class ActiveGoalResponse(
+    @SerializedName("id") val id: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String?,
+    @SerializedName("targetDate") val targetDate: String?,
+    @SerializedName("progress") val progress: Double?
+)
