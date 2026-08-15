@@ -15,5 +15,6 @@ data class HabitEntity(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val syncStatus: SyncStatus = SyncStatus.SYNCED,
-    val serverId: String? = null
+    val serverId: String? = null,
+    val completionHistory: List<String> = emptyList()
 )

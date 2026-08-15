@@ -38,7 +38,8 @@ class HabitsViewModelTest {
             frequency = "DAILY",
             userId = "local_user",
             completed = false,
-            syncStatus = SyncStatus.SYNCED
+            syncStatus = SyncStatus.SYNCED,
+            completionHistory = emptyList()
         ),
         HabitEntity(
             id = "h2",
@@ -47,7 +48,8 @@ class HabitsViewModelTest {
             frequency = "DAILY",
             userId = "local_user",
             completed = true,
-            syncStatus = SyncStatus.SYNCED
+            syncStatus = SyncStatus.SYNCED,
+            completionHistory = emptyList()
         )
     )
 
@@ -86,7 +88,8 @@ class HabitsViewModelTest {
                 entity.frequency == "WEEKLY" &&
                 entity.userId == "local_user" &&
                 !entity.completed &&
-                entity.syncStatus == SyncStatus.PENDING_CREATE
+                entity.syncStatus == SyncStatus.PENDING_CREATE &&
+                entity.completionHistory.isEmpty()
             })
         }
     }

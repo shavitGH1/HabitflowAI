@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import java.time.LocalDate
+import java.time.ZonedDateTime
 import java.time.format.TextStyle
 import java.util.Locale
 import com.habitflowai.presentation.ui.persona.PersonaDetails
@@ -139,7 +140,10 @@ fun HabitDetailContent(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        CompletionCalendar(personaColor = details.endColor)
+                        CompletionCalendar(
+                            personaColor = details.endColor,
+                            completionHistory = habit.completionHistory
+                        )
                     }
                 }
 
@@ -167,14 +171,33 @@ fun HabitDetailContent(
 }
 
 @Composable
-fun CompletionCalendar(personaColor: Color) {
+fun CompletionCalendar(
+    personaColor: Color,
+    completionHistory: List<String> = emptyList()
+) {
     val today = LocalDate.now()
     val days = remember {
         (0 until 28).map { today.minusDays(it.toLong()) }.reversed()
     }
-    // Mock data for completions
-    val completionMap = remember {
-        days.associateWith { (0..10).random() > 3 }
+    
+    // Parse completion history dates
+    val completionDates = remember(completionHistory) {
+        completionHistory.mapNotNull {
+            try {
+                // Try to parse typical ISO formats
+                if (it.contains("T")) {
+                    java.time.ZonedDateTime.parse(it).toLocalDate()
+                } else {
+                    LocalDate.parse(it)
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }.toSet()
+    }
+
+    val completionMap = remember(days, completionDates) {
+        days.associateWith { it in completionDates }
     }
 
     Column {
@@ -242,7 +265,19 @@ fun CompletionCalendar(personaColor: Color) {
 fun HabitDetailAchieverPreview() {
     HabitFlowTheme {
         HabitDetailContent(
-            habit = HabitEntity("1", "Weightlifting", "Push day at the gym", "DAILY", "user1", false),
+            habit = HabitEntity(
+                id = "1",
+                title = "Weightlifting",
+                description = "Push day at the gym",
+                frequency = "DAILY",
+                userId = "user1",
+                completed = false,
+                completionHistory = listOf(
+                    LocalDate.now().minusDays(1).toString(),
+                    LocalDate.now().minusDays(3).toString(),
+                    LocalDate.now().minusDays(5).toString()
+                )
+            ),
             personaType = "Achiever",
             onBack = {}
         )
@@ -255,7 +290,19 @@ fun HabitDetailAchieverPreview() {
 fun HabitDetailGrowerPreview() {
     HabitFlowTheme {
         HabitDetailContent(
-            habit = HabitEntity("2", "Meditation", "10 minutes of mindfulness", "DAILY", "user1", false),
+            habit = HabitEntity(
+                id = "2",
+                title = "Meditation",
+                description = "10 minutes of mindfulness",
+                frequency = "DAILY",
+                userId = "user1",
+                completed = false,
+                completionHistory = listOf(
+                    LocalDate.now().minusDays(1).toString(),
+                    LocalDate.now().minusDays(2).toString(),
+                    LocalDate.now().minusDays(4).toString()
+                )
+            ),
             personaType = "Grower",
             onBack = {}
         )
@@ -268,7 +315,20 @@ fun HabitDetailGrowerPreview() {
 fun HabitDetailRegulatorPreview() {
     HabitFlowTheme {
         HabitDetailContent(
-            habit = HabitEntity("3", "Morning Protocol", "Wake up at 6 AM", "DAILY", "user1", false),
+            habit = HabitEntity(
+                id = "3",
+                title = "Morning Protocol",
+                description = "Wake up at 6 AM",
+                frequency = "DAILY",
+                userId = "user1",
+                completed = false,
+                completionHistory = listOf(
+                    LocalDate.now().minusDays(1).toString(),
+                    LocalDate.now().minusDays(2).toString(),
+                    LocalDate.now().minusDays(3).toString(),
+                    LocalDate.now().minusDays(4).toString()
+                )
+            ),
             personaType = "Regulator",
             onBack = {}
         )
