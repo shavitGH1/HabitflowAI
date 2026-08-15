@@ -12,20 +12,64 @@
         "My days are built around scheduled workout blocks."
       ],
       "personaType": "Achiever",
-      "weightedBreakdown": { "Achievement": 70, "Growth": 10, "Connection": 5, "Exploration": 5, "Purpose": 5, "Structure": 5 }
+      "weightedBreakdown": {
+        "Achievement": 70,
+        "Growth": 10,
+        "Connection": 5,
+        "Exploration": 5,
+        "Purpose": 5,
+        "Structure": 5
+      }
     },
     "expectedOutput": {
       "summary": "You are an Achiever — measurable wins and beating your own benchmarks keep you moving.",
-      "tips": ["Set a concrete weekly pace target", "Log every split to see progress", "Reward milestone PRs"],
-      "failurePatterns": ["Burnout from chasing numbers too aggressively", "Losing motivation when progress plateaus"],
+      "tips": [
+        "Set a concrete weekly pace target",
+        "Log every split to see progress",
+        "Reward milestone PRs"
+      ],
+      "failurePatterns": [
+        "Burnout from chasing numbers too aggressively",
+        "Losing motivation when progress plateaus"
+      ],
       "coreGoals": [
-        { "description": "Complete a structured 16-week training plan", "points": 50 },
-        { "description": "Hit a weekly long-run distance target", "points": 30 },
-        { "description": "Track and beat your 5k time monthly", "points": 20 }
+        {
+          "description": "Complete a structured 16-week training plan",
+          "points": 50,
+          "genre": "goal"
+        },
+        {
+          "description": "Hit a weekly long-run distance target",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Track and beat your 5k time monthly",
+          "points": 20,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "Log today's run splits", "points": 10 },
-        { "description": "Do a mobility session", "points": 5 }
+        {
+          "description": "Log today's run splits",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Do a mobility session",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Review one metric that matters to you",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Take a 5-minute recovery break",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -42,20 +86,63 @@
         "I timebox each day around revenue tasks."
       ],
       "personaType": "Achiever",
-      "weightedBreakdown": { "Achievement": 75, "Growth": 8, "Connection": 5, "Exploration": 4, "Purpose": 4, "Structure": 4 }
+      "weightedBreakdown": {
+        "Achievement": 75,
+        "Growth": 8,
+        "Connection": 5,
+        "Exploration": 4,
+        "Purpose": 4,
+        "Structure": 4
+      }
     },
     "expectedOutput": {
       "summary": "As an Achiever you thrive on hard revenue targets and visible growth curves.",
-      "tips": ["Define one north-star metric", "Review it daily", "Celebrate each revenue milestone"],
-      "failurePatterns": ["Chasing vanity metrics over durable growth"],
+      "tips": [
+        "Define one north-star metric",
+        "Review it daily",
+        "Celebrate each revenue milestone"
+      ],
+      "failurePatterns": [
+        "Chasing vanity metrics over durable growth"
+      ],
       "coreGoals": [
-        { "description": "Grow MRR by a set percentage each month", "points": 50 },
-        { "description": "Maintain a weekly outreach quota", "points": 30 },
-        { "description": "Ship one conversion experiment weekly", "points": 20 }
+        {
+          "description": "Grow MRR by a set percentage each month",
+          "points": 50,
+          "genre": "goal"
+        },
+        {
+          "description": "Maintain a weekly outreach quota",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Ship one conversion experiment weekly",
+          "points": 20,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "Send 10 outreach messages", "points": 10 },
-        { "description": "Update the metrics dashboard", "points": 5 }
+        {
+          "description": "Send 10 outreach messages",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Update the metrics dashboard",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Review one metric that matters to you",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Take a 5-minute recovery break",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -72,20 +159,63 @@
         "My routine is loose; steady improvement matters most."
       ],
       "personaType": "Grower",
-      "weightedBreakdown": { "Achievement": 12, "Growth": 65, "Connection": 6, "Exploration": 10, "Purpose": 4, "Structure": 3 }
+      "weightedBreakdown": {
+        "Achievement": 12,
+        "Growth": 65,
+        "Connection": 6,
+        "Exploration": 10,
+        "Purpose": 4,
+        "Structure": 3
+      }
     },
     "expectedOutput": {
       "summary": "You are a Grower — mastery and steady self-improvement matter more than the finish line.",
-      "tips": ["Track skill depth, not just streaks", "Reflect weekly on what improved", "Embrace slow, compounding gains"],
-      "failurePatterns": ["Abandoning habits that lack a visible learning curve"],
+      "tips": [
+        "Track skill depth, not just streaks",
+        "Reflect weekly on what improved",
+        "Embrace slow, compounding gains"
+      ],
+      "failurePatterns": [
+        "Abandoning habits that lack a visible learning curve"
+      ],
       "coreGoals": [
-        { "description": "Reach a conversational milestone each month", "points": 40 },
-        { "description": "Keep a learning reflection journal", "points": 30 },
-        { "description": "Study one new grammar area weekly", "points": 30 }
+        {
+          "description": "Reach a conversational milestone each month",
+          "points": 40,
+          "genre": "goal"
+        },
+        {
+          "description": "Keep a learning reflection journal",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Study one new grammar area weekly",
+          "points": 30,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "15 minutes of speaking practice", "points": 10 },
-        { "description": "Note one thing you learned today", "points": 5 }
+        {
+          "description": "15 minutes of speaking practice",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Note one thing you learned today",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Reflect on one lesson from today",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Read something outside your comfort zone",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -102,20 +232,63 @@
         "My practice follows curiosity, not a timetable."
       ],
       "personaType": "Grower",
-      "weightedBreakdown": { "Achievement": 10, "Growth": 68, "Connection": 5, "Exploration": 12, "Purpose": 3, "Structure": 2 }
+      "weightedBreakdown": {
+        "Achievement": 10,
+        "Growth": 68,
+        "Connection": 5,
+        "Exploration": 12,
+        "Purpose": 3,
+        "Structure": 2
+      }
     },
     "expectedOutput": {
       "summary": "As a Grower, deepening your craft is its own reward.",
-      "tips": ["Record sessions to hear your growth", "Vary practice to stay engaged", "Focus on process goals"],
-      "failurePatterns": ["Losing interest once the challenge feels routine"],
+      "tips": [
+        "Record sessions to hear your growth",
+        "Vary practice to stay engaged",
+        "Focus on process goals"
+      ],
+      "failurePatterns": [
+        "Losing interest once the challenge feels routine"
+      ],
       "coreGoals": [
-        { "description": "Learn one new improvisation concept weekly", "points": 40 },
-        { "description": "Transcribe a solo each month", "points": 30 },
-        { "description": "Keep a practice journal", "points": 30 }
+        {
+          "description": "Learn one new improvisation concept weekly",
+          "points": 40,
+          "genre": "goal"
+        },
+        {
+          "description": "Transcribe a solo each month",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Keep a practice journal",
+          "points": 30,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "20 minutes of improvisation", "points": 10 },
-        { "description": "Ear-training drill", "points": 5 }
+        {
+          "description": "20 minutes of improvisation",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Ear-training drill",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Reflect on one lesson from today",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Read something outside your comfort zone",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -132,20 +305,63 @@
         "My routine flexes around my partners."
       ],
       "personaType": "Socializer",
-      "weightedBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 62, "Exploration": 8, "Purpose": 5, "Structure": 5 }
+      "weightedBreakdown": {
+        "Achievement": 10,
+        "Growth": 10,
+        "Connection": 62,
+        "Exploration": 8,
+        "Purpose": 5,
+        "Structure": 5
+      }
     },
     "expectedOutput": {
       "summary": "You are a Socializer — accountability and shared progress make habits stick.",
-      "tips": ["Find a workout buddy", "Share progress publicly", "Join a class or group"],
-      "failurePatterns": ["Habits collapse when you try to go it alone"],
+      "tips": [
+        "Find a workout buddy",
+        "Share progress publicly",
+        "Join a class or group"
+      ],
+      "failurePatterns": [
+        "Habits collapse when you try to go it alone"
+      ],
       "coreGoals": [
-        { "description": "Attend group workouts weekly", "points": 40 },
-        { "description": "Check in with an accountability partner", "points": 30 },
-        { "description": "Post one weekly progress update", "points": 30 }
+        {
+          "description": "Attend group workouts weekly",
+          "points": 40,
+          "genre": "goal"
+        },
+        {
+          "description": "Check in with an accountability partner",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Post one weekly progress update",
+          "points": 30,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "Message your buddy about today's plan", "points": 10 },
-        { "description": "React to a friend's progress post", "points": 5 }
+        {
+          "description": "Message your buddy about today's plan",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "React to a friend's progress post",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Check in with someone you care about",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Share something positive with your circle",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -162,20 +378,63 @@
         "I fit study around group meetups."
       ],
       "personaType": "Socializer",
-      "weightedBreakdown": { "Achievement": 12, "Growth": 12, "Connection": 58, "Exploration": 8, "Purpose": 5, "Structure": 5 }
+      "weightedBreakdown": {
+        "Achievement": 12,
+        "Growth": 12,
+        "Connection": 58,
+        "Exploration": 8,
+        "Purpose": 5,
+        "Structure": 5
+      }
     },
     "expectedOutput": {
       "summary": "As a Socializer, learning sticks best inside a community.",
-      "tips": ["Study with a cohort", "Set shared deadlines", "Celebrate group milestones"],
-      "failurePatterns": ["Dropping off when studying alone"],
+      "tips": [
+        "Study with a cohort",
+        "Set shared deadlines",
+        "Celebrate group milestones"
+      ],
+      "failurePatterns": [
+        "Dropping off when studying alone"
+      ],
       "coreGoals": [
-        { "description": "Complete weekly modules with a study group", "points": 40 },
-        { "description": "Host a weekly review call", "points": 30 },
-        { "description": "Keep a shared progress tracker", "points": 30 }
+        {
+          "description": "Complete weekly modules with a study group",
+          "points": 40,
+          "genre": "goal"
+        },
+        {
+          "description": "Host a weekly review call",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Keep a shared progress tracker",
+          "points": 30,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "Post today's progress to the group", "points": 10 },
-        { "description": "Help a peer with one question", "points": 5 }
+        {
+          "description": "Post today's progress to the group",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Help a peer with one question",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Check in with someone you care about",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Share something positive with your circle",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -192,20 +451,63 @@
         "I keep days loose for spontaneity."
       ],
       "personaType": "Explorer",
-      "weightedBreakdown": { "Achievement": 10, "Growth": 15, "Connection": 5, "Exploration": 62, "Purpose": 4, "Structure": 4 }
+      "weightedBreakdown": {
+        "Achievement": 10,
+        "Growth": 15,
+        "Connection": 5,
+        "Exploration": 62,
+        "Purpose": 4,
+        "Structure": 4
+      }
     },
     "expectedOutput": {
       "summary": "You are an Explorer — novelty and variety keep your motivation alive.",
-      "tips": ["Rotate activities often", "Gamify with new challenges", "Avoid rigid repetition"],
-      "failurePatterns": ["Quitting the moment a routine feels stale"],
+      "tips": [
+        "Rotate activities often",
+        "Gamify with new challenges",
+        "Avoid rigid repetition"
+      ],
+      "failurePatterns": [
+        "Quitting the moment a routine feels stale"
+      ],
       "coreGoals": [
-        { "description": "Try a new activity each week", "points": 40 },
-        { "description": "Keep a discovery log", "points": 30 },
-        { "description": "Set a monthly novel-experience target", "points": 30 }
+        {
+          "description": "Try a new activity each week",
+          "points": 40,
+          "genre": "goal"
+        },
+        {
+          "description": "Keep a discovery log",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Set a monthly novel-experience target",
+          "points": 30,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "Add a twist to today's workout", "points": 10 },
-        { "description": "Note one new thing you tried", "points": 5 }
+        {
+          "description": "Add a twist to today's workout",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Note one new thing you tried",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Notice one small new thing today",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Take a different route or approach today",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -222,20 +524,63 @@
         "Rigid routines suffocate me."
       ],
       "personaType": "Explorer",
-      "weightedBreakdown": { "Achievement": 8, "Growth": 18, "Connection": 5, "Exploration": 63, "Purpose": 3, "Structure": 3 }
+      "weightedBreakdown": {
+        "Achievement": 8,
+        "Growth": 18,
+        "Connection": 5,
+        "Exploration": 63,
+        "Purpose": 3,
+        "Structure": 3
+      }
     },
     "expectedOutput": {
       "summary": "As an Explorer, fresh creative challenges are your fuel.",
-      "tips": ["Sample many mediums", "Keep an idea sketchbook", "Chase curiosity over consistency"],
-      "failurePatterns": ["Half-finished projects when novelty fades"],
+      "tips": [
+        "Sample many mediums",
+        "Keep an idea sketchbook",
+        "Chase curiosity over consistency"
+      ],
+      "failurePatterns": [
+        "Half-finished projects when novelty fades"
+      ],
       "coreGoals": [
-        { "description": "Explore a new medium monthly", "points": 40 },
-        { "description": "Keep a creative discovery journal", "points": 30 },
-        { "description": "Share one experiment weekly", "points": 30 }
+        {
+          "description": "Explore a new medium monthly",
+          "points": 40,
+          "genre": "goal"
+        },
+        {
+          "description": "Keep a creative discovery journal",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Share one experiment weekly",
+          "points": 30,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "Try a 10-minute creative prompt", "points": 10 },
-        { "description": "Collect one inspiration reference", "points": 5 }
+        {
+          "description": "Try a 10-minute creative prompt",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Collect one inspiration reference",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Notice one small new thing today",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Take a different route or approach today",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -252,20 +597,63 @@
         "I keep structure to show up for others."
       ],
       "personaType": "Altruist",
-      "weightedBreakdown": { "Achievement": 8, "Growth": 10, "Connection": 12, "Exploration": 5, "Purpose": 60, "Structure": 5 }
+      "weightedBreakdown": {
+        "Achievement": 8,
+        "Growth": 10,
+        "Connection": 12,
+        "Exploration": 5,
+        "Purpose": 60,
+        "Structure": 5
+      }
     },
     "expectedOutput": {
       "summary": "You are an Altruist — habits stick when they serve the people and causes you love.",
-      "tips": ["Anchor habits to your why", "Frame goals around who benefits", "Revisit your purpose when energy dips"],
-      "failurePatterns": ["Neglecting self-care until it affects others"],
+      "tips": [
+        "Anchor habits to your why",
+        "Frame goals around who benefits",
+        "Revisit your purpose when energy dips"
+      ],
+      "failurePatterns": [
+        "Neglecting self-care until it affects others"
+      ],
       "coreGoals": [
-        { "description": "Build energy to be present for family", "points": 40 },
-        { "description": "Keep a weekly purpose reflection", "points": 30 },
-        { "description": "Maintain a caregiving-friendly routine", "points": 30 }
+        {
+          "description": "Build energy to be present for family",
+          "points": 40,
+          "genre": "goal"
+        },
+        {
+          "description": "Keep a weekly purpose reflection",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Maintain a caregiving-friendly routine",
+          "points": 30,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "Do one health habit for your family's sake", "points": 10 },
-        { "description": "Note who your effort helped today", "points": 5 }
+        {
+          "description": "Do one health habit for your family's sake",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Note who your effort helped today",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Do one small kind thing for someone else",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Take a moment to rest so you can keep giving",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -282,20 +670,63 @@
         "I keep a steady routine for those relying on me."
       ],
       "personaType": "Altruist",
-      "weightedBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 12, "Exploration": 5, "Purpose": 58, "Structure": 5 }
+      "weightedBreakdown": {
+        "Achievement": 10,
+        "Growth": 10,
+        "Connection": 12,
+        "Exploration": 5,
+        "Purpose": 58,
+        "Structure": 5
+      }
     },
     "expectedOutput": {
       "summary": "As an Altruist, meaning and impact are what keep you consistent.",
-      "tips": ["Tie tasks to their impact", "Track lives touched, not just outputs", "Reconnect with the mission weekly"],
-      "failurePatterns": ["Overcommitting to the cause and burning out"],
+      "tips": [
+        "Tie tasks to their impact",
+        "Track lives touched, not just outputs",
+        "Reconnect with the mission weekly"
+      ],
+      "failurePatterns": [
+        "Overcommitting to the cause and burning out"
+      ],
       "coreGoals": [
-        { "description": "Advance the nonprofit project weekly", "points": 40 },
-        { "description": "Log the mission's measurable impact", "points": 30 },
-        { "description": "Protect a recovery block to avoid burnout", "points": 30 }
+        {
+          "description": "Advance the nonprofit project weekly",
+          "points": 40,
+          "genre": "goal"
+        },
+        {
+          "description": "Log the mission's measurable impact",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Protect a recovery block to avoid burnout",
+          "points": 30,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "Take one action that serves the cause", "points": 10 },
-        { "description": "Reflect on today's impact", "points": 5 }
+        {
+          "description": "Take one action that serves the cause",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Reflect on today's impact",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Do one small kind thing for someone else",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Take a moment to rest so you can keep giving",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -312,20 +743,63 @@
         "My ideal day is highly structured."
       ],
       "personaType": "Architect",
-      "weightedBreakdown": { "Achievement": 10, "Growth": 10, "Connection": 5, "Exploration": 5, "Purpose": 10, "Structure": 60 }
+      "weightedBreakdown": {
+        "Achievement": 10,
+        "Growth": 10,
+        "Connection": 5,
+        "Exploration": 5,
+        "Purpose": 10,
+        "Structure": 60
+      }
     },
     "expectedOutput": {
       "summary": "You are an Architect — systems, schedules, and clear rules make habits effortless.",
-      "tips": ["Design a repeatable daily template", "Track routines with checklists", "Refine the system, don't abandon it"],
-      "failurePatterns": ["Over-engineering the system instead of acting"],
+      "tips": [
+        "Design a repeatable daily template",
+        "Track routines with checklists",
+        "Refine the system, don't abandon it"
+      ],
+      "failurePatterns": [
+        "Over-engineering the system instead of acting"
+      ],
       "coreGoals": [
-        { "description": "Establish a fixed daily routine template", "points": 40 },
-        { "description": "Run a weekly system review", "points": 30 },
-        { "description": "Automate one recurring task", "points": 30 }
+        {
+          "description": "Establish a fixed daily routine template",
+          "points": 40,
+          "genre": "goal"
+        },
+        {
+          "description": "Run a weekly system review",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Automate one recurring task",
+          "points": 30,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "Follow today's time-blocked plan", "points": 10 },
-        { "description": "Tick off the daily checklist", "points": 5 }
+        {
+          "description": "Follow today's time-blocked plan",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Tick off the daily checklist",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Tidy your workspace for tomorrow",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Review tomorrow's schedule tonight",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   },
@@ -342,20 +816,63 @@
         "My days run on a predictable schedule."
       ],
       "personaType": "Architect",
-      "weightedBreakdown": { "Achievement": 12, "Growth": 8, "Connection": 5, "Exploration": 5, "Purpose": 10, "Structure": 60 }
+      "weightedBreakdown": {
+        "Achievement": 12,
+        "Growth": 8,
+        "Connection": 5,
+        "Exploration": 5,
+        "Purpose": 10,
+        "Structure": 60
+      }
     },
     "expectedOutput": {
       "summary": "As an Architect, a well-designed financial system keeps you consistent.",
-      "tips": ["Create clear budget categories", "Schedule a weekly money review", "Automate savings transfers"],
-      "failurePatterns": ["Endless tweaking without following through"],
+      "tips": [
+        "Create clear budget categories",
+        "Schedule a weekly money review",
+        "Automate savings transfers"
+      ],
+      "failurePatterns": [
+        "Endless tweaking without following through"
+      ],
       "coreGoals": [
-        { "description": "Maintain a rules-based monthly budget", "points": 40 },
-        { "description": "Reconcile expenses weekly", "points": 30 },
-        { "description": "Automate one financial routine", "points": 30 }
+        {
+          "description": "Maintain a rules-based monthly budget",
+          "points": 40,
+          "genre": "goal"
+        },
+        {
+          "description": "Reconcile expenses weekly",
+          "points": 30,
+          "genre": "goal"
+        },
+        {
+          "description": "Automate one financial routine",
+          "points": 30,
+          "genre": "goal"
+        }
       ],
       "dailyVariations": [
-        { "description": "Log today's expenses", "points": 10 },
-        { "description": "Check the budget dashboard", "points": 5 }
+        {
+          "description": "Log today's expenses",
+          "points": 10,
+          "genre": "goal"
+        },
+        {
+          "description": "Check the budget dashboard",
+          "points": 5,
+          "genre": "goal"
+        },
+        {
+          "description": "Tidy your workspace for tomorrow",
+          "points": 8,
+          "genre": "persona"
+        },
+        {
+          "description": "Review tomorrow's schedule tonight",
+          "points": 5,
+          "genre": "persona"
+        }
       ]
     }
   }

@@ -345,6 +345,8 @@ fun GoalPlanSection(
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy") }
     val dateText = if (selectedDate == today) "Today's Checklist" else "Checklist for ${selectedDate.format(formatter)}"
+    val goalHabits = remember(goals) { goals.filter { it.genre == "goal" } }
+    val personaHabits = remember(goals) { goals.filter { it.genre != "goal" } }
 
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
@@ -359,7 +361,62 @@ fun GoalPlanSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        goals.forEach { task ->
+        if (goalHabits.isNotEmpty()) {
+            HabitGenreGroup(
+                title = "Goal Habits",
+                subtitle = "Moves you directly toward your goal",
+                accentColor = MaterialTheme.colorScheme.primary,
+                tasks = goalHabits,
+                checkedGoals = checkedGoals,
+                onGoalToggled = onGoalToggled
+            )
+        }
+
+        if (personaHabits.isNotEmpty()) {
+            HabitGenreGroup(
+                title = "Persona Habits",
+                subtitle = "Builds your $personaType strengths",
+                accentColor = MaterialTheme.colorScheme.secondary,
+                tasks = personaHabits,
+                checkedGoals = checkedGoals,
+                onGoalToggled = onGoalToggled
+            )
+        }
+    }
+}
+
+@Composable
+fun HabitGenreGroup(
+    title: String,
+    subtitle: String,
+    accentColor: Color,
+    tasks: List<HomeGoalTask>,
+    checkedGoals: Map<String, Boolean>,
+    onGoalToggled: (String, Boolean) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(accentColor)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        tasks.forEach { task ->
             val isChecked = checkedGoals[task.id] ?: task.completed
             InteractiveGoalItem(
                 goalText = task.description,
@@ -881,15 +938,18 @@ fun HomeWithChatPreview() {
         goal = "Master my routine",
         motivationalMessage = "You are making incredible progress as an Achiever!",
         coreGoals = listOf(
-            HomeGoalTask("Daily habit one", 10, "1", false),
-            HomeGoalTask("Daily habit two", 5, "2", true)
+            HomeGoalTask("Daily habit one", 10, "1", false, genre = "goal"),
+            HomeGoalTask("Daily habit two", 5, "2", true, genre = "goal")
         ),
-        dailyVariations = emptyList(),
+        dailyVariations = listOf(
+            HomeGoalTask("Plan tomorrow's priorities", 10, "3", false, genre = "goal"),
+            HomeGoalTask("Journal for 5 minutes", 5, "4", false, genre = "persona")
+        ),
         success = true,
         personaType = personaType
     )
     val uiState = HomeUiState(homeData = sampleHomeData, isLoading = false)
-    
+
     HabitFlowTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             HomeScreen(
@@ -923,15 +983,18 @@ fun HomePersonaPreview(personaType: String) {
         goal = "Master my routine",
         motivationalMessage = "You are making incredible progress as $article $personaType!",
         coreGoals = listOf(
-            HomeGoalTask("Daily habit one", 10, "1", false),
-            HomeGoalTask("Daily habit two", 5, "2", true)
+            HomeGoalTask("Daily habit one", 10, "1", false, genre = "goal"),
+            HomeGoalTask("Daily habit two", 5, "2", true, genre = "goal")
         ),
-        dailyVariations = emptyList(),
+        dailyVariations = listOf(
+            HomeGoalTask("Plan tomorrow's priorities", 10, "3", false, genre = "goal"),
+            HomeGoalTask("Journal for 5 minutes", 5, "4", false, genre = "persona")
+        ),
         success = true,
         personaType = personaType
     )
     val uiState = HomeUiState(homeData = sampleHomeData, isLoading = false)
-    
+
     HabitFlowTheme {
         HomeScreen(
             uiState = uiState,

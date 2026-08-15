@@ -43,7 +43,8 @@ data class HomeGoalTask(
     val description: String,
     val points: Int,
     val id: String,
-    val completed: Boolean
+    val completed: Boolean,
+    val genre: String = "persona"
 )
 
 data class HomeResponse(

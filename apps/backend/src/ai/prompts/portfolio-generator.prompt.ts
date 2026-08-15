@@ -52,17 +52,21 @@ Return STRICT JSON only — no prose, no markdown fences. Schema:
   "tips": ["<tip 1>", "<tip 2>", "<tip 3>"],            // 3 to 5 entries, specific to their answers
   "failurePatterns": ["<pattern 1>", "..."],            // 1 to 5 likely failure modes for this persona
   "coreGoals": [                                         // 3 to 5 long-term habits supporting the goal
-    { "description": "<habit description>", "points": <integer 10-50> }
+    { "description": "<habit description>", "points": <integer 10-50>, "genre": "goal" }
   ],
-  "dailyVariations": [                                   // 1 to 7 day-one daily tasks
-    { "description": "<task>", "points": <integer 5-30> }
+  "dailyVariations": [                                   // exactly 4 day-one daily tasks
+    { "description": "<task>", "points": <integer 5-30>, "genre": "goal" | "persona" }
   ]
 }
 
 RULES
 - Tips must reference details from the user's answers — not generic advice.
 - Failure patterns must reflect typical weaknesses of the ${personaType} persona.
-- coreGoals are long-term habits (multi-week). dailyVariations are concrete day-one actions.
+- coreGoals are long-term habits (multi-week) that directly support the stated goal — tag every
+  coreGoals entry "genre": "goal".
+- dailyVariations must contain exactly 4 entries: 2 tagged "genre": "goal" (concrete day-one actions
+  that directly advance the user's stated goal) and 2 tagged "genre": "persona" (general habits that
+  build the ${personaType} persona's strengths, independent of the specific goal).
 - Points reflect difficulty/importance — keep them roughly proportional.
 - Write in plain English, second person, no emojis, no markdown formatting inside strings.
 `.trim();

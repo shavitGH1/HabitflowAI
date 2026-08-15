@@ -2,6 +2,7 @@ import { GenerateGoalsResponse, GoalTask } from '../../dto/goal.dto';
 import { UserData } from '../../users/user.repository';
 import { GeminiClient } from '../gemini.client';
 import { buildDailyVariationsPrompt, buildInitialGoalsPrompt } from '../prompts/daily-motivation.prompt';
+import { dailyVariationsOutputSchema } from '../schemas/daily-variations.schema';
 
 type GoalInput = Pick<UserData, 'goal' | 'personaType' | 'email'>;
 
@@ -19,9 +20,10 @@ export const generateDailyVariations = async (
   user: UserData,
   dayOfWeek: number,
   difficultyBias?: 'increase' | 'decrease',
-): Promise<GoalTask[]> => {
-  const response = await client.generateJson<{ dailyVariations: GoalTask[] }>(
+): Promise<Omit<GoalTask, 'id' | 'completed'>[]> => {
+  const response = await client.generateJson(
     buildDailyVariationsPrompt(user.personaType, user.goal, dayOfWeek, difficultyBias),
+    dailyVariationsOutputSchema,
   );
   return response.dailyVariations;
 };
