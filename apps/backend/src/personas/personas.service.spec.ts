@@ -47,6 +47,8 @@ const GOAL_ID = 'goal-123';
 const makeUser = (overrides: Partial<UserData> = {}): UserData => ({
   id: USER_ID,
   email: 'user@example.com',
+  firstName: 'Test',
+  lastName: 'User',
   password: 'hashed',
   goal: 'Stay consistent',
   personaType: 'Achiever',

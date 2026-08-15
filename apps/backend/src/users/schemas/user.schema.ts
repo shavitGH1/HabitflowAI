@@ -40,6 +40,12 @@ export class User {
   @Prop({ required: true, unique: true })
   email: string;
 
+  @Prop({ default: '' })
+  firstName: string;
+
+  @Prop({ default: '' })
+  lastName: string;
+
   @Prop({ required: true })
   password: string;
 

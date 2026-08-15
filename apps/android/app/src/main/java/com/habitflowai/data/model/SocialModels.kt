@@ -1,5 +1,7 @@
 package com.habitflowai.data.model
 
+import com.google.gson.annotations.JsonAdapter
+
 data class Post(
     val id: String,
     val authorId: String,
@@ -7,6 +9,7 @@ data class Post(
     val authorName: String? = null,
     val habitName: String,
     val completionNote: String,
+    @JsonAdapter(ImageUrlDeserializer::class)
     val imageUrl: String? = null,
     val likes: List<String> = emptyList(),
     val createdAt: String? = null,

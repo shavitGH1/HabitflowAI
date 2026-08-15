@@ -1,5 +1,6 @@
 package com.habitflowai.data.model
 
+import com.google.gson.annotations.JsonAdapter
 import java.util.UUID
 
 data class CoachChatResponse(
@@ -52,6 +53,7 @@ data class ChatResponse(
     val admins: List<String> = emptyList(),
     val owner: String? = null,
     val description: String? = null,
+    @JsonAdapter(ImageUrlDeserializer::class)
     val imageUrl: String? = null,
     val unreadCount: Map<String, Int> = emptyMap(),
     val isPublic: Boolean = false
@@ -81,6 +83,7 @@ data class MessageResponse(
     val chatId: String,
     val senderId: String,
     val text: String?,
+    @JsonAdapter(ImageUrlDeserializer::class)
     val imageUrl: String?,
     val createdAt: String,
     val likes: List<String>? = emptyList()

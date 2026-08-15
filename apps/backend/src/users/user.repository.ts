@@ -14,6 +14,8 @@ export interface Achievement {
 export interface UserData {
   id: string;
   email: string;
+  firstName: string;
+  lastName: string;
   password: string;
   goal: string;
   personaType: string;
@@ -64,12 +66,19 @@ export class UserRepository {
     return docs.map((doc) => this.toUserData(doc));
   }
 
-  async findUserEmailsByIds(ids: string[]): Promise<{ id: string; email: string }[]> {
+  async findUserEmailsByIds(
+    ids: string[],
+  ): Promise<{ id: string; email: string; firstName: string; lastName: string }[]> {
     const docs = await this.userModel
       .find({ _id: { $in: ids } })
-      .select('_id email')
+      .select('_id email firstName lastName')
       .exec();
-    return docs.map(doc => ({ id: (doc._id as unknown as string).toString(), email: doc.email }));
+    return docs.map(doc => ({
+      id: (doc._id as unknown as string).toString(),
+      email: doc.email,
+      firstName: doc.firstName,
+      lastName: doc.lastName,
+    }));
   }
 
   async updateUserDailyTasks(userId: string, newDailyTasks: GoalTask[]): Promise<UserData | null> {
@@ -137,6 +146,8 @@ export class UserRepository {
     return {
       id: doc._id.toString(),
       email: doc.email,
+      firstName: doc.firstName,
+      lastName: doc.lastName,
       password: doc.password,
       goal: doc.goal,
       personaType: doc.personaType,

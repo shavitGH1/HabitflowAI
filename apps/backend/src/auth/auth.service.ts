@@ -20,7 +20,7 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register({ email, password, goal, openAnswers, fcmToken }: RegisterDto) {
+  async register({ email, firstName, lastName, password, goal, openAnswers, fcmToken }: RegisterDto) {
     if (await this.userRepository.findUserByEmail(email)) {
       throw new BadRequestException('User with this email already exists');
     }
@@ -38,6 +38,8 @@ export class AuthService {
 
     const newUser = await this.userRepository.saveUser({
       email,
+      firstName: firstName ?? '',
+      lastName: lastName ?? '',
       password: hashedPassword,
       goal,
       personaType,

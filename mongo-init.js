@@ -4,6 +4,8 @@ const today = new Date().toISOString().split('T')[0];
 const users = [
   {
     email: 'demo.alex@habitflow.ai',
+    firstName: 'Alex',
+    lastName: 'Morgan',
     password: DEMO_PASSWORD,
     goal: 'Break personal records and dominate every leaderboard',
     personaType: 'Achiever',
@@ -28,6 +30,8 @@ const users = [
   },
   {
     email: 'demo.maya@habitflow.ai',
+    firstName: 'Maya',
+    lastName: 'Cohen',
     password: DEMO_PASSWORD,
     goal: 'Be the most consistent person in every challenge',
     personaType: 'Achiever',
@@ -52,6 +56,8 @@ const users = [
   },
   {
     email: 'demo.ben@habitflow.ai',
+    firstName: 'Ben',
+    lastName: 'Carter',
     password: DEMO_PASSWORD,
     goal: 'Build habits that bring people together',
     personaType: 'Socializer',
@@ -76,6 +82,8 @@ const users = [
   },
   {
     email: 'demo.sara@habitflow.ai',
+    firstName: 'Sara',
+    lastName: 'Levi',
     password: DEMO_PASSWORD,
     goal: 'Stay consistent through community and connection',
     personaType: 'Socializer',
@@ -100,6 +108,8 @@ const users = [
   },
   {
     email: 'demo.tom@habitflow.ai',
+    firstName: 'Tom',
+    lastName: 'Reed',
     password: DEMO_PASSWORD,
     goal: 'Become 1% better every single day',
     personaType: 'Grower',
@@ -124,6 +134,8 @@ const users = [
   },
   {
     email: 'demo.lena@habitflow.ai',
+    firstName: 'Lena',
+    lastName: 'Novak',
     password: DEMO_PASSWORD,
     goal: 'Try something new every week',
     personaType: 'Explorer',
@@ -148,6 +160,8 @@ const users = [
   },
   {
     email: 'demo.dana@habitflow.ai',
+    firstName: 'Dana',
+    lastName: 'Shapiro',
     password: DEMO_PASSWORD,
     goal: 'Use my habits to make a positive impact on others',
     personaType: 'Altruist',
@@ -172,6 +186,8 @@ const users = [
   },
   {
     email: 'demo.ron@habitflow.ai',
+    firstName: 'Ron',
+    lastName: 'Katz',
     password: DEMO_PASSWORD,
     goal: 'Design and execute the perfect daily system',
     personaType: 'Architect',
@@ -208,6 +224,8 @@ if (!db.users.findOne({ _id: COACH_ID })) {
   db.users.insertOne({
     _id: COACH_ID,
     email: 'coach@habitflow.ai',
+    firstName: 'HabitFlow',
+    lastName: 'Coach',
     password: DEMO_PASSWORD,
     goal: 'Help every user keep their habits',
     personaType: 'Architect',
@@ -297,28 +315,30 @@ if (alexId && mayaId && benId && saraId && !db.chats.findOne({ isGroup: true, na
 
 if (alexId && mayaId && benId && saraId && db.posts.countDocuments() === 0) {
   const postDefs = [
-    { authorId: alexId, habitName: '5km morning run', completionNote: 'New personal best today!', likes: [mayaId, benId] },
-    { authorId: mayaId, habitName: 'Daily meditation (15 min)', completionNote: 'Stayed calm through a stressful day.', likes: [alexId, benId] },
-    { authorId: benId, habitName: 'Group workout session', completionNote: 'Got the whole crew moving today.', likes: [alexId, mayaId, saraId] },
-    { authorId: saraId, habitName: 'Join a community challenge', completionNote: 'Signed up for the 30-day challenge!', likes: [mayaId] },
+    { authorId: ObjectId(alexId), habitName: '5km morning run', completionNote: 'New personal best today!', likes: [mayaId, benId], imageUrl: '/uploads/demo/alex-morning-run.jpg' },
+    { authorId: ObjectId(mayaId), habitName: 'Daily meditation (15 min)', completionNote: 'Stayed calm through a stressful day.', likes: [alexId, benId], imageUrl: '/uploads/demo/maya-meditation.jpg' },
+    { authorId: ObjectId(benId), habitName: 'Group workout session', completionNote: 'Got the whole crew moving today.', likes: [alexId, mayaId, saraId], imageUrl: '/uploads/demo/ben-group-workout.jpg' },
+    { authorId: ObjectId(saraId), habitName: 'Join a community challenge', completionNote: 'Signed up for the 30-day challenge!', likes: [mayaId] },
   ];
 
+  // authorId/postId/userId are ObjectId refs on these schemas (Post.authorId,
+  // Comment.postId, Comment.userId) — the $lookup aggregations that resolve
+  // author/commenter names and fetch a post's comments do a type-sensitive
+  // match, so these can't be plain strings like the userId fields elsewhere
+  // in this file (Habit/Goal/LocationRecord/Follow all declare userId as
+  // plain String, so those stay as-is).
   const postIds = postDefs.map(def => db.posts.insertOne({
     ...def,
     createdAt: new Date(),
     updatedAt: new Date(),
   }).insertedId);
 
-  // Mix of interaction types across the 8 seeded likes: 5 liked-only (Ben/post0,
-  // Alex+Ben/post1, Alex+Maya/post2), 3 liked-and-commented (Maya/post0, Sara/post2,
-  // Maya/post3), 2 commented-without-liking (Sara/post0, Alex/post3) - not everyone
-  // who liked a post commented on it too.
   const commentDefs = [
-    { postId: postIds[0].toString(), userId: mayaId, text: 'Incredible pace!' },
-    { postId: postIds[0].toString(), userId: saraId, text: 'Beat your own record next!' },
-    { postId: postIds[2].toString(), userId: saraId, text: 'Count me in next week.' },
-    { postId: postIds[3].toString(), userId: mayaId, text: 'So proud of you for stepping up!' },
-    { postId: postIds[3].toString(), userId: alexId, text: "Which challenge? I'm interested!" },
+    { postId: postIds[0], userId: ObjectId(mayaId), text: 'Incredible pace!' },
+    { postId: postIds[0], userId: ObjectId(saraId), text: 'Beat your own record next!' },
+    { postId: postIds[2], userId: ObjectId(saraId), text: 'Count me in next week.' },
+    { postId: postIds[3], userId: ObjectId(mayaId), text: 'So proud of you for stepping up!' },
+    { postId: postIds[3], userId: ObjectId(alexId), text: "Which challenge? I'm interested!" },
   ];
   commentDefs.forEach(def => db.comments.insertOne({ ...def, createdAt: new Date(), updatedAt: new Date() }));
 }
@@ -333,3 +353,190 @@ if (alexId && mayaId && benId && saraId && db.follows.countDocuments() === 0) {
   followDefs.forEach(def => db.follows.insertOne({ ...def, createdAt: new Date(), updatedAt: new Date() }));
 }
 
+const EWMA_ALPHA = 0.2;
+const IMPLEMENTED_MIN_DAYS = 28;
+const IMPLEMENTED_MIN_SCORE = 0.8;
+
+function dateStr(d) {
+  return d.toISOString().split('T')[0];
+}
+function daysAgoDate(n) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - n);
+  return d;
+}
+function daysAgoStr(n) {
+  return dateStr(daysAgoDate(n));
+}
+function daysBetween(fromStr) {
+  const from = new Date(fromStr + 'T00:00:00.000Z');
+  const to = new Date(today + 'T00:00:00.000Z');
+  return Math.round((to - from) / 86400000);
+}
+function historyLastNDays(n, skipOffsets = []) {
+  const days = [];
+  for (let i = 0; i < n; i++) {
+    if (!skipOffsets.includes(i)) days.push(daysAgoStr(i));
+  }
+  return days;
+}
+function calcStreak(history) {
+  const sorted = [...new Set(history)].sort().reverse();
+  if (!sorted.length) return 0;
+  let streak = 0;
+  const cursor = new Date(today + 'T00:00:00.000Z');
+  for (const d of sorted) {
+    if (d === dateStr(cursor)) {
+      streak++;
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
+    } else break;
+  }
+  return streak;
+}
+function calcConsistency(history, createdAtStr) {
+  const completed = new Set(history);
+  const cursor = new Date(createdAtStr + 'T00:00:00.000Z');
+  const end = new Date(today + 'T00:00:00.000Z');
+  let score = 0;
+  while (cursor <= end) {
+    score = EWMA_ALPHA * (completed.has(dateStr(cursor)) ? 1 : 0) + (1 - EWMA_ALPHA) * score;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return Math.round(score * 100) / 100;
+}
+function buildHabit({ userId, persona, title, description, frequency, createdAtDaysAgo, history, goalId, notes }) {
+  const createdAtStr = daysAgoStr(createdAtDaysAgo);
+  const consistencyScore = calcConsistency(history, createdAtStr);
+  const implemented = daysBetween(createdAtStr) >= IMPLEMENTED_MIN_DAYS && consistencyScore >= IMPLEMENTED_MIN_SCORE;
+  return {
+    userId,
+    title,
+    description: description || '',
+    frequency,
+    targetCount: 1,
+    streak: calcStreak(history),
+    completionHistory: history,
+    persona,
+    isArchived: false,
+    ...(goalId ? { goalId } : {}),
+    consistencyScore,
+    ...(implemented ? { implementedAt: new Date() } : {}),
+    completionNotes: notes || [],
+    createdAt: daysAgoDate(createdAtDaysAgo),
+    updatedAt: new Date(),
+  };
+}
+
+let goalIds = {};
+if (alexId && mayaId && benId && saraId && db.goals.countDocuments() === 0) {
+  const goalDefs = [
+    { key: 'alex', userId: alexId, title: 'Run a half marathon', targetDate: daysAgoDate(-60), status: 'active' },
+    { key: 'maya', userId: mayaId, title: '30-day meditation streak', targetDate: daysAgoDate(2), status: 'achieved' },
+    { key: 'ben', userId: benId, title: 'Train for a group 10k', targetDate: daysAgoDate(5), status: 'forfeited' },
+    { key: 'sara', userId: saraId, title: 'Build a support squad', targetDate: daysAgoDate(-45), status: 'active' },
+  ];
+  goalDefs.forEach(def => {
+    const goalId = db.goals.insertOne({
+      userId: def.userId,
+      title: def.title,
+      targetDate: def.targetDate,
+      status: def.status,
+      createdAt: daysAgoDate(40),
+      updatedAt: new Date(),
+    }).insertedId;
+    goalIds[def.key] = goalId.toString();
+  });
+
+  db.users.updateOne(
+    { _id: ObjectId(mayaId) },
+    { $push: { achievements: { goalId: goalIds.maya, medal: 'goal-achiever', awardedAt: daysAgoDate(2) } } },
+  );
+}
+
+if (alexId && mayaId && benId && saraId && db.habits.countDocuments() === 0) {
+  const habitDefs = [
+    buildHabit({
+      userId: alexId, persona: 'Achiever', title: '5km morning run', frequency: 'daily',
+      createdAtDaysAgo: 40, history: historyLastNDays(32, [5, 19]), goalId: goalIds.alex,
+      notes: [{ date: today, note: 'New personal best pace today!' }],
+    }),
+    buildHabit({
+      userId: alexId, persona: 'Achiever', title: '100 push-ups', frequency: 'daily',
+      createdAtDaysAgo: 18, history: historyLastNDays(10, [3]), goalId: goalIds.alex,
+    }),
+    buildHabit({
+      userId: alexId, persona: 'Achiever', title: 'Cold shower', frequency: 'daily',
+      createdAtDaysAgo: 15, history: historyLastNDays(15, [1, 4, 7, 10, 13]),
+    }),
+    buildHabit({
+      userId: mayaId, persona: 'Achiever', title: 'Daily meditation (15 min)', frequency: 'daily',
+      createdAtDaysAgo: 35, history: historyLastNDays(33, [12]), goalId: goalIds.maya,
+      notes: [{ date: daysAgoStr(2), note: 'Hit the full 30 days — sticking with it.' }],
+    }),
+    buildHabit({
+      userId: mayaId, persona: 'Achiever', title: 'Evening walk (20 min)', frequency: 'daily',
+      createdAtDaysAgo: 9, history: historyLastNDays(9, [2, 6]),
+    }),
+    buildHabit({
+      userId: benId, persona: 'Socializer', title: 'Check in on a friend', frequency: 'daily',
+      createdAtDaysAgo: 22, history: historyLastNDays(22, [4, 9, 15]),
+    }),
+    // No completions in the last 10 days — this gap is why Ben's goal ended up forfeited.
+    buildHabit({
+      userId: benId, persona: 'Socializer', title: 'Group workout session', frequency: 'weekly',
+      createdAtDaysAgo: 30, history: historyLastNDays(30, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), goalId: goalIds.ben,
+    }),
+    buildHabit({
+      userId: saraId, persona: 'Socializer', title: 'Join a community challenge', frequency: 'weekly',
+      createdAtDaysAgo: 11, history: historyLastNDays(11, [3, 8]), goalId: goalIds.sara,
+    }),
+  ];
+  db.habits.insertMany(habitDefs);
+}
+
+if (alexId && mayaId && benId && saraId && db.locationrecords.countDocuments() === 0) {
+  const alexRunHabit = db.habits.findOne({ userId: alexId, title: '5km morning run' });
+  const mayaMeditationHabit = db.habits.findOne({ userId: mayaId, title: 'Daily meditation (15 min)' });
+  const benWorkoutHabit = db.habits.findOne({ userId: benId, title: 'Group workout session' });
+  const saraChallengeHabit = db.habits.findOne({ userId: saraId, title: 'Join a community challenge' });
+  const alexRunHabitId = alexRunHabit ? alexRunHabit._id.toString() : undefined;
+  const mayaMeditationHabitId = mayaMeditationHabit ? mayaMeditationHabit._id.toString() : undefined;
+  const benWorkoutHabitId = benWorkoutHabit ? benWorkoutHabit._id.toString() : undefined;
+  const saraChallengeHabitId = saraChallengeHabit ? saraChallengeHabit._id.toString() : undefined;
+
+  const locationDefs = [
+    { userId: alexId, habitId: alexRunHabitId, latitude: 32.0880, longitude: 34.7801, daysAgo: 0, personaType: 'Achiever' },
+    { userId: alexId, habitId: alexRunHabitId, latitude: 32.0902, longitude: 34.7838, daysAgo: 1, personaType: 'Achiever' },
+    { userId: mayaId, habitId: mayaMeditationHabitId, latitude: 32.0838, longitude: 34.7679, daysAgo: 1, personaType: 'Achiever' },
+    // Matches the completion gap above, not a fresh visit.
+    { userId: benId, habitId: benWorkoutHabitId, latitude: 32.0925, longitude: 34.7845, daysAgo: 10, personaType: 'Socializer' },
+    { userId: saraId, habitId: saraChallengeHabitId, latitude: 32.0797, longitude: 34.7746, daysAgo: 0, personaType: 'Socializer' },
+  ];
+
+  locationDefs.forEach(def => {
+    const timestamp = daysAgoDate(def.daysAgo).getTime();
+    db.locationrecords.insertOne({
+      userId: def.userId,
+      habitId: def.habitId,
+      latitude: def.latitude,
+      longitude: def.longitude,
+      timestamp,
+      personaType: def.personaType,
+      isPublic: true,
+      createdAt: new Date(timestamp),
+      updatedAt: new Date(timestamp),
+    });
+  });
+}
+
+if (benId && db.driftflags.countDocuments() === 0) {
+  db.driftflags.insertOne({
+    userId: benId,
+    detectedAt: daysAgoDate(1),
+    driftScore: 0.42,
+    suggestedPersona: 'Grower',
+    dismissed: false,
+    createdAt: daysAgoDate(1),
+    updatedAt: daysAgoDate(1),
+  });
+}

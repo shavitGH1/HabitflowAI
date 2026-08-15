@@ -63,7 +63,9 @@ export class LocationsService {
     if (records.length === 0) return records;
     const ids = [...new Set(records.map(r => r.userId))];
     const users = await this.userRepository.findUserEmailsByIds(ids);
-    const usernameById = new Map(users.map(u => [u.id, u.email.split('@')[0] || u.email]));
+    const usernameById = new Map(
+      users.map(u => [u.id, [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email.split('@')[0]]),
+    );
     return records.map(r => ({ ...r, username: usernameById.get(r.userId) }));
   }
 
