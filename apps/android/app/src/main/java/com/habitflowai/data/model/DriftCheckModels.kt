@@ -26,7 +26,8 @@ data class LocationSyncRequest(
     @SerializedName("latitude") val latitude: Double,
     @SerializedName("longitude") val longitude: Double,
     @SerializedName("timestamp") val timestamp: Long,
-    @SerializedName("isPublic") val isPublic: Boolean = true
+    @SerializedName("isPublic") val isPublic: Boolean = true,
+    @SerializedName("type") val type: String = "task"
 )
 
 data class LocationResponse(
@@ -39,5 +40,6 @@ data class LocationResponse(
     @SerializedName("taskDescription") val taskDescription: String? = null,
     @SerializedName("timestamp") val timestamp: Long = 0,
     @SerializedName("isPublic") val isPublic: Boolean = true,
-    @SerializedName("username") val username: String? = null
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("type") val type: String = "task"
 )

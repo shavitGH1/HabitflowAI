@@ -41,7 +41,11 @@ class LocationRepositoryImpl @Inject constructor(
         LocationServices.getFusedLocationProviderClient(context)
     }
 
-    override suspend fun captureAndSaveLocation(habitId: String?, isPublic: Boolean) {
+    override suspend fun captureAndSaveLocation(
+        habitId: String?,
+        isPublic: Boolean,
+        type: String
+    ) {
         val location = getCurrentLocation()
         if (location == null) {
             Log.w(TAG, "captureAndSaveLocation: no location available, skipping (habitId=$habitId)")
@@ -63,17 +67,19 @@ class LocationRepositoryImpl @Inject constructor(
             longitude = location.longitude,
             timestamp = System.currentTimeMillis(),
             syncStatus = SyncStatus.PENDING_CREATE,
-            isPublic = isPublic
+            isPublic = isPublic,
+            type = type
         )
         locationDao.insert(entity)
-        Log.d(TAG, "captureAndSaveLocation: saved ${location.latitude},${location.longitude} (habitId=$habitId, isPublic=$isPublic)")
+        Log.d(TAG, "captureAndSaveLocation: saved ${location.latitude},${location.longitude} (habitId=$habitId, isPublic=$isPublic, type=$type)")
 
         val request = LocationSyncRequest(
             habitId = entity.habitId,
             latitude = entity.latitude,
             longitude = entity.longitude,
             timestamp = entity.timestamp,
-            isPublic = entity.isPublic
+            isPublic = entity.isPublic,
+            type = entity.type
         )
         val uploaded = try {
             val response = api.recordLocation(request)
