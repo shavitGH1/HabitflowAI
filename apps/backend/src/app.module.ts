@@ -11,6 +11,7 @@ import { FollowsModule } from './follows/follows.module';
 import { GoalsModule } from './goals/goals.module';
 import { HabitsModule } from './habits/habits.module';
 import { InsightsModule } from './insights/insights.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { PostsModule } from './posts/posts.module';
 import { LocationsModule } from './locations/locations.module';
 import { PersonasModule } from './personas/personas.module';
@@ -55,6 +56,7 @@ import { UsersModule } from './users/users.module';
     InsightsModule,
     LocationsModule,
     HabitsModule,
+    LeaderboardModule,
     PostsModule,
     ChatModule,
     CoachModule,
