@@ -88,6 +88,9 @@ interface HabitFlowApi {
     @GET("api/v1/coach/chat")
     suspend fun getCoachChat(): com.habitflowai.data.model.CoachChatResponse
 
+    @POST("api/v1/coach/chat")
+    suspend fun postCoachChat(@Body request: com.habitflowai.data.model.CoachChatRequest): com.habitflowai.data.model.CoachChatApiResponse
+
     @GET("api/v1/chats")
     suspend fun getChats(): List<com.habitflowai.data.model.ChatResponse>
 

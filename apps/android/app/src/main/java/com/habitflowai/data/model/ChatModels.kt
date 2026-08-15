@@ -6,6 +6,25 @@ data class CoachChatResponse(
     val chatId: String
 )
 
+data class CoachChatRequest(
+    val message: String
+)
+
+data class ProposedChange(
+    val type: String,
+    val rationale: String?,
+    val direction: String? = null,
+    val suggestedPersona: String? = null,
+    val goalId: String? = null
+)
+
+data class CoachChatApiResponse(
+    val chatId: String,
+    val reply: String,
+    val proposedChange: ProposedChange? = null,
+    val toolsUsed: List<String> = emptyList()
+)
+
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val text: String,

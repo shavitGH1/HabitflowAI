@@ -1,6 +1,8 @@
 package com.habitflowai.data.repository
 
 import com.habitflowai.data.model.ChatMessage
+import com.habitflowai.data.model.CoachChatApiResponse
+import com.habitflowai.data.model.CoachChatRequest
 import com.habitflowai.data.network.HabitFlowApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,14 +24,22 @@ class ChatRepository @Inject constructor(
         }
     }
 
-    suspend fun getHistory(chatId: String): List<ChatMessage> {
+    suspend fun sendCoachMessage(message: String): CoachChatApiResponse? {
         return try {
-            api.getMessages(chatId).map { 
+            api.postCoachChat(CoachChatRequest(message))
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun getHistory(chatId: String, currentUserId: String?): List<ChatMessage> {
+        return try {
+            api.getMessages(chatId).map {
                 ChatMessage(
                     id = it.id,
                     text = it.text ?: "",
                     senderId = it.senderId,
-                    isFromBot = it.senderId == "bot" // Simplification
+                    isFromBot = it.senderId != currentUserId
                 )
             }
         } catch (e: Exception) {

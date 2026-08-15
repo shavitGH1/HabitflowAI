@@ -31,6 +31,12 @@ export const TIPS: Record<CoachTipId, string> = {
 
 export const NOTHING_DONE_TODAY = 'Nothing was marked as done today.';
 
+export const COACH_UNAVAILABLE =
+  'I could not think that through properly just now, but here is where you stand.';
+
+export const COACH_OFFLINE_REPLY =
+  'I could not think that through properly just now — try me again in a moment.';
+
 export const completedTodayLine = (titles: string[]): string =>
   `Today you completed: ${titles.join(', ')}.`;
 

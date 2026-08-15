@@ -3,14 +3,17 @@ import { AiModule } from '../ai/ai.module';
 import { AuthModule } from '../auth/auth.module';
 import { ChatModule } from '../chat/chat.module';
 import { DatabaseModule } from '../database/database.module';
+import { GoalsModule } from '../goals/goals.module';
 import { HabitsModule } from '../habits/habits.module';
 import { PersonasModule } from '../personas/personas.module';
+import { CoachAgent } from './coach.agent';
 import { CoachController } from './coach.controller';
 import { CoachService } from './coach.service';
+import { CoachToolset } from './coach.toolset';
 
 @Module({
-  imports: [AuthModule, DatabaseModule, AiModule, ChatModule, HabitsModule, PersonasModule],
-  providers: [CoachService],
+  imports: [AuthModule, DatabaseModule, AiModule, ChatModule, HabitsModule, GoalsModule, PersonasModule],
+  providers: [CoachService, CoachAgent, CoachToolset],
   controllers: [CoachController],
 })
 export class CoachModule {}

@@ -18,7 +18,6 @@ import {
   HabitGoalRelevanceInput,
 } from './features/habit-goal-relevance.feature';
 import { TaskVerificationFeature, TaskVerificationInput } from './features/task-verification.feature';
-import { CoachingAgentFeature, CoachingAgentInput } from './features/coaching-agent.feature';
 import {
   MotivationFeedbackStore,
   MotivationVote,
@@ -30,7 +29,6 @@ import { DailyMotivationOutput } from './schemas/daily-motivation.schema';
 import { HabitInsightsOutput } from './schemas/habit-insights.schema';
 import { HabitGoalRelevanceOutput } from './schemas/habit-goal-relevance.schema';
 import { TaskVerificationOutput } from './schemas/task-verification.schema';
-import { ResolvedCoachingAgentOutput } from './schemas/coaching-agent.schema';
 import { GeminiClient } from './gemini.client';
 
 type GoalInput = Pick<UserData, 'goal' | 'personaType' | 'email'>;
@@ -47,7 +45,6 @@ export class AiService {
     private readonly coachPhrasing: CoachPhrasingFeature,
     private readonly habitGoalRelevance: HabitGoalRelevanceFeature,
     private readonly taskVerification: TaskVerificationFeature,
-    private readonly coachingAgent: CoachingAgentFeature,
     private readonly feedbackStore: MotivationFeedbackStore,
   ) {}
 
@@ -97,10 +94,6 @@ export class AiService {
 
   checkTaskVerification(input: TaskVerificationInput): Promise<TaskVerificationOutput> {
     return this.taskVerification.check(input);
-  }
-
-  coachChat(input: CoachingAgentInput): Promise<ResolvedCoachingAgentOutput> {
-    return this.coachingAgent.converse(input);
   }
 
   recordMotivationFeedback(userId: string, vote: MotivationVote): FeedbackTally {

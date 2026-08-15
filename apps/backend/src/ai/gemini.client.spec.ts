@@ -28,8 +28,8 @@ describe('GeminiClient fallback chain', () => {
 
     await expect(client.generateJson<{ ok: boolean }>('prompt')).resolves.toEqual({ ok: true });
     expect(mockGenerateContent).toHaveBeenCalledTimes(2);
-    expect(mockGenerateContent.mock.calls[0][0].model).toBe('gemini-1.5-flash');
-    expect(mockGenerateContent.mock.calls[1][0].model).toBe('gemini-1.5-flash-latest');
+    expect(mockGenerateContent.mock.calls[0][0].model).toBe('gemini-3.5-flash-lite');
+    expect(mockGenerateContent.mock.calls[1][0].model).toBe('gemini-flash-lite-latest');
   });
 
   it('walks the whole chain and throws a friendly error when every model fails', async () => {

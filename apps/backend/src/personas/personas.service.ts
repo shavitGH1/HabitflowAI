@@ -5,7 +5,6 @@ import { logger } from '../logger';
 import { PERSONA_TYPES, PILLARS, Pillar, PersonaType } from '../ai/pillars';
 import { BehaviorSnapshot } from '../ai/prompts/persona-drift-detector.prompt';
 import { DriftResult } from '../ai/features/persona-drift-detector.feature';
-import { ProposedChange } from '../ai/schemas/coaching-agent.schema';
 import { FIREBASE_MESSAGING } from '../notifications/firebase.module';
 import { DriftFlagRepository } from '../notifications/drift-flag.repository';
 import { HabitData, HabitRepository } from '../habits/habit.repository';
@@ -15,14 +14,8 @@ import { GoalsService } from '../goals/goals.service';
 import { GoalTask } from '../dto/goal.dto';
 import { DriftCheckDto } from './dto/drift-check.dto';
 import { ReclassifyDto } from './dto/reclassify.dto';
-import { CoachChatDto } from './dto/coach-chat.dto';
 import { ConfirmCoachChangeDto } from './dto/confirm-coach-change.dto';
 import { Messaging } from 'firebase-admin/messaging';
-
-export interface CoachChatResult {
-  reply: string;
-  proposedChange: ProposedChange | null;
-}
 
 export type ConfirmCoachChangeResult =
   | { type: 'personaSwitch'; personaType: PersonaType }
@@ -142,40 +135,6 @@ export class PersonasService {
     };
   }
 
-  async coachChat(userId: string, dto: CoachChatDto): Promise<CoachChatResult> {
-    const user = await this.userRepository.findUserById(userId);
-    if (!user) throw new NotFoundException('User not found');
-
-    const [habits, activeGoal] = await Promise.all([
-      this.habitRepository.findByUserId(userId),
-      this.goalRepository.findActiveByUserId(userId),
-    ]);
-
-    const currentPersona = this.toPersonaType(user.personaType);
-    const driftSuggestedPersona = await this.driftSuggestion(user, currentPersona);
-
-    const output = await this.ai.coachChat({
-      message: dto.message,
-      personaType: currentPersona,
-      activeGoal: activeGoal
-        ? { id: activeGoal.id, title: activeGoal.title, targetDate: activeGoal.targetDate }
-        : null,
-      habits: habits.map((h) => ({
-        id: h.id,
-        title: h.title,
-        goalId: h.goalId,
-        consistencyScore: h.consistencyScore,
-        streak: h.streak,
-      })),
-      driftSuggestedPersona,
-    });
-
-    return {
-      reply: output.reply,
-      proposedChange: this.sanitizeProposedChange(output.proposedChange, activeGoal),
-    };
-  }
-
   async confirmCoachChange(userId: string, dto: ConfirmCoachChangeDto): Promise<ConfirmCoachChangeResult> {
     switch (dto.type) {
       case 'personaSwitch':
@@ -185,29 +144,6 @@ export class PersonasService {
       case 'forfeitGoal':
         return this.applyGoalForfeit(userId, dto.goalId!);
     }
-  }
-
-  private async driftSuggestion(user: UserData, currentPersona: PersonaType | null): Promise<PersonaType | null> {
-    if (!currentPersona) return null;
-    try {
-      const drift = await this.evaluateDrift(user);
-      return drift.driftDetected ? drift.newSuggestedPersona : null;
-    } catch (error) {
-      logger.warn({ userId: user.id, err: error }, 'coach-chat drift lookup skipped');
-      return null;
-    }
-  }
-
-  private sanitizeProposedChange(change: ProposedChange | null, activeGoal: GoalData | null): ProposedChange | null {
-    if (!change) return null;
-    if (change.type === 'forfeitGoal' && change.goalId !== activeGoal?.id) {
-      logger.warn(
-        { goalId: change.goalId },
-        'coach-chat proposed forfeitGoal for a goal that is not the active goal — dropping',
-      );
-      return null;
-    }
-    return change;
   }
 
   private async applyPersonaSwitch(userId: string, suggestedPersona: PersonaType): Promise<ConfirmCoachChangeResult> {

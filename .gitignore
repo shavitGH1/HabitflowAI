@@ -90,3 +90,6 @@ Thumbs.db
 
 # Gradle creates this at repo root when building the app from the root instead of apps/android
 Frontend/
+
+# Personal study notes, not project docs
+docs/habitflow-ai-module.html

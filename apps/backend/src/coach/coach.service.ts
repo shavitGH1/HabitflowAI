@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { AiService } from '../ai/ai.service';
+import { AgentMessage } from '../ai/agent/agent-loop';
 import { PERSONA_TYPES, PersonaType } from '../ai/pillars';
 import { ChatGateway } from '../chat/chat.gateway';
 import { ChatService } from '../chat/chat.service';
@@ -13,31 +14,25 @@ import { ConfirmCoachChangeDto } from '../personas/dto/confirm-coach-change.dto'
 import { ConfirmCoachChangeResult, PersonasService } from '../personas/personas.service';
 import { ProposedChange } from '../ai/schemas/coaching-agent.schema';
 import { UserData, UserRepository } from '../users/user.repository';
+import { CoachAgent } from './coach.agent';
 import {
   CoachStats,
   computeStats,
+  dailySummary,
   isDueForPersonaReview,
-  pickBand,
-  pickTip,
   toDateKey,
+  weeklySummary,
 } from './coach.rules';
-import {
-  BAND_SENTENCES,
-  COACH_USER_ID,
-  NOTHING_DONE_TODAY,
-  PERSONA_LINES,
-  TIPS,
-  completedTodayLine,
-  confirmationLine,
-  notesTodayLine,
-  personaSwitchLine,
-} from './coach.templates';
+import { COACH_USER_ID, confirmationLine, personaSwitchLine } from './coach.templates';
 
 export interface CoachConversationResult {
   chatId: string;
   reply: string;
   proposedChange: ProposedChange | null;
+  toolsUsed: string[];
 }
+
+const HISTORY_MESSAGES = 10;
 
 @Injectable()
 export class CoachService {
@@ -47,6 +42,7 @@ export class CoachService {
     private readonly habitRepository: HabitRepository,
     private readonly userRepository: UserRepository,
     private readonly personasService: PersonasService,
+    private readonly coachAgent: CoachAgent,
     private readonly ai: AiService,
   ) {}
 
@@ -66,11 +62,7 @@ export class CoachService {
     if (!force && (await this.alreadyPostedToday(chatId))) return null;
 
     const stats = await this.loadStats(userId);
-    const done = stats.completedToday.length
-      ? completedTodayLine(stats.completedToday)
-      : NOTHING_DONE_TODAY;
-    const notes = stats.notesToday.length ? notesTodayLine(stats.notesToday) : '';
-    const base = [done, notes, this.personaLine(user)].filter(Boolean).join(' ');
+    const base = dailySummary(stats, this.toPersonaType(user.personaType));
 
     const text = await this.phrase(user, stats, base, 'daily');
     return this.post(chatId, text);
@@ -82,10 +74,7 @@ export class CoachService {
     if (!force && (await this.alreadyPostedToday(chatId))) return null;
 
     const stats = await this.loadStats(userId);
-    const tip = pickTip(stats);
-    const base = [BAND_SENTENCES[pickBand(stats.completionRate7d)], this.personaLine(user), tip ? TIPS[tip] : '']
-      .filter(Boolean)
-      .join(' ');
+    const base = weeklySummary(stats, this.toPersonaType(user.personaType));
 
     const phrased = await this.phrase(user, stats, base, 'weekly');
     const suggestion = await this.personaSuggestion(user, stats);
@@ -96,12 +85,17 @@ export class CoachService {
   async converse(userId: string, dto: CoachChatDto): Promise<CoachConversationResult> {
     await this.loadUser(userId);
     const chatId = await this.ensureCoachChat(userId);
+    const history = await this.loadHistory(chatId);
 
     await this.postAs(userId, chatId, dto.message);
-    const { reply, proposedChange } = await this.personasService.coachChat(userId, dto);
+    const { reply, proposedChange, toolsUsed } = await this.coachAgent.converse(
+      userId,
+      dto.message,
+      history,
+    );
     await this.post(chatId, reply);
 
-    return { chatId, reply, proposedChange };
+    return { chatId, reply, proposedChange, toolsUsed };
   }
 
   async getCoachChatId(userId: string): Promise<{ chatId: string }> {
@@ -153,6 +147,17 @@ export class CoachService {
     return latest.sentAt.split('T')[0] === toDateKey(new Date());
   }
 
+  private async loadHistory(chatId: string): Promise<AgentMessage[]> {
+    const messages = await this.chatService.getMessages(chatId, 1, HISTORY_MESSAGES);
+    return messages
+      .filter((message) => Boolean(message.text))
+      .reverse()
+      .map((message) => ({
+        role: message.senderId === COACH_USER_ID ? ('model' as const) : ('user' as const),
+        text: message.text!,
+      }));
+  }
+
   private async post(chatId: string, text: string): Promise<MessageData> {
     return this.postAs(COACH_USER_ID, chatId, text);
   }
@@ -188,11 +193,6 @@ export class CoachService {
       logger.warn({ userId: user.id, err: error }, 'coach persona review skipped');
       return null;
     }
-  }
-
-  private personaLine(user: UserData): string {
-    const personaType = this.toPersonaType(user.personaType);
-    return personaType ? PERSONA_LINES[personaType] : '';
   }
 
   private toPersonaType(value: string): PersonaType | null {
