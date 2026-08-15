@@ -4,6 +4,8 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CheckEmailDto } from './dto/check-email.dto';
+import { GoogleIdTokenDto } from './dto/google-id-token.dto';
+import { GoogleRegisterDto } from './dto/google-register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -41,6 +43,15 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Email already in use, wrong number of answers, or AI classification failed' })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Post('register-google')
+  @ApiOperation({ summary: "Complete registration for a new Google Sign-In user (after GET /auth/google/callback returned isNewUser: true)" })
+  @ApiResponse({ status: 201, description: 'User registered; returns access + refresh tokens, portfolioSummary and coreGoals' })
+  @ApiResponse({ status: 400, description: 'Wrong number of answers, AI classification failed, or account already exists' })
+  @ApiResponse({ status: 401, description: 'Signup token expired or invalid — restart Google Sign-In' })
+  registerGoogle(@Body() dto: GoogleRegisterDto) {
+    return this.authService.registerViaGoogle(dto);
   }
 
   @Post('login')
@@ -93,10 +104,20 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  @ApiOperation({ summary: 'Google OAuth callback — returns JWT access + refresh tokens' })
-  @ApiResponse({ status: 200, description: 'Authentication successful; returns access + refresh tokens' })
-  @ApiResponse({ status: 401, description: 'Google account not linked to any HabitFlow account' })
-  googleCallback(@Req() req: { user: { email: string; displayName: string } }) {
+  @ApiOperation({ summary: 'Google OAuth callback — logs in an existing account, or hands back a signup token for a new one' })
+  @ApiResponse({ status: 200, description: 'Existing account: access + refresh tokens (isNewUser: false). New account: signupToken + Google profile info (isNewUser: true) — finish via POST /auth/register-google.' })
+  googleCallback(@Req() req: { user: { email: string; firstName: string; lastName: string } }) {
     return this.authService.handleGoogleAuth(req.user);
+  }
+
+  @Post('google/verify')
+  @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
+  @ApiOperation({ summary: 'Verify a Google ID token from the native Android Sign-In flow — logs in or hands back a signup token' })
+  @ApiResponse({ status: 200, description: 'Existing account: access + refresh tokens (isNewUser: false). New account: signupToken + Google profile info (isNewUser: true) — finish via POST /auth/register-google.' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired Google ID token' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  verifyGoogleIdToken(@Body() dto: GoogleIdTokenDto) {
+    return this.authService.verifyGoogleIdToken(dto.idToken);
   }
 }

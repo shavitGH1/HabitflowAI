@@ -9,6 +9,10 @@ import com.habitflowai.data.model.DriftCheckResponse
 import com.habitflowai.data.model.FcmTokenUpdateRequest
 import com.habitflowai.data.model.GenerateGoalsRequest
 import com.habitflowai.data.model.GenerateGoalsResponse
+import com.habitflowai.data.model.GoogleAuthRequest
+import com.habitflowai.data.model.GoogleAuthResponse
+import com.habitflowai.data.model.GoogleRegisterRequest
+import com.habitflowai.data.model.GoogleRegisterResponse
 import com.habitflowai.data.model.HabitRequest
 import com.habitflowai.data.model.HabitResponse
 import com.habitflowai.data.model.HomeResponse
@@ -51,6 +55,12 @@ interface HabitFlowApi {
 
     @POST("api/v1/auth/register")
     suspend fun register(@Body request: RegisterRequest): RegisterResponse
+
+    @POST("api/v1/auth/google/verify")
+    suspend fun verifyGoogleIdToken(@Body request: GoogleAuthRequest): GoogleAuthResponse
+
+    @POST("api/v1/auth/register-google")
+    suspend fun registerGoogle(@Body request: GoogleRegisterRequest): GoogleRegisterResponse
 
     @POST("api/v1/auth/onboarding-suggestions")
     suspend fun getOnboardingSuggestions(@Body request: OnboardingSuggestionsRequest): OnboardingSuggestionsResponse

@@ -6,6 +6,8 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.habitflowai.data.model.CheckEmailRequest
 import com.habitflowai.data.model.ClassifyPersonaRequest
 import com.habitflowai.data.model.ClassifyPersonaResponse
+import com.habitflowai.data.model.GoogleAuthRequest
+import com.habitflowai.data.model.GoogleRegisterRequest
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.model.OnboardingSuggestionsRequest
 import com.habitflowai.data.model.ReclassifyRequest
@@ -122,6 +124,100 @@ class OnboardingViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "Network error. Please try again.")
+            }
+        }
+    }
+
+    fun onNameEntryNavigated() {
+        _uiState.value = _uiState.value.copy(navigateToNameEntry = false)
+    }
+
+    fun onGoogleLoginHandled() {
+        _uiState.value = _uiState.value.copy(googleLoginSuccess = false)
+    }
+
+    fun onGoogleSignInFailed(message: String) {
+        _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = message)
+    }
+
+    /** Verifies a Google ID token from the native Sign-In flow; branches on isNewUser. */
+    fun signInWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            try {
+                val response = api.verifyGoogleIdToken(GoogleAuthRequest(idToken))
+                if (response.isNewUser) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        email = response.email ?: "",
+                        firstName = response.firstName ?: "",
+                        lastName = response.lastName ?: "",
+                        googleSignupToken = response.signupToken,
+                        navigateToNameEntry = true
+                    )
+                } else {
+                    authManager.updateTokens(response.accessToken, response.refreshToken)
+                    _uiState.value = _uiState.value.copy(isLoading = false, googleLoginSuccess = true)
+                }
+            } catch (e: Exception) {
+                val errorMsg = if (e is retrofit2.HttpException) extractErrorMessage(e) else "Network error: ${e.message}"
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = errorMsg)
+            }
+        }
+    }
+
+    /** Completes registration for a Google Sign-In user after the onboarding quiz. */
+    fun registerViaGoogle() {
+        val currentState = _uiState.value
+        val signupToken = currentState.googleSignupToken
+        if (signupToken == null) {
+            _uiState.value = currentState.copy(errorMessage = "Google signup session expired. Please sign in with Google again.")
+            return
+        }
+        val filledAnswers = currentState.quizAnswers.count { it.isNotBlank() }
+        if (filledAnswers < 4) {
+            _uiState.value = currentState.copy(errorMessage = "Please answer at least 4 questions before continuing.")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = currentState.copy(isLoading = true, errorMessage = null, navigateToHome = false)
+
+            try {
+                val fcmToken = try {
+                    FirebaseMessaging.getInstance().token.await()
+                } catch (_: Exception) { null }
+
+                val response = api.registerGoogle(
+                    GoogleRegisterRequest(
+                        signupToken = signupToken,
+                        goal = currentState.goal,
+                        openAnswers = currentState.quizAnswers,
+                        fcmToken = fcmToken
+                    )
+                )
+                authManager.updateTokens(response.accessToken, response.refreshToken)
+
+                _uiState.value = currentState.copy(
+                    isLoading = false,
+                    googleSignupToken = null,
+                    personaResult = ClassifyPersonaResponse(
+                        id = response.userId,
+                        personaType = response.personaType ?: "Achiever",
+                        motivationalMessage = response.motivationalMessage ?: "Welcome to your growth journey!",
+                        success = true,
+                        userId = response.userId
+                    ),
+                    errorMessage = null,
+                    navigateToHome = true
+                )
+            } catch (e: Exception) {
+                val errorMsg = if (e is retrofit2.HttpException) {
+                    extractErrorMessage(e)
+                } else {
+                    "Network error: ${e.message}"
+                }
+                _uiState.value = currentState.copy(isLoading = false, errorMessage = errorMsg)
             }
         }
     }

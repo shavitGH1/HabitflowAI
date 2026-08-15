@@ -14,11 +14,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -26,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.habitflowai.presentation.viewmodel.OnboardingUiState
+import com.habitflowai.util.GoogleSignInOutcome
+import com.habitflowai.util.requestGoogleIdToken
+import kotlinx.coroutines.launch
 
 @Composable
 fun RegisterCredentialsRoute(
@@ -34,6 +39,8 @@ fun RegisterCredentialsRoute(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(uiState.proceedToOnboarding) {
         if (uiState.proceedToOnboarding) {
@@ -47,6 +54,15 @@ fun RegisterCredentialsRoute(
         onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
         onNext = viewModel::checkEmail,
+        onGoogleClick = {
+            scope.launch {
+                when (val outcome = requestGoogleIdToken(context)) {
+                    is GoogleSignInOutcome.Success -> viewModel.signInWithGoogle(outcome.idToken)
+                    is GoogleSignInOutcome.Cancelled -> {}
+                    is GoogleSignInOutcome.Error -> viewModel.onGoogleSignInFailed(outcome.message)
+                }
+            }
+        },
         onNavigateBack = onNavigateBack
     )
 }
@@ -57,6 +73,7 @@ fun RegisterCredentialsContent(
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onNext: () -> Unit,
+    onGoogleClick: () -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     // Arrangement.Center doesn't combine reliably with verticalScroll (the scroll
@@ -178,7 +195,7 @@ fun RegisterCredentialsContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         GoogleSignInButton(
-            onClick = { /* TODO: Google Sign-In */ },
+            onClick = onGoogleClick,
             text = "Register with Google"
         )
 

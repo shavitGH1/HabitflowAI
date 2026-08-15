@@ -2,6 +2,7 @@ import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { AiService } from '../ai/ai.service';
 import { HabitRepository } from '../habits/habit.repository';
 import { UserRepository } from '../users/user.repository';
@@ -10,6 +11,11 @@ import { AuthService } from './auth.service';
 jest.mock('bcrypt', () => ({
   hash: jest.fn().mockResolvedValue('hashed_password'),
   compare: jest.fn(),
+}));
+
+const mockVerifyIdToken = jest.fn();
+jest.mock('google-auth-library', () => ({
+  OAuth2Client: jest.fn().mockImplementation(() => ({ verifyIdToken: mockVerifyIdToken })),
 }));
 
 const GOAL = 'Run a marathon';
@@ -90,6 +96,7 @@ describe('AuthService', () => {
       mockUserRepository.saveUser.mockResolvedValue({
         id: 'user-123',
         coreGoals: [{ id: 'goal-1', description: 'Morning run', points: 20, completed: false }],
+        portfolioSummary: 'You are driven by results and measurable progress.',
       });
 
       const result = await service.register({ email: 'test@example.com', password: 'password123', goal: GOAL, openAnswers: OPEN_ANSWERS });
@@ -214,6 +221,127 @@ describe('AuthService', () => {
       await expect(
         service.login({ email: 'test@example.com', password: 'wrong_password' }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('handleGoogleAuth()', () => {
+    it('logs in an existing account and reports isNewUser: false', async () => {
+      mockUserRepository.findUserByEmail.mockResolvedValue({ id: 'user-123' });
+      mockUserRepository.updateUserRefreshToken.mockResolvedValue(undefined);
+
+      const result = await service.handleGoogleAuth({ email: 'test@example.com', firstName: 'Test', lastName: 'User' });
+
+      expect(result).toMatchObject({ isNewUser: false, success: true });
+      expect(result.accessToken).toBeDefined();
+      expect(result.refreshToken).toBeDefined();
+    });
+
+    it('hands back a signup token instead of throwing when no account matches', async () => {
+      mockUserRepository.findUserByEmail.mockResolvedValue(null);
+
+      const result = await service.handleGoogleAuth({ email: 'new@example.com', firstName: 'New', lastName: 'User' });
+
+      expect(result).toMatchObject({ isNewUser: true, email: 'new@example.com', firstName: 'New', lastName: 'User' });
+      expect(result.signupToken).toBeDefined();
+    });
+  });
+
+  describe('verifyGoogleIdToken()', () => {
+    it('logs in an existing account when the verified email matches', async () => {
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => ({ email: 'test@example.com', given_name: 'Test', family_name: 'User' }),
+      });
+      mockUserRepository.findUserByEmail.mockResolvedValue({ id: 'user-123' });
+      mockUserRepository.updateUserRefreshToken.mockResolvedValue(undefined);
+
+      const result = await service.verifyGoogleIdToken('valid-id-token');
+
+      expect(result).toMatchObject({ isNewUser: false, success: true });
+      expect(result.accessToken).toBeDefined();
+    });
+
+    it('returns a signup token when the verified email has no account', async () => {
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => ({ email: 'new@example.com', given_name: 'New', family_name: 'User' }),
+      });
+      mockUserRepository.findUserByEmail.mockResolvedValue(null);
+
+      const result = await service.verifyGoogleIdToken('valid-id-token');
+
+      expect(result).toMatchObject({ isNewUser: true, email: 'new@example.com', firstName: 'New', lastName: 'User' });
+      expect(result.signupToken).toBeDefined();
+    });
+
+    it('throws UnauthorizedException when the token fails verification', async () => {
+      mockVerifyIdToken.mockRejectedValue(new Error('bad token'));
+
+      await expect(service.verifyGoogleIdToken('garbage')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws UnauthorizedException when the verified payload has no email', async () => {
+      mockVerifyIdToken.mockResolvedValue({ getPayload: () => ({ given_name: 'No', family_name: 'Email' }) });
+
+      await expect(service.verifyGoogleIdToken('valid-id-token')).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('registerViaGoogle()', () => {
+    const makeSignupToken = (overrides: Record<string, unknown> = {}) =>
+      jwt.sign(
+        { email: 'google@example.com', firstName: 'Google', lastName: 'User', purpose: 'google-signup', ...overrides },
+        'test-secret',
+      );
+
+    it('registers a new user from a valid signup token, without a client-supplied password', async () => {
+      mockUserRepository.findUserByEmail.mockResolvedValue(null);
+      mockAiService.classifyPersonaWeighted.mockResolvedValue({
+        isValid: true,
+        personaType: 'Achiever',
+        weightedBreakdown: { Achievement: 80, Growth: 10, Connection: 0, Exploration: 0, Purpose: 5, Structure: 5 },
+        confidenceScore: 0.9,
+      });
+      mockAiService.generatePortfolio.mockResolvedValue({
+        summary: 'Summary',
+        tips: ['tip1', 'tip2', 'tip3'],
+        failurePatterns: ['pattern1'],
+        coreGoals: [{ description: 'Goal', points: 20 }],
+        dailyVariations: [{ description: 'Daily', points: 10 }],
+      });
+      mockUserRepository.saveUser.mockResolvedValue({ id: 'user-789', coreGoals: [], portfolioSummary: 'Summary' });
+      mockUserRepository.updateUserRefreshToken.mockResolvedValue(undefined);
+
+      const result = await service.registerViaGoogle({
+        signupToken: makeSignupToken(),
+        goal: GOAL,
+        openAnswers: OPEN_ANSWERS,
+      });
+
+      expect(mockUserRepository.saveUser).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'google@example.com', firstName: 'Google', lastName: 'User' }),
+      );
+      expect(result).toMatchObject({ userId: 'user-789', success: true });
+      expect(result.accessToken).toBeDefined();
+      expect(result.refreshToken).toBeDefined();
+    });
+
+    it('throws UnauthorizedException on an invalid or expired signup token', async () => {
+      await expect(
+        service.registerViaGoogle({ signupToken: 'not-a-real-token', goal: GOAL, openAnswers: OPEN_ANSWERS }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws UnauthorizedException if the token was not issued for Google signup', async () => {
+      await expect(
+        service.registerViaGoogle({ signupToken: makeSignupToken({ purpose: 'something-else' }), goal: GOAL, openAnswers: OPEN_ANSWERS }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws BadRequestException if the account already exists by the time registration completes', async () => {
+      mockUserRepository.findUserByEmail.mockResolvedValue({ id: 'already-exists' });
+
+      await expect(
+        service.registerViaGoogle({ signupToken: makeSignupToken(), goal: GOAL, openAnswers: OPEN_ANSWERS }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

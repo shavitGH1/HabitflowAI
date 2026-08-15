@@ -53,6 +53,39 @@ data class RegisterResponse(
     val motivationalMessage: String? = null
 )
 
+data class GoogleAuthRequest(val idToken: String)
+
+// Backend response is polymorphic: an existing account returns accessToken/refreshToken
+// (isNewUser: false); an unknown email returns signupToken/email/firstName/lastName
+// (isNewUser: true) so the caller can route into onboarding instead of home.
+data class GoogleAuthResponse(
+    val success: Boolean,
+    val isNewUser: Boolean,
+    val accessToken: String? = null,
+    val refreshToken: String? = null,
+    val signupToken: String? = null,
+    val email: String? = null,
+    val firstName: String? = null,
+    val lastName: String? = null
+)
+
+data class GoogleRegisterRequest(
+    val signupToken: String,
+    val goal: String,
+    val openAnswers: List<String>,
+    val fcmToken: String? = null
+)
+
+data class GoogleRegisterResponse(
+    val message: String,
+    val userId: String,
+    val success: Boolean,
+    val accessToken: String,
+    val refreshToken: String,
+    val personaType: String? = null,
+    val motivationalMessage: String? = null
+)
+
 data class HomeGoalTask(
     val description: String,
     val points: Int,

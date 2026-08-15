@@ -2,14 +2,26 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import { OAuth2Client } from 'google-auth-library';
 import { AiService } from '../ai/ai.service';
 import { HabitRepository } from '../habits/habit.repository';
-import { UserRepository } from '../users/user.repository';
+import { UserData, UserRepository } from '../users/user.repository';
+import { GoogleRegisterDto } from './dto/google-register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { logger } from '../logger';
+
+const GOOGLE_SIGNUP_TOKEN_PURPOSE = 'google-signup';
+
+interface GoogleSignupTokenPayload {
+  email: string;
+  firstName: string;
+  lastName: string;
+  purpose: typeof GOOGLE_SIGNUP_TOKEN_PURPOSE;
+}
 
 @Injectable()
 export class AuthService {
@@ -25,6 +37,82 @@ export class AuthService {
       throw new BadRequestException('User with this email already exists');
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await this.completeRegistration({
+      email,
+      firstName: firstName ?? '',
+      lastName: lastName ?? '',
+      hashedPassword,
+      goal,
+      openAnswers,
+      fcmToken,
+    });
+
+    return {
+      message: 'User registered successfully',
+      userId: newUser.id,
+      personaType: newUser.personaType,
+      motivationalMessage: newUser.motivationalMessage,
+      portfolioSummary: newUser.portfolioSummary,
+      coreGoals: newUser.coreGoals,
+      success: true,
+    };
+  }
+
+  // Google Sign-In accounts have no password the user ever set or sees — a random
+  // hash is stored so User.password stays required with no schema/migration change,
+  // and email/password login simply can't succeed against it (not a real credential).
+  async registerViaGoogle({ signupToken, goal, openAnswers, fcmToken }: GoogleRegisterDto) {
+    let payload: GoogleSignupTokenPayload;
+    try {
+      payload = jwt.verify(signupToken, this.config.get<string>('JWT_SECRET')!) as GoogleSignupTokenPayload;
+    } catch {
+      throw new UnauthorizedException('Signup session expired — please sign in with Google again');
+    }
+    if (payload.purpose !== GOOGLE_SIGNUP_TOKEN_PURPOSE) {
+      throw new UnauthorizedException('Invalid signup token');
+    }
+    if (await this.userRepository.findUserByEmail(payload.email)) {
+      throw new BadRequestException('User with this email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
+    const newUser = await this.completeRegistration({
+      email: payload.email,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      hashedPassword,
+      goal,
+      openAnswers,
+      fcmToken,
+    });
+
+    const { accessToken, refreshToken } = await this.issueTokens(newUser.id);
+    logger.info({ userId: newUser.id }, 'user registered via Google');
+    return {
+      message: 'User registered successfully',
+      userId: newUser.id,
+      personaType: newUser.personaType,
+      motivationalMessage: newUser.motivationalMessage,
+      portfolioSummary: newUser.portfolioSummary,
+      coreGoals: newUser.coreGoals,
+      accessToken,
+      refreshToken,
+      success: true,
+    };
+  }
+
+  private async completeRegistration(input: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    hashedPassword: string;
+    goal: string;
+    openAnswers: string[];
+    fcmToken?: string;
+  }): Promise<UserData> {
+    const { email, firstName, lastName, hashedPassword, goal, openAnswers, fcmToken } = input;
+
     const classification = await this.ai.classifyPersonaWeighted({ goal, openAnswers });
     if (!classification.isValid) {
       throw new BadRequestException(`Invalid input: ${classification.errorReason}`);
@@ -33,13 +121,11 @@ export class AuthService {
     const { personaType, weightedBreakdown, confidenceScore } = classification;
     const portfolio = await this.ai.generatePortfolio({ goal, openAnswers, personaType, weightedBreakdown });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
     const today = new Date();
-
     const newUser = await this.userRepository.saveUser({
       email,
-      firstName: firstName ?? '',
-      lastName: lastName ?? '',
+      firstName,
+      lastName,
       password: hashedPassword,
       goal,
       personaType,
@@ -63,15 +149,14 @@ export class AuthService {
     });
 
     logger.info({ userId: newUser.id }, 'user registered');
-    return {
-      message: 'User registered successfully',
-      userId: newUser.id,
-      personaType: newUser.personaType,
-      motivationalMessage: newUser.motivationalMessage,
-      portfolioSummary: portfolio.summary,
-      coreGoals: newUser.coreGoals,
-      success: true,
-    };
+    return newUser;
+  }
+
+  private async issueTokens(userId: string): Promise<{ accessToken: string; refreshToken: string }> {
+    const accessToken = jwt.sign({ id: userId }, this.config.get<string>('JWT_SECRET')!, { expiresIn: this.config.get<string>('JWT_ACCESS_EXPIRATION') });
+    const refreshToken = jwt.sign({ id: userId }, this.config.get<string>('JWT_REFRESH_SECRET')!, { expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRATION') });
+    await this.userRepository.updateUserRefreshToken(userId, refreshToken);
+    return { accessToken, refreshToken };
   }
 
   async login({ email, password }: LoginDto) {
@@ -97,9 +182,7 @@ export class AuthService {
       );
     }
 
-    const accessToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_SECRET')!, { expiresIn: this.config.get<string>('JWT_ACCESS_EXPIRATION') });
-    const refreshToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_REFRESH_SECRET')!, { expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRATION') });
-    await this.userRepository.updateUserRefreshToken(user.id, refreshToken);
+    const { accessToken, refreshToken } = await this.issueTokens(user.id);
 
     logger.info({ userId: user.id }, 'user logged in');
     return { accessToken, refreshToken, success: true };
@@ -132,16 +215,46 @@ export class AuthService {
     return { message: 'FCM token updated', success: true };
   }
 
-  async handleGoogleAuth({ email }: { email: string }) {
+  async handleGoogleAuth({ email, firstName, lastName }: { email: string; firstName: string; lastName: string }) {
     const user = await this.userRepository.findUserByEmail(email);
-    if (!user) throw new UnauthorizedException('No account found for this Google account. Please register first.');
+    if (user) {
+      const { accessToken, refreshToken } = await this.issueTokens(user.id);
+      logger.info({ userId: user.id }, 'user authenticated via Google');
+      return { accessToken, refreshToken, success: true, isNewUser: false };
+    }
 
-    const accessToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_SECRET')!, { expiresIn: this.config.get<string>('JWT_ACCESS_EXPIRATION') });
-    const refreshToken = jwt.sign({ id: user.id }, this.config.get<string>('JWT_REFRESH_SECRET')!, { expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRATION') });
-    await this.userRepository.updateUserRefreshToken(user.id, refreshToken);
+    // No account yet — hand back a short-lived signup token instead of a hard 401,
+    // so the client can go straight into the onboarding quiz (email/name already
+    // known from Google, no password to collect) and finish via POST /auth/register-google.
+    const payload: GoogleSignupTokenPayload = { email, firstName, lastName, purpose: GOOGLE_SIGNUP_TOKEN_PURPOSE };
+    const signupToken = jwt.sign(payload, this.config.get<string>('JWT_SECRET')!, { expiresIn: '15m' });
+    return { isNewUser: true, signupToken, email, firstName, lastName, success: true };
+  }
 
-    logger.info({ userId: user.id }, 'user authenticated via Google');
-    return { accessToken, refreshToken, success: true };
+  // Native Android Sign-In (Credential Manager) hands the app a Google ID token
+  // directly — no browser redirect involved. Verified server-side against our own
+  // GOOGLE_CLIENT_ID (the audience), then funneled through the exact same
+  // isNewUser branching as the browser-based flow above.
+  async verifyGoogleIdToken(idToken: string) {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID')!;
+    const client = new OAuth2Client(clientId);
+
+    let payload: { email?: string; given_name?: string; family_name?: string } | undefined;
+    try {
+      const ticket = await client.verifyIdToken({ idToken, audience: clientId });
+      payload = ticket.getPayload();
+    } catch {
+      throw new UnauthorizedException('Invalid Google ID token');
+    }
+    if (!payload?.email) {
+      throw new UnauthorizedException('Invalid Google ID token');
+    }
+
+    return this.handleGoogleAuth({
+      email: payload.email,
+      firstName: payload.given_name ?? '',
+      lastName: payload.family_name ?? '',
+    });
   }
 
   async logout(userId: string) {

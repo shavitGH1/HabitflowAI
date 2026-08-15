@@ -16,5 +16,13 @@ data class OnboardingUiState(
     val proceedToOnboarding: Boolean = false,
     val isRetakeMode: Boolean = false,
     val suggestionsByQuestionId: Map<Int, List<String>> = emptyMap(),
-    val suggestionsForGoal: String? = null
+    val suggestionsForGoal: String? = null,
+    // Set when Google Sign-In finds no matching account — carries the short-lived
+    // token needed to complete registration once the onboarding quiz is done.
+    val googleSignupToken: String? = null,
+    // Distinct from navigateToHome: that flag is also used mid-onboarding-quiz
+    // completion (handled by OnboardingRoute itself), while this one fires from
+    // Login/RegisterCredentials for an existing account signing in via Google.
+    val navigateToNameEntry: Boolean = false,
+    val googleLoginSuccess: Boolean = false
 )

@@ -29,6 +29,8 @@ coil = "2.7.0"
 mapsCompose = "6.1.2"
 playServicesMaps = "19.0.0"
 socketIo = "2.1.0"
+credentials = "1.6.0"
+googleId = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -75,6 +77,9 @@ maps-compose = { group = "com.google.maps.android", name = "maps-compose", versi
 maps-compose-utils = { group = "com.google.maps.android", name = "maps-compose-utils", version.ref = "mapsCompose" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 socket-io-client = { group = "io.socket", name = "socket.io-client", version.ref = "socketIo" }
+androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
+androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
+google-id = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleId" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
