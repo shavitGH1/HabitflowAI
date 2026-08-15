@@ -21,6 +21,8 @@ const TARGET_ID = 'user-999';
 const makeUser = (overrides: Partial<UserData> = {}): UserData => ({
   id: TARGET_ID,
   email: 'target@example.com',
+  firstName: 'Target',
+  lastName: 'User',
   password: 'hashed',
   goal: 'Stay consistent',
   personaType: 'Achiever',

@@ -4,6 +4,8 @@ const today = new Date().toISOString().split('T')[0];
 const users = [
   {
     email: 'demo.alex@habitflow.ai',
+    firstName: 'Alex',
+    lastName: 'Morgan',
     password: DEMO_PASSWORD,
     goal: 'Break personal records and dominate every leaderboard',
     personaType: 'Achiever',
@@ -28,6 +30,8 @@ const users = [
   },
   {
     email: 'demo.maya@habitflow.ai',
+    firstName: 'Maya',
+    lastName: 'Cohen',
     password: DEMO_PASSWORD,
     goal: 'Be the most consistent person in every challenge',
     personaType: 'Achiever',
@@ -52,6 +56,8 @@ const users = [
   },
   {
     email: 'demo.ben@habitflow.ai',
+    firstName: 'Ben',
+    lastName: 'Carter',
     password: DEMO_PASSWORD,
     goal: 'Build habits that bring people together',
     personaType: 'Socializer',
@@ -76,6 +82,8 @@ const users = [
   },
   {
     email: 'demo.sara@habitflow.ai',
+    firstName: 'Sara',
+    lastName: 'Levi',
     password: DEMO_PASSWORD,
     goal: 'Stay consistent through community and connection',
     personaType: 'Socializer',
@@ -100,6 +108,8 @@ const users = [
   },
   {
     email: 'demo.tom@habitflow.ai',
+    firstName: 'Tom',
+    lastName: 'Reed',
     password: DEMO_PASSWORD,
     goal: 'Become 1% better every single day',
     personaType: 'Grower',
@@ -124,6 +134,8 @@ const users = [
   },
   {
     email: 'demo.lena@habitflow.ai',
+    firstName: 'Lena',
+    lastName: 'Novak',
     password: DEMO_PASSWORD,
     goal: 'Try something new every week',
     personaType: 'Explorer',
@@ -148,6 +160,8 @@ const users = [
   },
   {
     email: 'demo.dana@habitflow.ai',
+    firstName: 'Dana',
+    lastName: 'Shapiro',
     password: DEMO_PASSWORD,
     goal: 'Use my habits to make a positive impact on others',
     personaType: 'Altruist',
@@ -172,6 +186,8 @@ const users = [
   },
   {
     email: 'demo.ron@habitflow.ai',
+    firstName: 'Ron',
+    lastName: 'Katz',
     password: DEMO_PASSWORD,
     goal: 'Design and execute the perfect daily system',
     personaType: 'Architect',
@@ -208,6 +224,8 @@ if (!db.users.findOne({ _id: COACH_ID })) {
   db.users.insertOne({
     _id: COACH_ID,
     email: 'coach@habitflow.ai',
+    firstName: 'HabitFlow',
+    lastName: 'Coach',
     password: DEMO_PASSWORD,
     goal: 'Help every user keep their habits',
     personaType: 'Architect',

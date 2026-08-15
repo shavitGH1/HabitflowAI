@@ -61,6 +61,14 @@ class OnboardingViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(password = password)
     }
 
+    fun onFirstNameChange(firstName: String) {
+        _uiState.value = _uiState.value.copy(firstName = firstName)
+    }
+
+    fun onLastNameChange(lastName: String) {
+        _uiState.value = _uiState.value.copy(lastName = lastName)
+    }
+
     fun onGoalChange(goal: String) {
         _uiState.value = _uiState.value.copy(goal = goal)
     }
@@ -169,6 +177,8 @@ class OnboardingViewModel @Inject constructor(
 
                 val request = RegisterRequest(
                     email = currentState.email,
+                    firstName = currentState.firstName,
+                    lastName = currentState.lastName,
                     password = currentState.password,
                     goal = currentState.goal,
                     openAnswers = currentState.quizAnswers,

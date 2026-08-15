@@ -27,6 +27,7 @@ import com.habitflowai.presentation.ui.social.SuccessJournalRoute
 import com.habitflowai.presentation.ui.onboarding.OnboardingRoute
 import com.habitflowai.presentation.ui.auth.LoginRoute
 import com.habitflowai.presentation.ui.auth.RegisterCredentialsRoute
+import com.habitflowai.presentation.ui.auth.NameEntryRoute
 import com.habitflowai.presentation.ui.profile.ProfileRoute
 import com.habitflowai.presentation.ui.profile.PublicProfileRoute
 import com.habitflowai.presentation.ui.map.MapRoute
@@ -63,6 +64,7 @@ fun HabitFlowNavGraph(
     val isFullApp = currentRoute != NavRoute.Onboarding.route &&
                     currentRoute != NavRoute.Login.route &&
                     currentRoute != NavRoute.RegisterCredentials.route &&
+                    currentRoute != NavRoute.NameEntry.route &&
                     currentRoute != NavRoute.ProfileReveal.route
 
     Scaffold(
@@ -126,6 +128,18 @@ fun HabitFlowNavGraph(
                 composable(NavRoute.RegisterCredentials.route) {
                     RegisterCredentialsRoute(
                         viewModel = onboardingViewModel,
+                        onNext = {
+                            navController.navigate(NavRoute.NameEntry.route)
+                        },
+                        onNavigateBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+                composable(NavRoute.NameEntry.route) {
+                    NameEntryRoute(
+                        viewModel = onboardingViewModel,
+                        uiState = uiState,
                         onNext = {
                             navController.navigate(NavRoute.Onboarding.route)
                         },

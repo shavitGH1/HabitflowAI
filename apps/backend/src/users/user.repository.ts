@@ -14,6 +14,8 @@ export interface Achievement {
 export interface UserData {
   id: string;
   email: string;
+  firstName: string;
+  lastName: string;
   password: string;
   goal: string;
   personaType: string;
@@ -137,6 +139,8 @@ export class UserRepository {
     return {
       id: doc._id.toString(),
       email: doc.email,
+      firstName: doc.firstName,
+      lastName: doc.lastName,
       password: doc.password,
       goal: doc.goal,
       personaType: doc.personaType,
