@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
 import { AiService } from '../ai/ai.service';
+import { HabitRepository } from '../habits/habit.repository';
 import { UserRepository } from '../users/user.repository';
 import { AuthService } from './auth.service';
 
@@ -28,6 +29,10 @@ const mockUserRepository = {
   saveUser: jest.fn(),
   updateUserDailyTasks: jest.fn(),
   updateUserRefreshToken: jest.fn(),
+};
+
+const mockHabitRepository = {
+  createHabit: jest.fn(),
 };
 
 const mockAiService = {
@@ -56,6 +61,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: UserRepository, useValue: mockUserRepository },
+        { provide: HabitRepository, useValue: mockHabitRepository },
         { provide: AiService, useValue: mockAiService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
@@ -93,6 +99,36 @@ describe('AuthService', () => {
       expect(mockAiService.generatePortfolio).toHaveBeenCalledTimes(1);
       expect(mockUserRepository.saveUser).toHaveBeenCalledTimes(1);
       expect(result).toMatchObject({ userId: 'user-123', portfolioSummary: 'You are driven by results and measurable progress.', success: true });
+    });
+
+    it('seeds a daily habit from the stated goal so the coach recognizes it immediately', async () => {
+      mockUserRepository.findUserByEmail.mockResolvedValue(null);
+      mockAiService.classifyPersonaWeighted.mockResolvedValue({
+        isValid: true,
+        personaType: 'Achiever',
+        weightedBreakdown: { Achievement: 80, Growth: 10, Connection: 0, Exploration: 0, Purpose: 5, Structure: 5 },
+        confidenceScore: 0.9,
+      });
+      mockAiService.generatePortfolio.mockResolvedValue({
+        summary: 'You are driven by results and measurable progress.',
+        tips: ['Set daily targets', 'Track streaks', 'Celebrate small wins'],
+        failurePatterns: ['Losing momentum when progress feels invisible'],
+        coreGoals: [{ description: 'Morning run', points: 20 }],
+        dailyVariations: [{ description: 'Stretch for 10 min', points: 10 }],
+      });
+      mockUserRepository.saveUser.mockResolvedValue({
+        id: 'user-123',
+        coreGoals: [{ id: 'goal-1', description: 'Morning run', points: 20, completed: false }],
+      });
+
+      await service.register({ email: 'test@example.com', password: 'password123', goal: GOAL, openAnswers: OPEN_ANSWERS });
+
+      expect(mockHabitRepository.createHabit).toHaveBeenCalledTimes(1);
+      expect(mockHabitRepository.createHabit).toHaveBeenCalledWith({
+        userId: 'user-123',
+        title: GOAL,
+        frequency: 'daily',
+      });
     });
 
     it('throws BadRequestException if email already exists', async () => {
