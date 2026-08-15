@@ -21,10 +21,13 @@ data class PublicProfileUiState(
     val userId: String = "",
     val username: String = "",
     val posts: List<Post> = emptyList(),
+    val followerCount: Int = 0,
+    val followingCount: Int = 0,
     val isFollowing: Boolean = false,
     val isLoading: Boolean = false,
     val isMe: Boolean = false,
     val isCreatingChat: Boolean = false,
+    val isFollowLoading: Boolean = false,
     val error: String? = null
 )
 
@@ -61,6 +64,18 @@ class PublicProfileViewModel @Inject constructor(
             var name = user?.email?.substringBefore('@') ?: targetUserId
             
             _uiState.update { it.copy(username = name) }
+
+            // Get followers/following info
+            launch {
+                val followers = repository.getFollowers(targetUserId)
+                val following = repository.getFollowing(targetUserId)
+                val myId = authManager.currentUserId.value ?: "me"
+                _uiState.update { it.copy(
+                    followerCount = followers.size,
+                    followingCount = following.size,
+                    isFollowing = followers.contains(myId)
+                ) }
+            }
 
             // Get posts - try specific endpoint first, fallback to filtering general feed
             repository.getPostsByUserId(targetUserId).collectLatest { posts ->
@@ -114,6 +129,30 @@ class PublicProfileViewModel @Inject constructor(
             val success = if (isLiking) repository.likePost(postId) else repository.unlikePost(postId)
             if (!success) {
                 _uiState.update { it.copy(posts = oldPosts) }
+            }
+        }
+    }
+
+    fun toggleFollow() {
+        if (_uiState.value.isFollowLoading || _uiState.value.isMe) return
+        
+        val currentlyFollowing = _uiState.value.isFollowing
+        viewModelScope.launch {
+            _uiState.update { it.copy(isFollowLoading = true) }
+            val success = if (currentlyFollowing) {
+                repository.unfollowUser(targetUserId)
+            } else {
+                repository.followUser(targetUserId)
+            }
+
+            if (success) {
+                _uiState.update { it.copy(
+                    isFollowing = !currentlyFollowing,
+                    followerCount = if (currentlyFollowing) it.followerCount - 1 else it.followerCount + 1,
+                    isFollowLoading = false
+                ) }
+            } else {
+                _uiState.update { it.copy(isFollowLoading = false, error = "Failed to update follow status") }
             }
         }
     }

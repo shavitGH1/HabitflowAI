@@ -35,6 +35,9 @@ interface SocialRepository {
     suspend fun getDirectChats(): List<ChatResponse>
     suspend fun createDirectChat(userId: String): ChatResponse
     suspend fun getChat(chatId: String): ChatResponse?
+    suspend fun followUser(userId: String): Boolean
+    suspend fun unfollowUser(userId: String): Boolean
+    suspend fun getFollowers(userId: String): List<String>
     suspend fun getFollowing(userId: String): List<String>
     suspend fun getAllUsers(): List<AppUser>
 }

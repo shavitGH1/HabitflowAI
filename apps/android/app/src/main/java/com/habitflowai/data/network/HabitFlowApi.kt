@@ -165,6 +165,15 @@ interface HabitFlowApi {
         @Part image: MultipartBody.Part
     ): com.habitflowai.data.model.ChatResponse
 
+    @POST("api/v1/users/{userId}/follow")
+    suspend fun followUser(@Path("userId") userId: String): Response<Unit>
+
+    @DELETE("api/v1/users/{userId}/follow")
+    suspend fun unfollowUser(@Path("userId") userId: String): Response<Unit>
+
+    @GET("api/v1/users/{userId}/followers")
+    suspend fun getFollowers(@Path("userId") userId: String): List<String>
+
     @GET("api/v1/users/{userId}/following")
     suspend fun getFollowing(@Path("userId") userId: String): List<String>
 

@@ -92,9 +92,6 @@ fun SocialRoute(
                 viewModel.loadMessages(chatId)
                 viewModel.autoOpenChatId.value = null
             } else if (!uiState.isLoadingChats) {
-                // If we have an ID to open but it's not in the list and we're not loading,
-                // something is out of sync. But SocialViewModel should have handled specific fetch.
-                // We'll call loadAllChats just in case, but usually we should have found it.
                 viewModel.loadAllChats()
             }
         }
@@ -906,8 +903,15 @@ fun JoinGroupDialog(
                                             personaColor = personaColor,
                                             onClick = { onUserClick(result.user.id) },
                                             trailing = {
-                                                IconButton(onClick = { onStartDm(result.user.id) }) {
-                                                    Icon(Icons.AutoMirrored.Rounded.Message, contentDescription = "Message", tint = personaColor)
+                                                Row {
+                                                    // Follow icon could be added here if we had follow state in SearchResult
+                                                    // For now, let's keep it simple with just DM, or add a generic "View Profile" + icon
+                                                    IconButton(onClick = { onUserClick(result.user.id) }) {
+                                                        Icon(Icons.Rounded.PersonAdd, contentDescription = "View Profile", tint = personaColor)
+                                                    }
+                                                    IconButton(onClick = { onStartDm(result.user.id) }) {
+                                                        Icon(Icons.AutoMirrored.Rounded.Message, contentDescription = "Message", tint = personaColor)
+                                                    }
                                                 }
                                             }
                                         )

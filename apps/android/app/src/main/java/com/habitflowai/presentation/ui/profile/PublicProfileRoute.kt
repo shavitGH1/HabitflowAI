@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Message
-import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,7 +18,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.social.PostCard
@@ -65,12 +64,17 @@ fun PublicProfileRoute(
                     username = uiState.username,
                     isMe = uiState.isMe,
                     isLoading = uiState.isCreatingChat,
+                    isFollowing = uiState.isFollowing,
+                    isFollowLoading = uiState.isFollowLoading,
+                    followerCount = uiState.followerCount,
+                    followingCount = uiState.followingCount,
                     personaColor = personaColor,
                     onSendMessage = {
                         viewModel.startDm { chatId ->
                             onSendMessage(chatId)
                         }
-                    }
+                    },
+                    onToggleFollow = { viewModel.toggleFollow() }
                 )
             }
 
@@ -115,8 +119,13 @@ fun ProfileHeader(
     username: String,
     isMe: Boolean,
     isLoading: Boolean,
+    isFollowing: Boolean,
+    isFollowLoading: Boolean,
+    followerCount: Int,
+    followingCount: Int,
     personaColor: Color,
-    onSendMessage: () -> Unit
+    onSendMessage: () -> Unit,
+    onToggleFollow: () -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -151,20 +160,90 @@ fun ProfileHeader(
                 fontWeight = FontWeight.Bold
             )
 
-            Spacer(Modifier.height(24.dp))
-            Button(
-                onClick = onSendMessage,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = personaColor),
-                enabled = !isLoading
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-                } else {
-                    Icon(Icons.AutoMirrored.Rounded.Message, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Send Message", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = followerCount.toString(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Followers",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = followingCount.toString(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Following",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (!isMe) {
+                    Button(
+                        onClick = onToggleFollow,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = if (isFollowing) {
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            ButtonDefaults.buttonColors(containerColor = personaColor)
+                        },
+                        enabled = !isFollowLoading
+                    ) {
+                        if (isFollowLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(
+                                if (isFollowing) Icons.Rounded.PersonRemove else Icons.Rounded.PersonAdd,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = if (isFollowing) "Unfollow" else "Follow",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = onSendMessage,
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = personaColor),
+                    enabled = !isLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.AutoMirrored.Rounded.Message, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Message", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

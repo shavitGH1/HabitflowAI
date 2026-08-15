@@ -392,6 +392,32 @@ class SocialRepositoryImpl @Inject constructor(
         } catch (_: Exception) { emptyList() }
     }
 
+    override suspend fun followUser(userId: String): Boolean {
+        return try {
+            val response = api.followUser(userId)
+            response.isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun unfollowUser(userId: String): Boolean {
+        return try {
+            val response = api.unfollowUser(userId)
+            response.isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun getFollowers(userId: String): List<String> {
+        return try {
+            api.getFollowers(userId)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     override suspend fun getAllUsers(): List<AppUser> {
         return try {
             api.getUsers()
