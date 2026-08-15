@@ -41,7 +41,7 @@ class LocationRepositoryImpl @Inject constructor(
         LocationServices.getFusedLocationProviderClient(context)
     }
 
-    override suspend fun captureAndSaveLocation(habitId: String?, isPublic: Boolean = true) {
+    override suspend fun captureAndSaveLocation(habitId: String?, isPublic: Boolean) {
         val location = getCurrentLocation()
         if (location == null) {
             Log.w(TAG, "captureAndSaveLocation: no location available, skipping (habitId=$habitId)")
