@@ -11,7 +11,8 @@ apps/backend/.env.*
 !apps/backend/.env.example
 apps/backend/tsconfig.tsbuildinfo
 apps/backend/firebase-service-account.json
-apps/backend/uploads/
+apps/backend/uploads/*
+!apps/backend/uploads/demo/
 
 # pnpm & Turbo
 node_modules/
