@@ -32,7 +32,6 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun HabitFlowTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Disable dynamic color by default for high-contrast custom design
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -41,7 +40,6 @@ fun HabitFlowTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }

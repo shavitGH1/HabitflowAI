@@ -231,6 +231,8 @@ class OnboardingViewModel @Inject constructor(
                 if (homeData.success) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
+                        firstName = homeData.firstName ?: "",
+                        lastName = homeData.lastName ?: "",
                         personaResult = ClassifyPersonaResponse(
                             id = "",
                             personaType = homeData.personaType ?: "Achiever",
@@ -278,7 +280,9 @@ class OnboardingViewModel @Inject constructor(
                     password = currentState.password,
                     goal = currentState.goal,
                     openAnswers = currentState.quizAnswers,
-                    fcmToken = fcmToken
+                    fcmToken = fcmToken,
+                    firstName = currentState.firstName,
+                    lastName = currentState.lastName
                 )
                 val response = authRepository.register(request)
 

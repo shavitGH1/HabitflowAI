@@ -92,5 +92,7 @@ data class MessageResponse(
 /** Lightweight user record returned by GET /api/v1/users */
 data class AppUser(
     val id: String,
-    val email: String
+    val email: String,
+    val firstName: String? = null,
+    val lastName: String? = null
 )
