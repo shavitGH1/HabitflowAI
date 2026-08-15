@@ -1,15 +1,19 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 package com.habitflowai.presentation.ui.habits
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SmartToy
@@ -20,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -227,25 +232,55 @@ fun HabitCreateBottomSheet(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var frequency by remember { mutableStateOf("DAILY") }
+    // Prevent Material3's ModalBottomSheet from auto-collapsing to Hidden when the
+    // IME closes and its content remeasures (a known Compose bug) — an explicit
+    // close button below remains the guaranteed way to dismiss.
+    val sheetState = rememberModalBottomSheetState(
+        confirmValueChange = { it != SheetValue.Hidden },
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        sheetState = sheetState,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        // Material3's own back-press dismissal fires *before* any BackHandler we
+        // add inside content can reliably win priority over it (confirmed on
+        // device — inconsistent across sheets). Disable it at the source and let
+        // our own BackHandler below be the only thing back presses reach.
+        properties = ModalBottomSheetDefaults.properties(shouldDismissOnBackPress = false)
     ) {
+        // First back press should only dismiss the keyboard; only close the
+        // sheet on a second press once the IME is already hidden.
+        val keyboardController = LocalSoftwareKeyboardController.current
+        val imeVisible = WindowInsets.isImeVisible
+        BackHandler {
+            if (imeVisible) keyboardController?.hide() else onDismiss()
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "New Habit",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = personaColor
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "New Habit",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = personaColor
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Close")
+                }
+            }
 
             OutlinedTextField(
                 value = title,

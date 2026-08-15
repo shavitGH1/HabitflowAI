@@ -1,5 +1,6 @@
 package com.habitflowai.presentation.ui.social
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -1318,7 +1320,7 @@ fun ImageSourceSheet(
 // MemberPickerSheet — searchable list of all app users with checkboxes.
 // Falls back to a text-input if the list is empty (e.g. no network).
 // ─────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MemberPickerSheet(
     title: String,
@@ -1342,18 +1344,38 @@ fun MemberPickerSheet(
         if (search.isBlank()) eligible
         else eligible.filter { user ->
             val username = user.email.substringBefore('@')
-            username.contains(search, ignoreCase = true) || 
-            user.email.contains(search, ignoreCase = true) || 
+            username.contains(search, ignoreCase = true) ||
+            user.email.contains(search, ignoreCase = true) ||
             user.id.contains(search, ignoreCase = true)
         }
     }
+    // Prevent Material3's ModalBottomSheet from auto-collapsing to Hidden when the
+    // IME closes and its content remeasures (a known Compose bug).
+    val sheetState = rememberModalBottomSheetState(
+        confirmValueChange = { it != SheetValue.Hidden },
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         dragHandle = { BottomSheetDefaults.DragHandle() },
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        // Material3's own back-press dismissal fires *before* any BackHandler we
+        // add inside content can reliably win priority over it. Disable it at the
+        // source and let our own BackHandler below be the only thing back
+        // presses reach.
+        properties = ModalBottomSheetDefaults.properties(shouldDismissOnBackPress = false)
     ) {
+        // First back press should only dismiss the keyboard (the search field
+        // can summon it); only close the sheet on a second press once the IME
+        // is already hidden.
+        val keyboardController = LocalSoftwareKeyboardController.current
+        val imeVisible = WindowInsets.isImeVisible
+        BackHandler {
+            if (imeVisible) keyboardController?.hide() else onDismiss()
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1384,6 +1406,9 @@ fun MemberPickerSheet(
                     ) {
                         Text("Add", fontWeight = FontWeight.Bold)
                     }
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Close")
                 }
             }
 
