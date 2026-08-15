@@ -87,6 +87,14 @@ interface HabitFlowApi {
     @GET("api/v1/locations/mine")
     suspend fun getMyLocations(): List<LocationResponse>
 
+    @GET("api/v1/locations")
+    suspend fun getPublicLocations(
+        @Query("minLat") minLat: Double,
+        @Query("maxLat") maxLat: Double,
+        @Query("minLng") minLng: Double,
+        @Query("maxLng") maxLng: Double
+    ): List<LocationResponse>
+
     // Chat
     @GET("api/v1/coach/chat")
     suspend fun getCoachChat(): com.habitflowai.data.model.CoachChatResponse

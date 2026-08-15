@@ -117,6 +117,21 @@ class LocationRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getPublicLocations(
+        minLat: Double,
+        maxLat: Double,
+        minLng: Double,
+        maxLng: Double
+    ): List<LocationResponse> {
+        return try {
+            api.getPublicLocations(minLat, maxLat, minLng, maxLng)
+                .also { Log.d(TAG, "getPublicLocations: ${it.size} records") }
+        } catch (e: Exception) {
+            Log.w(TAG, "getPublicLocations failed: ${e.message}")
+            emptyList()
+        }
+    }
+
     private suspend fun getCurrentLocation(): Location? {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) !=
             PackageManager.PERMISSION_GRANTED

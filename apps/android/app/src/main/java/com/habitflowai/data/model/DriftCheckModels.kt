@@ -31,11 +31,13 @@ data class LocationSyncRequest(
 
 data class LocationResponse(
     @SerializedName("id") val id: String,
+    @SerializedName("userId") val userId: String? = null,
     @SerializedName("habitId") val habitId: String?,
     @SerializedName("latitude") val latitude: Double,
     @SerializedName("longitude") val longitude: Double,
     @SerializedName("placeName") val placeName: String? = null,
     @SerializedName("taskDescription") val taskDescription: String? = null,
     @SerializedName("timestamp") val timestamp: Long = 0,
-    @SerializedName("isPublic") val isPublic: Boolean = true
+    @SerializedName("isPublic") val isPublic: Boolean = true,
+    @SerializedName("username") val username: String? = null
 )

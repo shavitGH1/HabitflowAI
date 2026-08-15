@@ -9,4 +9,10 @@ interface LocationRepository {
     suspend fun getLocationsForHabit(habitId: String): List<LocationEntity>
     suspend fun getLocations(): List<LocationEntity>
     suspend fun getMyLocations(): List<LocationResponse>
+    suspend fun getPublicLocations(
+        minLat: Double,
+        maxLat: Double,
+        minLng: Double,
+        maxLng: Double
+    ): List<LocationResponse>
 }
