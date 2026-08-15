@@ -212,6 +212,7 @@ fun SocialRoute(
             personaColor = personaDetails.endColor,
             currentUserId = uiState.currentUserId,
             typingUserIds = uiState.typingUsers[activeChatId] ?: emptySet(),
+            allUsers = uiState.allUsers,
             onDismiss = goBack,
             onSendMessage = { content -> viewModel.sendMessage(activeChatId, content) },
             onTypingChanged = { isTyping -> viewModel.setTyping(activeChatId, isTyping) },
@@ -734,7 +735,7 @@ fun CreateGroupBottomSheet(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             items(selectedUsers.toList()) { userId ->
-                                val username = allUsers.find { it.id == userId }?.email?.substringBefore('@') ?: userId
+                                val username = resolveDisplayName(userId, allUsers)
                                 AssistChip(
                                     onClick = { selectedUsersStr = (selectedUsers - userId).joinToString(",") },
                                     label = { Text(username, fontSize = 12.sp) },

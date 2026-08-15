@@ -7,6 +7,8 @@ import com.habitflowai.data.model.CheckEmailRequest
 import com.habitflowai.data.model.ClassifyPersonaRequest
 import com.habitflowai.data.model.ClassifyPersonaResponse
 import com.habitflowai.data.model.LoginRequest
+import com.habitflowai.data.model.OnboardingSuggestionsRequest
+import com.habitflowai.data.model.ReclassifyRequest
 import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.di.AuthManager
@@ -20,6 +22,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private fun extractErrorMessage(httpException: retrofit2.HttpException): String {
+    val fallback = "Server error: ${httpException.code()}"
+    val errorBody = httpException.response()?.errorBody()?.string() ?: return fallback
+    return try {
+        val messageElement = com.google.gson.JsonParser.parseString(errorBody).asJsonObject.get("message")
+        when {
+            messageElement == null || messageElement.isJsonNull -> fallback
+            messageElement.isJsonArray -> messageElement.asJsonArray.joinToString("\n") { it.asString }
+            else -> messageElement.asString
+        }
+    } catch (_: Exception) {
+        fallback
+    }
+}
 
 /**
  * ViewModel for the onboarding process, handling user goals, quiz answers,
@@ -56,12 +73,32 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
+    fun fetchOnboardingSuggestions() {
+        val goal = _uiState.value.goal
+        if (goal.isBlank() || goal == _uiState.value.suggestionsForGoal) return
+        _uiState.value = _uiState.value.copy(suggestionsForGoal = goal)
+
+        viewModelScope.launch {
+            try {
+                val response = api.getOnboardingSuggestions(OnboardingSuggestionsRequest(goal))
+                val byQuestionId = response.suggestions.associate { it.questionId to it.options }
+                _uiState.value = _uiState.value.copy(suggestionsByQuestionId = byQuestionId)
+            } catch (_: Exception) {
+                // Best-effort only — free-text input still works without suggestions.
+            }
+        }
+    }
+
     fun onHomeNavigated() {
         _uiState.value = _uiState.value.copy(navigateToHome = false)
     }
 
     fun onOnboardingNavigated() {
         _uiState.value = _uiState.value.copy(proceedToOnboarding = false)
+    }
+
+    fun startRetake() {
+        _uiState.value = _uiState.value.copy(isRetakeMode = true, errorMessage = null, navigateToHome = false)
     }
 
     fun checkEmail() {
@@ -133,7 +170,8 @@ class OnboardingViewModel @Inject constructor(
                 val request = RegisterRequest(
                     email = currentState.email,
                     password = currentState.password,
-                    openAnswers = listOf(currentState.goal) + currentState.quizAnswers.drop(1).take(5),
+                    goal = currentState.goal,
+                    openAnswers = currentState.quizAnswers,
                     fcmToken = fcmToken
                 )
                 val response = authRepository.register(request)
@@ -162,13 +200,7 @@ class OnboardingViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 val errorMsg = if (e is retrofit2.HttpException) {
-                    try {
-                        val errorBody = e.response()?.errorBody()?.string()
-                        val jsonObject = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
-                        jsonObject.get("message").asString
-                    } catch (inner: Exception) {
-                        "Server error: ${e.code()}"
-                    }
+                    extractErrorMessage(e)
                 } else {
                     "Network error: ${e.message}"
                 }
@@ -212,13 +244,57 @@ class OnboardingViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 val errorMsg = if (e is retrofit2.HttpException) {
-                    try {
-                        val errorBody = e.response()?.errorBody()?.string()
-                        val jsonObject = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
-                        jsonObject.get("message").asString
-                    } catch (inner: Exception) {
-                        "Server error: ${e.code()}"
-                    }
+                    extractErrorMessage(e)
+                } else {
+                    "Network error: ${e.message}"
+                }
+                _uiState.value = currentState.copy(
+                    isLoading = false,
+                    errorMessage = errorMsg
+                )
+            }
+        }
+    }
+
+    fun reclassifyPersona() {
+        val currentState = _uiState.value
+        val filledAnswers = currentState.quizAnswers.count { it.isNotBlank() }
+        if (filledAnswers < 4) {
+            _uiState.value = currentState.copy(errorMessage = "Please answer at least 4 questions before continuing.")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = currentState.copy(isLoading = true, errorMessage = null, navigateToHome = false)
+
+            try {
+                val response = repository.reclassifyPersona(
+                    ReclassifyRequest(goal = currentState.goal, openAnswers = currentState.quizAnswers)
+                )
+
+                if (response is Resource.Success && response.data != null) {
+                    val homeData = api.getHome()
+                    _uiState.value = currentState.copy(
+                        isLoading = false,
+                        isRetakeMode = false,
+                        personaResult = ClassifyPersonaResponse(
+                            id = "",
+                            personaType = homeData.personaType ?: response.data.personaType,
+                            motivationalMessage = homeData.motivationalMessage,
+                            success = true
+                        ),
+                        errorMessage = null,
+                        navigateToHome = true
+                    )
+                } else if (response is Resource.Error) {
+                    _uiState.value = currentState.copy(
+                        isLoading = false,
+                        errorMessage = response.message ?: "Failed to update persona"
+                    )
+                }
+            } catch (e: Exception) {
+                val errorMsg = if (e is retrofit2.HttpException) {
+                    extractErrorMessage(e)
                 } else {
                     "Network error: ${e.message}"
                 }

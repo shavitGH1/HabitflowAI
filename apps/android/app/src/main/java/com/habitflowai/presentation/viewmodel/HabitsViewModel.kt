@@ -66,12 +66,28 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
+    fun deleteHabit(habitId: String) {
+        viewModelScope.launch {
+            val current = _uiState.value.habits.find { it.id == habitId } ?: return@launch
+            habitsRepository.deleteHabit(current)
+        }
+    }
+
     fun completeHabit(habitId: String, isPublic: Boolean = true, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
-            val habit = _uiState.value.habits.find { it.id == habitId } ?: return@launch
+            val habit = _uiState.value.habits.find { it.id == habitId }
+            if (habit == null) {
+                onResult(false)
+                return@launch
+            }
             val success = habitsRepository.completeHabit(habit)
             if (success) {
-                locationRepository.captureAndSaveLocation(habitId)
+                _uiState.value = _uiState.value.copy(
+                    habits = _uiState.value.habits.map {
+                        if (it.id == habitId) it.copy(completed = true) else it
+                    }
+                )
+                locationRepository.captureAndSaveLocation(habit.id, isPublic, "habit")
                 onResult(true)
             } else {
                 onResult(false)
@@ -85,13 +101,6 @@ class HabitsViewModel @Inject constructor(
             val currentStats = _uiState.value.habitStats.toMutableMap()
             currentStats[habitId] = stats
             _uiState.value = _uiState.value.copy(habitStats = currentStats)
-        }
-    }
-
-    fun deleteHabit(habitId: String) {
-        viewModelScope.launch {
-            val current = _uiState.value.habits.find { it.id == habitId } ?: return@launch
-            habitsRepository.deleteHabit(current)
         }
     }
 

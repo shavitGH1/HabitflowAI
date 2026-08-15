@@ -13,6 +13,8 @@ import io.socket.client.Socket
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -30,10 +32,18 @@ class ChatViewModel @Inject constructor(
     private var botChatId: String? = null
 
     init {
+        // The access token isn't necessarily valid yet when this ViewModel is first created
+        // (it's created once at the nav-graph root, before the user has logged in, or with a
+        // stale token from a previous session). Re-run setup every time a token becomes
+        // available rather than once at construction, so a fresh login always reconnects.
         viewModelScope.launch {
-            botChatId = repository.getCoachChatId()
-            setupSocket()
-            loadHistory()
+            authManager.accessToken.filterNotNull().distinctUntilChanged().collect {
+                socket?.disconnect()
+                socket?.off()
+                botChatId = repository.getCoachChatId()
+                setupSocket()
+                loadHistory()
+            }
         }
     }
 
@@ -51,11 +61,12 @@ class ChatViewModel @Inject constructor(
             }
             socket?.on("newMessage") { args ->
                 val data = args[0] as JSONObject
+                val senderId = data.getString("senderId")
                 val message = ChatMessage(
                     id = data.getString("id"),
                     text = data.getString("text"),
-                    senderId = data.getString("senderId"),
-                    isFromBot = data.getString("senderId") == "bot"
+                    senderId = senderId,
+                    isFromBot = senderId != authManager.currentUserId.value
                 )
                 viewModelScope.launch {
                     _uiState.update { it.copy(messages = it.messages + message, isTyping = false) }
@@ -70,7 +81,7 @@ class ChatViewModel @Inject constructor(
     private fun loadHistory() {
         val chatId = botChatId ?: return
         viewModelScope.launch {
-            val history = repository.getHistory(chatId)
+            val history = repository.getHistory(chatId, authManager.currentUserId.value)
             if (history.isNotEmpty()) {
                 _uiState.update { it.copy(messages = history) }
             } else {
@@ -105,21 +116,19 @@ class ChatViewModel @Inject constructor(
     fun sendMessage() {
         val text = _uiState.value.inputText.trim()
         if (text.isEmpty()) return
-        val chatId = botChatId ?: return
+        if (botChatId == null) return
 
-        val messageObj = JSONObject().apply {
-            put("chatId", chatId)
-            put("text", text)
-        }
-        socket?.emit("sendMessage", messageObj)
+        _uiState.update { it.copy(inputText = "", isTyping = true) }
 
-        val userMessage = ChatMessage(text = text, senderId = "user", isFromBot = false)
-        _uiState.update { 
-            it.copy(
-                messages = it.messages + userMessage,
-                inputText = "",
-                isTyping = true
-            )
+        // The coach chat needs a real AI reply, not just a stored message, so this goes
+        // through the coach endpoint instead of the generic chat socket. The backend persists
+        // both sides of the conversation and broadcasts them back over the same "newMessage"
+        // socket event this screen already listens to, so no local optimistic bubble is needed.
+        viewModelScope.launch {
+            val result = repository.sendCoachMessage(text)
+            if (result == null) {
+                _uiState.update { it.copy(isTyping = false) }
+            }
         }
     }
 

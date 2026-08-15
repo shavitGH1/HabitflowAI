@@ -101,11 +101,16 @@ fun MapContent(
     }
 
     var selectedCategory by remember { mutableStateOf("All") }
-    val categories = listOf("All", "Completed")
+    val categories = listOf("All", "Habits", "Tasks")
 
     val filteredMarkers = remember(uiState.markers, selectedCategory) {
-        if (selectedCategory == "All") uiState.markers
-        else uiState.markers.filter { it.habitType == selectedCategory }
+        val value = when (selectedCategory) {
+            "Habits" -> "habit"
+            "Tasks" -> "task"
+            else -> null
+        }
+        if (value == null) uiState.markers
+        else uiState.markers.filter { it.habitType == value }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -166,7 +171,7 @@ fun MapContent(
                                 color = personaDetails.endColor
                             )
                             Text(
-                                text = "Where you completed your tasks",
+                                text = "Where the community completed their tasks",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

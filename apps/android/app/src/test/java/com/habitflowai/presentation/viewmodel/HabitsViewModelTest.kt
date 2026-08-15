@@ -3,6 +3,7 @@ package com.habitflowai.presentation.viewmodel
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.domain.repository.HabitsRepository
+import com.habitflowai.domain.repository.LocationRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -28,6 +29,7 @@ import org.junit.Test
 class HabitsViewModelTest {
 
     private val habitsRepository: HabitsRepository = mockk()
+    private val locationRepository: LocationRepository = mockk()
     private lateinit var viewModel: HabitsViewModel
 
     private val testHabits = listOf(
@@ -59,8 +61,10 @@ class HabitsViewModelTest {
         every { habitsRepository.getHabits(any()) } returns flowOf(testHabits)
         coEvery { habitsRepository.createHabit(any()) } just runs
         coEvery { habitsRepository.deleteHabit(any()) } just runs
+        coEvery { habitsRepository.completeHabit(any()) } returns true
+        coEvery { locationRepository.captureAndSaveLocation(any(), any(), any()) } just runs
 
-        viewModel = HabitsViewModel(habitsRepository)
+        viewModel = HabitsViewModel(habitsRepository, locationRepository)
     }
 
     @After
@@ -133,7 +137,47 @@ class HabitsViewModelTest {
         val errorRepo: HabitsRepository = mockk()
         every { errorRepo.getHabits(any()) } returns flowOf()
 
-        val errorViewModel = HabitsViewModel(errorRepo)
+        val errorViewModel = HabitsViewModel(errorRepo, locationRepository)
         assertEquals(0, errorViewModel.uiState.value.habits.size)
+    }
+
+    @Test
+    fun `completeHabit success marks habit complete and captures public location`() {
+        var callbackResult: Boolean? = null
+        viewModel.completeHabit("h1", isPublic = true) { callbackResult = it }
+
+        assertTrue(callbackResult!!)
+        assertTrue(viewModel.uiState.value.habits.find { it.id == "h1" }?.completed == true)
+        coVerify { habitsRepository.completeHabit(match { it.id == "h1" }) }
+        coVerify { locationRepository.captureAndSaveLocation("h1", true, "habit") }
+    }
+
+    @Test
+    fun `completeHabit success captures private location when toggled off`() {
+        viewModel.completeHabit("h1", isPublic = false)
+
+        coVerify { locationRepository.captureAndSaveLocation("h1", false, "habit") }
+    }
+
+    @Test
+    fun `completeHabit failure does not mark complete or capture location`() {
+        coEvery { habitsRepository.completeHabit(any()) } returns false
+
+        var callbackResult: Boolean? = null
+        viewModel.completeHabit("h1", isPublic = true) { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        assertTrue(viewModel.uiState.value.habits.find { it.id == "h1" }?.completed == false)
+        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
+    }
+
+    @Test
+    fun `completeHabit with unknown id does nothing`() {
+        var callbackResult: Boolean? = null
+        viewModel.completeHabit("non-existent", isPublic = true) { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        coVerify(exactly = 0) { habitsRepository.completeHabit(any()) }
+        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
     }
 }

@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { OPEN_ANSWERS, agent, closeTestApp, createTestApp } from './app.helper';
+import { GOAL, OPEN_ANSWERS, agent, closeTestApp, createTestApp } from './app.helper';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication;
@@ -21,7 +21,7 @@ describe('Auth (e2e)', () => {
   it('POST /auth/register — returns userId, personaType, and success', async () => {
     const res = await agent(app)
       .post('/api/v1/auth/register')
-      .send({ ...credentials, openAnswers: OPEN_ANSWERS })
+      .send({ ...credentials, goal: GOAL, openAnswers: OPEN_ANSWERS })
       .expect(201);
 
     expect(res.body.userId).toBeDefined();

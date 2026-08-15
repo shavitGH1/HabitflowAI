@@ -16,6 +16,10 @@ import com.habitflowai.data.model.LocationResponse
 import com.habitflowai.data.model.LocationSyncRequest
 import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.model.LoginResponse
+import com.habitflowai.data.model.OnboardingSuggestionsRequest
+import com.habitflowai.data.model.OnboardingSuggestionsResponse
+import com.habitflowai.data.model.ReclassifyRequest
+import com.habitflowai.data.model.ReclassifyResponse
 import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.model.RegisterResponse
 import com.habitflowai.data.model.TokenRefreshRequest
@@ -48,6 +52,9 @@ interface HabitFlowApi {
     @POST("api/v1/auth/register")
     suspend fun register(@Body request: RegisterRequest): RegisterResponse
 
+    @POST("api/v1/auth/onboarding-suggestions")
+    suspend fun getOnboardingSuggestions(@Body request: OnboardingSuggestionsRequest): OnboardingSuggestionsResponse
+
     @GET("api/v1/users/me/home")
     suspend fun getHome(): HomeResponse
 
@@ -56,6 +63,9 @@ interface HabitFlowApi {
 
     @POST("api/v1/personas/classify")
     suspend fun classifyPersona(@Body request: ClassifyPersonaRequest): ClassifyPersonaResponse
+
+    @POST("api/v1/personas/reclassify")
+    suspend fun reclassifyPersona(@Body request: ReclassifyRequest): ReclassifyResponse
 
     @POST("api/v1/goals/generate")
     suspend fun generateGoals(@Body request: GenerateGoalsRequest): GenerateGoalsResponse
@@ -69,14 +79,14 @@ interface HabitFlowApi {
     @PUT("api/v1/habits/{id}")
     suspend fun updateHabit(@Path("id") id: String, @Body habit: HabitRequest): HabitResponse
 
+    @PATCH("api/v1/habits/{id}/complete")
+    suspend fun completeHabit(@Path("id") id: String): Response<HabitResponse>
+
     @DELETE("api/v1/habits/{id}")
     suspend fun deleteHabit(@Path("id") id: String): Response<Unit>
 
     @GET("api/v1/habits")
     suspend fun getHabits(): List<HabitResponse>
-
-    @PATCH("api/v1/habits/{id}/complete")
-    suspend fun completeHabit(@Path("id") id: String): HabitResponse
 
     @GET("api/v1/habits/{id}/stats")
     suspend fun getHabitStats(@Path("id") id: String): Map<String, Any>
@@ -93,9 +103,20 @@ interface HabitFlowApi {
     @GET("api/v1/locations/mine")
     suspend fun getMyLocations(): List<LocationResponse>
 
+    @GET("api/v1/locations")
+    suspend fun getPublicLocations(
+        @Query("minLat") minLat: Double,
+        @Query("maxLat") maxLat: Double,
+        @Query("minLng") minLng: Double,
+        @Query("maxLng") maxLng: Double
+    ): List<LocationResponse>
+
     // Chat
     @GET("api/v1/coach/chat")
     suspend fun getCoachChat(): com.habitflowai.data.model.CoachChatResponse
+
+    @POST("api/v1/coach/chat")
+    suspend fun postCoachChat(@Body request: com.habitflowai.data.model.CoachChatRequest): com.habitflowai.data.model.CoachChatApiResponse
 
     @GET("api/v1/chats")
     suspend fun getChats(): List<com.habitflowai.data.model.ChatResponse>

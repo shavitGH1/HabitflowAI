@@ -8,6 +8,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UpdateFcmTokenDto } from './dto/update-fcm-token.dto';
+import { OnboardingSuggestionsDto } from './dto/onboarding-suggestions.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('auth')
@@ -21,6 +22,17 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Returns { available: boolean }' })
   checkEmail(@Body() dto: CheckEmailDto) {
     return this.authService.checkEmail(dto.email);
+  }
+
+  @Post('onboarding-suggestions')
+  @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
+  @ApiOperation({ summary: 'Get goal-tailored quick-pick suggestions for the onboarding background questions' })
+  @ApiResponse({ status: 200, description: 'Three suggested answers per background question, tailored to the goal' })
+  @ApiResponse({ status: 400, description: 'Invalid goal' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  onboardingSuggestions(@Body() dto: OnboardingSuggestionsDto) {
+    return this.authService.getOnboardingSuggestions(dto.goal);
   }
 
   @Post('register')

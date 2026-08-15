@@ -70,8 +70,13 @@ class HabitSyncWorker @AssistedInject constructor(
     }
 
     private suspend fun pushDelete(habit: HabitEntity) {
+        val serverId = habit.serverId
+        if (serverId == null) {
+            // Never synced to the server (create hadn't landed yet) — nothing to delete remotely.
+            habitDao.delete(habit)
+            return
+        }
         try {
-            val serverId = habit.serverId ?: habit.id
             api.deleteHabit(serverId)
             habitDao.delete(habit)
         } catch (_: Exception) {

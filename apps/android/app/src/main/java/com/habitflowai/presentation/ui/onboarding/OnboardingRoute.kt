@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -81,18 +83,20 @@ fun OnboardingRoute(
     uiState: OnboardingUiState,
     onGoalChange: (String) -> Unit,
     onQuizAnswerChange: (Int, String) -> Unit,
+    onGoalSubmitted: () -> Unit = {},
     onSubmit: () -> Unit,
     onPersonaClassified: () -> Unit,
     onNavigationHandled: () -> Unit
 ) {
     var currentStep by remember { mutableIntStateOf(0) }
-    
+
     OnboardingScreen(
         uiState = uiState,
         currentStep = currentStep,
         onStepChange = { currentStep = it },
         onGoalChange = onGoalChange,
         onQuizAnswerChange = onQuizAnswerChange,
+        onGoalSubmitted = onGoalSubmitted,
         onSubmit = onSubmit,
         onPersonaClassified = onPersonaClassified,
         onNavigationHandled = onNavigationHandled
@@ -106,12 +110,17 @@ fun OnboardingScreen(
     onStepChange: (Int) -> Unit,
     onGoalChange: (String) -> Unit,
     onQuizAnswerChange: (Int, String) -> Unit,
+    onGoalSubmitted: () -> Unit = {},
     onSubmit: () -> Unit,
     onPersonaClassified: () -> Unit,
     onNavigationHandled: () -> Unit
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     LaunchedEffect(uiState.navigateToHome) {
         if (uiState.navigateToHome) {
+            keyboardController?.hide()
             onPersonaClassified()
             onNavigationHandled()
         }
@@ -229,6 +238,46 @@ fun OnboardingScreen(
                                 val onValueChange: (String) -> Unit = {
                                     if (step == 0) onGoalChange(it) else onQuizAnswerChange(answerIndex, it)
                                 }
+                                // Backend question ids are 1-6 and line up 1:1 with steps 1-6 here.
+                                val suggestions = if (step > 0) uiState.suggestionsByQuestionId[step].orEmpty() else emptyList()
+
+                                if (suggestions.isNotEmpty()) {
+                                    Text(
+                                        text = "Quick picks — tap to fill in, then edit as you like",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        suggestions.forEach { suggestion ->
+                                            val chipShape = RoundedCornerShape(14.dp)
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(chipShape)
+                                                    .border(
+                                                        width = 1.dp,
+                                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                                        shape = chipShape
+                                                    )
+                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.06f))
+                                                    .clickable { onValueChange(suggestion) }
+                                                    .padding(14.dp)
+                                            ) {
+                                                Text(
+                                                    text = suggestion,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                }
 
                                 OutlinedTextField(
                                     value = value,
@@ -249,6 +298,9 @@ fun OnboardingScreen(
                                 Spacer(modifier = Modifier.height(32.dp))
                                 Button(
                                     onClick = {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
+                                        if (step == 0) onGoalSubmitted()
                                         if (currentStep < totalSteps - 1) onStepChange(currentStep + 1) else onSubmit()
                                     },
                                     enabled = value.isNotBlank(),
@@ -289,6 +341,8 @@ fun OnboardingScreen(
                                                 )
                                             )
                                             .clickable {
+                                                keyboardController?.hide()
+                                                focusManager.clearFocus()
                                                 onQuizAnswerChange(step, option.value)
                                                 if (currentStep < totalSteps - 1) {
                                                     onStepChange(currentStep + 1)
@@ -385,7 +439,9 @@ fun OnboardingScreen(
                                 }
                                 Spacer(modifier = Modifier.height(24.dp))
                                 Button(
-                                    onClick = { 
+                                    onClick = {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
                                         if (currentStep < totalSteps - 1) onStepChange(currentStep + 1) else onSubmit()
                                     },
                                     enabled = uiState.quizAnswers[step].isNotBlank(),
@@ -404,7 +460,11 @@ fun OnboardingScreen(
             
             if (currentStep > 0) {
                 TextButton(
-                    onClick = { onStepChange(currentStep - 1) },
+                    onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                        onStepChange(currentStep - 1)
+                    },
                     modifier = Modifier.height(32.dp),
                     contentPadding = PaddingValues(0.dp)
                 ) {

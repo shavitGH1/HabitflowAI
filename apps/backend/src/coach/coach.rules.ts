@@ -1,10 +1,21 @@
+import { PersonaType } from '../ai/pillars';
 import { HabitData } from '../habits/habit.repository';
-import { CoachBand, CoachTipId } from './coach.templates';
+import {
+  BAND_SENTENCES,
+  CoachBand,
+  CoachTipId,
+  NOTHING_DONE_TODAY,
+  PERSONA_LINES,
+  TIPS,
+  completedTodayLine,
+  notesTodayLine,
+} from './coach.templates';
 
 const DAY_MS = 86_400_000;
 const WINDOW_DAYS = 7;
 
 export const PERSONA_REVIEW_DAYS = 30;
+export const GOAL_FAILURE_CONSISTENCY = 0.3;
 
 export interface CoachStats {
   habitCount: number;
@@ -61,6 +72,33 @@ export const pickTip = ({ habitCount, streak, completionRate7d }: CoachStats): C
 
 export const isDueForPersonaReview = ({ habitCount, oldestHabitAgeDays }: CoachStats): boolean =>
   habitCount > 0 && oldestHabitAgeDays >= PERSONA_REVIEW_DAYS;
+
+export const isGoalFailing = (goalHabits: HabitData[]): boolean => {
+  if (!goalHabits.length) return false;
+  const averageConsistency =
+    goalHabits.reduce((sum, habit) => sum + habit.consistencyScore, 0) / goalHabits.length;
+  return goalHabits.every((habit) => habit.streak === 0) && averageConsistency < GOAL_FAILURE_CONSISTENCY;
+};
+
+export const dailySummary = (stats: CoachStats, personaType: PersonaType | null): string =>
+  [
+    stats.completedToday.length ? completedTodayLine(stats.completedToday) : NOTHING_DONE_TODAY,
+    stats.notesToday.length ? notesTodayLine(stats.notesToday) : '',
+    personaType ? PERSONA_LINES[personaType] : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+export const weeklySummary = (stats: CoachStats, personaType: PersonaType | null): string => {
+  const tip = pickTip(stats);
+  return [
+    BAND_SENTENCES[pickBand(stats.completionRate7d)],
+    personaType ? PERSONA_LINES[personaType] : '',
+    tip ? TIPS[tip] : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
 
 const oldestHabitAgeDays = (habits: HabitData[], now: Date): number => {
   const created = habits.map((habit) => Date.parse(habit.createdAt)).filter((ms) => !Number.isNaN(ms));

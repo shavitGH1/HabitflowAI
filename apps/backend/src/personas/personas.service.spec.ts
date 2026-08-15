@@ -30,7 +30,6 @@ const mockGoalsService = {
 const mockAiService = {
   detectDrift: jest.fn(),
   getFeedbackTally: jest.fn(),
-  coachChat: jest.fn(),
   generateDailyVariations: jest.fn(),
 };
 
@@ -138,76 +137,6 @@ describe('PersonasService', () => {
 
       expect(mockAiService.detectDrift).toHaveBeenCalledWith(
         expect.objectContaining({ behaviorSnapshot: expect.objectContaining({ activeStreak: 2 }) }),
-      );
-    });
-  });
-
-  describe('coachChat()', () => {
-    it('throws NotFoundException when user does not exist', async () => {
-      mockUserRepository.findUserById.mockResolvedValue(null);
-
-      await expect(service.coachChat(USER_ID, { message: 'hi' })).rejects.toThrow(NotFoundException);
-    });
-
-    it('forwards goal/habit context and passes through the AI reply when there is no proposed change', async () => {
-      mockUserRepository.findUserById.mockResolvedValue(makeUser());
-      mockHabitRepository.findByUserId.mockResolvedValue([makeHabit({ goalId: GOAL_ID })]);
-      mockGoalRepository.findActiveByUserId.mockResolvedValue(makeGoal());
-      mockAiService.detectDrift.mockResolvedValue({ driftDetected: false, newSuggestedPersona: null });
-      mockAiService.coachChat.mockResolvedValue({ reply: 'Keep going!', proposedChange: null });
-
-      const result = await service.coachChat(USER_ID, { message: 'How am I doing?' });
-
-      expect(mockAiService.coachChat).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'How am I doing?',
-          personaType: 'Achiever',
-          activeGoal: expect.objectContaining({ id: GOAL_ID }),
-          habits: [expect.objectContaining({ goalId: GOAL_ID })],
-        }),
-      );
-      expect(result).toEqual({ reply: 'Keep going!', proposedChange: null });
-    });
-
-    it('drops a forfeitGoal proposal whose goalId does not match the active goal (never trusts raw AI output)', async () => {
-      mockUserRepository.findUserById.mockResolvedValue(makeUser());
-      mockHabitRepository.findByUserId.mockResolvedValue([]);
-      mockGoalRepository.findActiveByUserId.mockResolvedValue(makeGoal({ id: GOAL_ID }));
-      mockAiService.detectDrift.mockResolvedValue({ driftDetected: false, newSuggestedPersona: null });
-      mockAiService.coachChat.mockResolvedValue({
-        reply: 'Maybe forfeit?',
-        proposedChange: { type: 'forfeitGoal', rationale: 'hallucinated', goalId: 'not-the-real-goal' },
-      });
-
-      const result = await service.coachChat(USER_ID, { message: 'Should I quit?' });
-
-      expect(result.proposedChange).toBeNull();
-    });
-
-    it('keeps a forfeitGoal proposal whose goalId matches the active goal', async () => {
-      mockUserRepository.findUserById.mockResolvedValue(makeUser());
-      mockHabitRepository.findByUserId.mockResolvedValue([]);
-      mockGoalRepository.findActiveByUserId.mockResolvedValue(makeGoal({ id: GOAL_ID }));
-      mockAiService.detectDrift.mockResolvedValue({ driftDetected: false, newSuggestedPersona: null });
-      const proposedChange = { type: 'forfeitGoal' as const, rationale: 'consistent misses', goalId: GOAL_ID };
-      mockAiService.coachChat.mockResolvedValue({ reply: 'Maybe forfeit?', proposedChange });
-
-      const result = await service.coachChat(USER_ID, { message: 'Should I quit?' });
-
-      expect(result.proposedChange).toEqual(proposedChange);
-    });
-
-    it('skips the drift lookup (and never proposes personaSwitch context) when the user has an unknown persona', async () => {
-      mockUserRepository.findUserById.mockResolvedValue(makeUser({ personaType: 'not-a-real-persona' }));
-      mockHabitRepository.findByUserId.mockResolvedValue([]);
-      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
-      mockAiService.coachChat.mockResolvedValue({ reply: 'Hi!', proposedChange: null });
-
-      await service.coachChat(USER_ID, { message: 'hi' });
-
-      expect(mockAiService.detectDrift).not.toHaveBeenCalled();
-      expect(mockAiService.coachChat).toHaveBeenCalledWith(
-        expect.objectContaining({ personaType: null, driftSuggestedPersona: null }),
       );
     });
   });

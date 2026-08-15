@@ -2,7 +2,7 @@ import { AddressInfo } from 'net';
 import { INestApplication } from '@nestjs/common';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { io, Socket } from 'socket.io-client';
-import { OPEN_ANSWERS, agent, closeTestApp, createTestApp } from './app.helper';
+import { GOAL, OPEN_ANSWERS, agent, closeTestApp, createTestApp } from './app.helper';
 
 describe('Chat (e2e)', () => {
   let app: INestApplication;
@@ -34,7 +34,7 @@ describe('Chat (e2e)', () => {
 
     const registerA = await agent(app)
       .post('/api/v1/auth/register')
-      .send({ email: 'e2e-chat-a@test.com', password: 'Password123', openAnswers: OPEN_ANSWERS });
+      .send({ email: 'e2e-chat-a@test.com', password: 'Password123', goal: GOAL, openAnswers: OPEN_ANSWERS });
     userAId = registerA.body.userId;
     const loginA = await agent(app)
       .post('/api/v1/auth/login')
@@ -43,7 +43,7 @@ describe('Chat (e2e)', () => {
 
     const registerB = await agent(app)
       .post('/api/v1/auth/register')
-      .send({ email: 'e2e-chat-b@test.com', password: 'Password123', openAnswers: OPEN_ANSWERS });
+      .send({ email: 'e2e-chat-b@test.com', password: 'Password123', goal: GOAL, openAnswers: OPEN_ANSWERS });
     userBId = registerB.body.userId;
     const loginB = await agent(app)
       .post('/api/v1/auth/login')
@@ -52,7 +52,7 @@ describe('Chat (e2e)', () => {
 
     const registerC = await agent(app)
       .post('/api/v1/auth/register')
-      .send({ email: 'e2e-chat-c@test.com', password: 'Password123', openAnswers: OPEN_ANSWERS });
+      .send({ email: 'e2e-chat-c@test.com', password: 'Password123', goal: GOAL, openAnswers: OPEN_ANSWERS });
     userCId = registerC.body.userId;
     const loginC = await agent(app)
       .post('/api/v1/auth/login')
@@ -61,7 +61,7 @@ describe('Chat (e2e)', () => {
 
     const registerD = await agent(app)
       .post('/api/v1/auth/register')
-      .send({ email: 'e2e-chat-d@test.com', password: 'Password123', openAnswers: OPEN_ANSWERS });
+      .send({ email: 'e2e-chat-d@test.com', password: 'Password123', goal: GOAL, openAnswers: OPEN_ANSWERS });
     userDId = registerD.body.userId;
     const loginD = await agent(app)
       .post('/api/v1/auth/login')

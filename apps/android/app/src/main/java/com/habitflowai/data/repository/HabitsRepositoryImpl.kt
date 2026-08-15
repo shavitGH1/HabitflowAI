@@ -82,9 +82,13 @@ class HabitsRepositoryImpl @Inject constructor(
 
     override suspend fun completeHabit(habit: HabitEntity): Boolean {
         return try {
-            api.completeHabit(habit.id)
-            refreshHabits()
-            true
+            val response = api.completeHabit(habit.id)
+            if (response.isSuccessful) {
+                refreshHabits()
+                true
+            } else {
+                false
+            }
         } catch (e: Exception) {
             val entity = habit.copy(
                 completed = true,

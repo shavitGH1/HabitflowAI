@@ -47,9 +47,18 @@ ${
       : ''
 }
 
+The array must contain exactly 4 tasks: 2 tagged "genre": "goal" (concrete actions that directly
+advance "${goal}") and 2 tagged "genre": "persona" (general habits that build the ${personaType}
+persona's strengths, independent of the specific goal).
+
 OUTPUT FORMAT:
 Return the response STRICTLY as a valid JSON object containing only the "dailyVariations" array.
 {
-  "dailyVariations": [ { "description": "New day-specific task 1", "points": 30 }, { "description": "New day-specific task 2", "points": 15 } ]
+  "dailyVariations": [
+    { "description": "New day-specific task 1", "points": 30, "genre": "goal" },
+    { "description": "New day-specific task 2", "points": 15, "genre": "goal" },
+    { "description": "New day-specific task 3", "points": 20, "genre": "persona" },
+    { "description": "New day-specific task 4", "points": 10, "genre": "persona" }
+  ]
 }
 `;

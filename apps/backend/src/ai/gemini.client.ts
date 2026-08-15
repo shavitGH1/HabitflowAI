@@ -1,8 +1,26 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenAI } from '@google/genai';
+import { Content, FunctionCallingConfigMode, FunctionDeclaration, GoogleGenAI } from '@google/genai';
 import { ZodSchema } from 'zod';
 import { logger } from '../logger';
+
+export interface ToolCallRequest {
+  name: string;
+  args: Record<string, unknown>;
+  thoughtSignature?: string;
+}
+
+export interface ToolTurnInput {
+  systemInstruction: string;
+  contents: Content[];
+  functionDeclarations: FunctionDeclaration[];
+  forceToolCall?: boolean;
+}
+
+export interface ToolTurn {
+  text: string;
+  toolCalls: ToolCallRequest[];
+}
 
 @Injectable()
 export class GeminiClient {
@@ -14,7 +32,7 @@ export class GeminiClient {
     const configured = this.config.get<string>('GEMINI_MODEL');
     this.models = configured
       ? [configured]
-      : ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
+      : ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
   }
 
   async generateJson<T>(prompt: string, schema?: ZodSchema<T>): Promise<T> {
@@ -33,18 +51,60 @@ export class GeminiClient {
     return parsed as T;
   }
 
-  private async callWithFallback(prompt: string): Promise<string> {
+  async generateWithTools({
+    systemInstruction,
+    contents,
+    functionDeclarations,
+    forceToolCall,
+  }: ToolTurnInput): Promise<ToolTurn> {
+    return this.withModelFallback(async (model) => {
+      const response = await this.ai.models.generateContent({
+        model,
+        contents,
+        config: {
+          systemInstruction,
+          tools: [{ functionDeclarations }],
+          ...(forceToolCall && {
+            toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } },
+          }),
+        },
+      });
+
+      const parts = response.candidates?.[0]?.content?.parts ?? [];
+      const toolCalls = parts
+        .filter((part): part is typeof part & { functionCall: { name: string; args?: Record<string, unknown> } } =>
+          Boolean(part.functionCall?.name),
+        )
+        .map((part) => ({
+          name: part.functionCall.name,
+          args: part.functionCall.args ?? {},
+          thoughtSignature: part.thoughtSignature,
+        }));
+      const text = response.text ?? '';
+
+      if (!text && !toolCalls.length) throw new Error('Empty response');
+      return { text, toolCalls };
+    });
+  }
+
+  private callWithFallback(prompt: string): Promise<string> {
+    return this.withModelFallback(async (model) => {
+      const response = await this.ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: { responseMimeType: 'application/json' },
+      });
+      const text = response.text;
+      if (!text) throw new Error('Empty response');
+      return text;
+    });
+  }
+
+  private async withModelFallback<T>(run: (model: string) => Promise<T>): Promise<T> {
     for (let i = 0; i < this.models.length; i++) {
       const model = this.models[i];
       try {
-        const response = await this.ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: { responseMimeType: 'application/json' },
-        });
-        const text = response.text;
-        if (!text) throw new Error('Empty response');
-        return text;
+        return await run(model);
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         if (i === this.models.length - 1) {

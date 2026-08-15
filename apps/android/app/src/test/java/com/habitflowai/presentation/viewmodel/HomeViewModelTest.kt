@@ -52,7 +52,7 @@ class HomeViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        coEvery { locationRepository.captureAndSaveLocation(any()) } just runs
+        coEvery { locationRepository.captureAndSaveLocation(any(), any(), any()) } just runs
         viewModel = HomeViewModel(goalsRepository, locationRepository)
     }
 
@@ -121,7 +121,7 @@ class HomeViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(callbackResult!!)
         assertEquals(true, state.homeData?.coreGoals?.find { it.id == "task-1" }?.completed)
-        coVerify { locationRepository.captureAndSaveLocation("task-1") }
+        coVerify { locationRepository.captureAndSaveLocation("task-1", true, "task") }
     }
 
     @Test
@@ -137,7 +137,7 @@ class HomeViewModelTest {
         val state = viewModel.uiState.value
         assertFalse(callbackResult!!)
         // task-2 was already completed=true in sample data; state shouldn't change
-        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any()) }
+        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
     }
 
     @Test
@@ -151,7 +151,7 @@ class HomeViewModelTest {
         viewModel.completeTask("task-1") { callbackResult = it }
 
         assertFalse(callbackResult!!)
-        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any()) }
+        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
     }
 
     @Test
@@ -162,7 +162,7 @@ class HomeViewModelTest {
         viewModel.completeTask("task-1") { callbackResult = it }
 
         assertTrue(callbackResult!!)
-        coVerify { locationRepository.captureAndSaveLocation("task-1") }
+        coVerify { locationRepository.captureAndSaveLocation("task-1", true, "task") }
     }
 
     @Test

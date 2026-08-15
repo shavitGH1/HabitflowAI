@@ -18,12 +18,10 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register({ email, password, openAnswers, fcmToken }: RegisterDto) {
+  async register({ email, password, goal, openAnswers, fcmToken }: RegisterDto) {
     if (await this.userRepository.findUserByEmail(email)) {
       throw new BadRequestException('User with this email already exists');
     }
-
-    const goal = openAnswers[0];
 
     const classification = await this.ai.classifyPersonaWeighted({ goal, openAnswers });
     if (!classification.isValid) {
@@ -113,6 +111,10 @@ export class AuthService {
   async checkEmail(email: string) {
     const existing = await this.userRepository.findUserByEmail(email);
     return { available: !existing };
+  }
+
+  getOnboardingSuggestions(goal: string) {
+    return this.ai.getOnboardingSuggestions(goal);
   }
 
   async updateFcmToken(userId: string, fcmToken: string) {

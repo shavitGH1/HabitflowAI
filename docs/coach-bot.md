@@ -12,7 +12,7 @@ It works in both directions:
 | Direction | Trigger | Engine |
 |---|---|---|
 | Proactive | daily and weekly cron | deterministic rules, Gemini rewrites the wording |
-| Reactive | the user sends a message | conversational agent, may propose a change |
+| Reactive | the user sends a message | tool-calling agent loop, may propose a change |
 
 Proactively it posts a short daily summary of what the user completed, a weekly grade with one
 tip, and — once the user has 30 days of tracked history — an optional persona-switch suggestion.
@@ -124,50 +124,112 @@ feature and are what the unit tests assert against.
 
 ### 3.6 Conversational path
 
-When the user sends a message, `CoachService.converse` writes it into the coach chat, calls
-`PersonasService.coachChat`, and writes the reply back into the same chat.
+When the user sends a message, `CoachService.converse` writes it into the coach chat, runs the
+coach agent, and writes the reply back into the same chat.
 
-The agent sees the user's persona, active goal, habits with their consistency scores and streaks,
-and any pending drift suggestion. It returns a reply and optionally a `proposedChange`:
-`personaSwitch`, `adjustDifficulty` or `forfeitGoal`.
+The agent starts with no user context in its prompt. It gathers what it needs by calling tools,
+one turn at a time, until it stops asking for tools or hits the step limit. Each tool has one
+responsibility and its description names the sibling tool to use instead, so two tools never
+answer the same question:
 
-A proposed change is never applied on its own. The client must call the confirm endpoint, and the
-bot then posts a confirmation line so the transcript records what was agreed. A `forfeitGoal`
-proposal that does not match the user's active goal is dropped before it reaches the client.
+| Tool | Answers | Explicitly not for |
+|---|---|---|
+| `get_progress_summary` | overall standing: rate, streak, band, verdict sentence | naming individual habits |
+| `get_habit_list` | per-habit streak, consistency, linked goal | judging overall progress |
+| `get_persona_profile` | the stored persona and its pillar scores | whether that persona still fits |
+| `get_active_goal` | the current goal and its exact id | anything about habits |
+| `check_persona_drift` | whether the persona still fits (expensive, cached per conversation) | routine questions |
+| `propose_change` | stages ONE change for the user to confirm | applying anything |
 
-On any model failure the agent returns a fixed apology reply with no proposed change.
+Each turn the model may emit function calls; the loop executes them, feeds the results back as
+`functionResponse` parts, and asks again. The last ten messages of the coach chat are replayed
+as history, so the thread itself is the agent's memory. After `maxSteps` (default 5) the loop
+makes one final call with no tools attached, which guarantees a text answer.
+
+### 3.7 Deterministic boundary
+
+The same split as the proactive path applies here: **code decides, the model phrases.**
+
+`get_progress_summary` does not hand the model raw numbers to interpret. It returns the band and
+the verdict sentence already chosen by `coach.rules.ts`, and the prompt tells the model to
+rephrase them rather than re-score the user.
+
+`propose_change` is a proposal, not a decision. Every call is re-checked by `coach.policy.ts`, a
+pure function over fixed thresholds:
+
+| Proposal | Allowed only when |
+|---|---|
+| `personaSwitch` | `check_persona_drift` ran in this conversation, detected drift, and named exactly that persona |
+| `adjustDifficulty` `increase` | 7-day completion rate ≥ 80% |
+| `adjustDifficulty` `decrease` | 7-day completion rate < 50% |
+| `forfeitGoal` | the id matches the active goal **and** its linked habits are all at streak 0 with average consistency < 30% |
+| any | no change staged yet in this conversation |
+
+A rejected proposal throws `ToolRejectedError`, and the loop returns the reason to the model as
+`{ rejected: ... }` — distinct from `{ error: ... }`, which means the tool actually broke. The
+model is told why the data does not support it and answers honestly instead of the proposal
+being dropped behind its back. Note what this ordering enforces: the model cannot propose a
+persona switch without first paying for the drift analysis.
+
+### 3.8 Fallback
+
+The model is never the only thing standing between the user and an answer:
+
+| Failure | What the user gets |
+|---|---|
+| One tool throws | `{ error }` back to the model, which reports what it could not check |
+| A proposal violates policy | `{ rejected }` back to the model, with the threshold it missed |
+| Gemini fails on one model | the next model in `GeminiClient`'s chain |
+| Every model fails, or the reply is empty | the deterministic weekly summary from `coach.rules.ts` |
+| Even the database is unreachable | the static `COACH_OFFLINE_REPLY` line |
+
+The main fallback is real coaching, not an apology: `CoachToolSession.fallbackReply` recomputes
+the user's stats and returns the same band sentence, persona line and tip the weekly cron would
+have produced. A staged proposal is dropped on that path, because the reply explaining it never
+reached the user.
 
 ## 4. Module layout
 
 ```
 apps/backend/src/coach/
-  coach.templates.ts    bot id, 4 band sentences, 6 persona lines, 3 tips, confirmation lines
-  coach.rules.ts        computeStats / pickBand / pickTip  (pure, no Nest, no DB)
+  coach.templates.ts    bot id, 4 band sentences, 6 persona lines, 3 tips, fallback and confirmation lines
+  coach.rules.ts        computeStats / pickBand / pickTip / daily+weekly summaries  (pure)
+  coach.policy.ts       rejectionReason — the fixed thresholds every proposal is re-checked against (pure)
+  coach.toolset.ts      per-user tool session: the 6 coach tools, staged proposal, fallback reply
+  coach.agent.ts        runs the agent loop with the coach system instruction
   coach.service.ts      ensureCoachChat, postDaily, postWeekly, converse, confirmChange, @Cron
   coach.controller.ts   check-in, weekly-review, chat, chat/confirm
   coach.module.ts
   coach.rules.spec.ts
+  coach.policy.spec.ts
+  coach.toolset.spec.ts
 
 apps/backend/src/ai/
+  agent/agent-tool.ts       AgentTool contract, defineTool (Zod-validated args), ToolRejectedError
+  agent/agent-loop.ts       generic tool-calling loop, no domain knowledge
+  agent/agent-loop.spec.ts
+  prompts/coach-agent.prompt.ts
   prompts/coach-phrasing.prompt.ts
   schemas/coach-phrasing.schema.ts
+  schemas/coaching-agent.schema.ts
   features/coach-phrasing.feature.ts
   features/coach-phrasing.feature.spec.ts
-  features/coaching-agent.feature.ts
 ```
 
-`coach.rules.ts` has no framework, database or AI imports. All rule tests target it directly.
-The AI files follow the established `prompts / schemas / features` pattern. `AiService` exposes
-`phraseCoachMessage` for the proactive path and `coachChat` for the conversational one.
+`coach.rules.ts` and `coach.policy.ts` have no framework, database or AI imports, so every
+threshold in the feature is unit-tested directly against pure functions.
+`agent-loop.ts` knows nothing about habits or personas — it only knows tools, turns and errors,
+and `GeminiClient.generateWithTools` is the single place the SDK's function-calling API is used.
+The coach tools are the only place that maps repositories onto that contract.
 
-`CoachService` is the only writer to the coach chat. `PersonasService` keeps the agent logic and
-knows nothing about chat.
+`CoachService` is the only writer to the coach chat. `PersonasService` owns `driftCheck` and
+`confirmCoachChange` and knows nothing about chat.
 
 ## 5. API
 
 | Method | Route | Purpose |
 |---|---|---|
-| `POST` | `/api/v1/coach/chat` | Send a message; both sides are stored in the coach chat |
+| `POST` | `/api/v1/coach/chat` | Send a message; both sides are stored in the coach chat. Returns the reply, an optional `proposedChange` and `toolsUsed` |
 | `POST` | `/api/v1/coach/chat/confirm` | Apply a change the coach proposed |
 | `POST` | `/api/v1/coach/check-in` | Run the daily job for the caller immediately |
 | `POST` | `/api/v1/coach/weekly-review` | Run the weekly job for the caller immediately |
@@ -191,10 +253,10 @@ created today. No new collection or flag is introduced.
 
 ## 7. Reused without modification
 
-`ChatService.postMessage`, `ChatService.assertParticipant`, `ChatGateway.emitToRoom`,
-`HabitRepository.findByUserId`, `UserRepository.findAllUsers`, `PersonasService.driftCheck`,
-`PersonasService.coachChat`, `PersonasService.confirmCoachChange`, `GeminiClient`,
-`PROMPT_SAFETY_GUARDRAIL`.
+`ChatService.postMessage`, `ChatService.getMessages`, `ChatService.assertParticipant`,
+`ChatGateway.emitToRoom`, `HabitRepository.findByUserId`, `GoalRepository.findActiveByUserId`,
+`UserRepository.findAllUsers`, `PersonasService.driftCheck`, `PersonasService.confirmCoachChange`,
+`GeminiClient`, `PROMPT_SAFETY_GUARDRAIL`.
 
 ## 8. Task assignment
 

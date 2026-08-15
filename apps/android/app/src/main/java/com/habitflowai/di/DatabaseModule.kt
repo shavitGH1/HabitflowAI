@@ -32,7 +32,9 @@ object DatabaseModule {
             HabitFlowDatabase.MIGRATION_2_3, 
             HabitFlowDatabase.MIGRATION_3_4,
             HabitFlowDatabase.MIGRATION_4_5,
-            HabitFlowDatabase.MIGRATION_5_6
+            HabitFlowDatabase.MIGRATION_5_6,
+            HabitFlowDatabase.MIGRATION_6_7,
+            HabitFlowDatabase.MIGRATION_7_8
         )
         .fallbackToDestructiveMigration()
         .build()
