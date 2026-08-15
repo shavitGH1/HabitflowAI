@@ -49,17 +49,23 @@ class MapViewModel @Inject constructor(
     private fun loadMarkers() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            val locations = locationRepository.getMyLocations()
+            val locations = locationRepository.getPublicLocations(
+                minLat = -90.0,
+                maxLat = 90.0,
+                minLng = -180.0,
+                maxLng = 180.0
+            )
             val markers = locations.map { location ->
                 val taskName = location.taskDescription?.takeIf { it.isNotBlank() }
                 val placeName = location.placeName?.takeIf { it.isNotBlank() }
+                val displayName = location.username?.takeIf { it.isNotBlank() } ?: "User"
                 HabitMarker(
                     id = location.id,
                     habitName = taskName ?: placeName ?: "Completed task",
                     personaEmoji = "📍",
                     habitType = "Completed",
                     latLng = LatLng(location.latitude, location.longitude),
-                    username = placeName,
+                    username = displayName,
                     isPublic = location.isPublic
                 )
             }

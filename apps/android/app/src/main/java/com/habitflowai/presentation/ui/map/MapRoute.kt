@@ -166,7 +166,7 @@ fun MapContent(
                                 color = personaDetails.endColor
                             )
                             Text(
-                                text = "Where you completed your tasks",
+                                text = "Where the community completed their tasks",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
