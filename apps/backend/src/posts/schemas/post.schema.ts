@@ -1,10 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
+import { User } from '../../users/schemas/user.schema';
 
 @Schema({ timestamps: true })
 export class Post {
-  @Prop({ required: true })
-  authorId: string;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+  authorId: MongooseSchema.Types.ObjectId;
 
   @Prop({ required: true })
   habitName: string;

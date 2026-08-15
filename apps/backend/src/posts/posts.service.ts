@@ -21,6 +21,7 @@ export class PostsService {
     if (file) {
       imageUrl = await this.storage.upload(file);
     }
+
     return this.postRepository.createPost({
       authorId,
       habitName: dto.habitName,

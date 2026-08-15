@@ -1,13 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Comment {
-  @Prop({ required: true })
-  postId: string;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Post', required: true })
+  postId: MongooseSchema.Types.ObjectId;
 
-  @Prop({ required: true })
-  userId: string;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+  userId: MongooseSchema.Types.ObjectId;
 
   @Prop({ required: true })
   text: string;

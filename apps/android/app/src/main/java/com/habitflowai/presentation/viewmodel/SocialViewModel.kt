@@ -28,7 +28,7 @@ sealed class SearchResult {
 
 data class SocialUiState(
     val posts: List<Post> = emptyList(),
-    val comments: Map<Int, List<Comment>> = emptyMap(),
+    val comments: Map<String, List<Comment>> = emptyMap(),
     val groupChats: List<ChatResponse> = emptyList(),
     val directChats: List<ChatResponse> = emptyList(),
     val chatMessages: Map<String, List<ChatMessage>> = emptyMap(),
@@ -66,16 +66,6 @@ class SocialViewModel @Inject constructor(
         get() = authManager.currentUserId.value ?: "me"
 
     init {
-        // Seed with some test users immediately so the UI isn't empty while loading
-        val initialTestUsers = listOf(
-            AppUser("alex_id", "alex_pro@habitflow.ai"),
-            AppUser("mia_id", "mia_zen@habitflow.ai"),
-            AppUser("sam_id", "sam_fit@habitflow.ai"),
-            AppUser("jordan_id", "jordan_dev@habitflow.ai"),
-            AppUser("taylor_id", "taylor_coach@habitflow.ai")
-        )
-        _uiState.update { it.copy(allUsers = initialTestUsers) }
-
         // Start socket and load posts once
         socketService.connect()
         collectSocketEvents()
@@ -144,34 +134,48 @@ class SocialViewModel @Inject constructor(
         }
     }
 
-    fun toggleLike(postId: Int) {
-        val updatedPosts = _uiState.value.posts.map { post ->
-            if (post.id == postId) {
-                post.copy(
-                    isLiked = !post.isLiked,
-                    likeCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1
+    fun toggleLike(postId: String) {
+        val oldPosts = _uiState.value.posts
+        val post = oldPosts.find { it.id == postId } ?: return
+        val isLiking = !post.isLiked
+        
+        val updatedPosts = oldPosts.map { p ->
+            if (p.id == postId) {
+                p.copy(
+                    isLiked = !p.isLiked,
+                    likeCount = if (p.isLiked) p.likeCount - 1 else p.likeCount + 1
                 )
-            } else post
+            } else p
         }
         _uiState.value = _uiState.value.copy(posts = updatedPosts)
+
+        viewModelScope.launch {
+            val success = if (isLiking) repository.likePost(postId) else repository.unlikePost(postId)
+            if (!success) {
+                // Revert on failure
+                _uiState.value = _uiState.value.copy(posts = oldPosts)
+            }
+        }
     }
 
-    fun addPost(content: String, imageUri: String?) {
-        val newPost = Post(
-            id = (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
-            author = currentUserId,
-            content = content,
-            hasPhoto = imageUri != null,
-            imageUri = imageUri,
-            likeCount = 0,
-            isLiked = false
-        )
-        _uiState.value = _uiState.value.copy(posts = listOf(newPost) + _uiState.value.posts)
+    fun addPost(habitName: String, completionNote: String, imageUri: android.net.Uri?) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val post = repository.createPost(habitName, completionNote, imageUri)
+            if (post != null) {
+                _uiState.update { it.copy(
+                    posts = listOf(post) + it.posts,
+                    isLoading = false
+                ) }
+            } else {
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
     }
 
     // ─── Comments ────────────────────────────────────────────────────────
 
-    fun loadComments(postId: Int) {
+    fun loadComments(postId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingComments = true)
             repository.getComments(postId).collectLatest { comments ->
@@ -181,20 +185,22 @@ class SocialViewModel @Inject constructor(
         }
     }
 
-    fun addComment(postId: Int, content: String) {
-        val newComment = Comment(
-            id = (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
-            postId = postId,
-            author = currentUserId,
-            content = content
-        )
-        val updatedComments = _uiState.value.comments.toMutableMap().apply {
-            put(postId, (get(postId) ?: emptyList()) + newComment)
+    fun addComment(postId: String, content: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingComments = true) }
+            val comment = repository.addComment(postId, content)
+            if (comment != null) {
+                val updatedComments = _uiState.value.comments.toMutableMap().apply {
+                    put(postId, (get(postId) ?: emptyList()) + comment)
+                }
+                val updatedPosts = _uiState.value.posts.map { post ->
+                    if (post.id == postId) post.copy(commentCount = post.commentCount + 1) else post
+                }
+                _uiState.value = _uiState.value.copy(comments = updatedComments, posts = updatedPosts, isLoadingComments = false)
+            } else {
+                _uiState.update { it.copy(isLoadingComments = false) }
+            }
         }
-        val updatedPosts = _uiState.value.posts.map { post ->
-            if (post.id == postId) post.copy(commentCount = post.commentCount + 1) else post
-        }
-        _uiState.value = _uiState.value.copy(comments = updatedComments, posts = updatedPosts)
     }
 
     // ─── Group Chats ─────────────────────────────────────────────────────

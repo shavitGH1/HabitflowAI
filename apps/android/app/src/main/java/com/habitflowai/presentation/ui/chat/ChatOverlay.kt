@@ -1,5 +1,6 @@
 package com.habitflowai.presentation.ui.chat
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,6 +40,10 @@ fun ChatOverlay(
     onSendMessage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // While the overlay is open, a back press should close it — not fall through
+    // to the NavController and pop the screen it's floating on top of.
+    BackHandler(enabled = uiState.isChatOpen) { onToggleChat() }
+
     AnimatedVisibility(
         visible = uiState.isChatOpen,
         enter = fadeIn() + scaleIn(initialScale = 0.9f),
@@ -52,7 +57,8 @@ fun ChatOverlay(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = onToggleChat
-                ),
+                )
+                .imePadding(),
             contentAlignment = Alignment.Center
         ) {
             ChatCard(
@@ -84,7 +90,7 @@ fun ChatCard(
     Card(
         modifier = modifier
             .width(340.dp)
-            .height(550.dp)
+            .heightIn(max = 550.dp)
             .padding(16.dp),
         shape = RoundedCornerShape(28.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 24.dp),

@@ -15,5 +15,6 @@ data class HabitResponse(
     @SerializedName("description") val description: String?,
     @SerializedName("frequency") val frequency: String,
     @SerializedName("completed") val completed: Boolean,
-    @SerializedName("createdAt") val createdAt: String? = null
+    @SerializedName("createdAt") val createdAt: String? = null,
+    @SerializedName("completionHistory") val completionHistory: List<String>? = emptyList()
 )

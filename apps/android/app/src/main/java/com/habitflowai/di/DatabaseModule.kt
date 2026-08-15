@@ -31,7 +31,8 @@ object DatabaseModule {
         .addMigrations(
             HabitFlowDatabase.MIGRATION_2_3, 
             HabitFlowDatabase.MIGRATION_3_4,
-            HabitFlowDatabase.MIGRATION_4_5
+            HabitFlowDatabase.MIGRATION_4_5,
+            HabitFlowDatabase.MIGRATION_5_6
         )
         .fallbackToDestructiveMigration()
         .build()

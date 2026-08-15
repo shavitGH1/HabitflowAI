@@ -9,6 +9,7 @@ import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.data.model.HabitRequest
 import com.habitflowai.data.network.HabitFlowApi
+import com.habitflowai.di.AuthManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.UUID
@@ -18,7 +19,8 @@ class HabitSyncWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val habitDao: HabitDao,
-    private val api: HabitFlowApi
+    private val api: HabitFlowApi,
+    private val authManager: AuthManager
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -80,16 +82,18 @@ class HabitSyncWorker @AssistedInject constructor(
     private suspend fun pullServerChanges() {
         try {
             val remoteHabits = api.getHabits()
+            val currentUid = authManager.currentUserId.value ?: ""
             val entities = remoteHabits.map { remote ->
                 HabitEntity(
                     id = remote.id,
                     title = remote.title,
                     description = remote.description,
                     frequency = remote.frequency,
-                    userId = "",
+                    userId = currentUid,
                     completed = remote.completed,
                     syncStatus = SyncStatus.SYNCED,
-                    serverId = remote.id
+                    serverId = remote.id,
+                    completionHistory = remote.completionHistory ?: emptyList()
                 )
             }
             if (entities.isNotEmpty()) {
