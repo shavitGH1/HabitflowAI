@@ -138,10 +138,18 @@ fun HabitFlowNavGraph(
                         uiState = uiState,
                         onGoalChange = onboardingViewModel::onGoalChange,
                         onQuizAnswerChange = onboardingViewModel::onQuizAnswerChange,
-                        onSubmit = onboardingViewModel::registerUser,
+                        onSubmit = {
+                            if (uiState.isRetakeMode) onboardingViewModel.reclassifyPersona() else onboardingViewModel.registerUser()
+                        },
                         onPersonaClassified = {
-                            navController.navigate(NavRoute.ProfileReveal.route) {
-                                popUpTo(NavRoute.Login.route) { inclusive = true }
+                            if (uiState.isRetakeMode) {
+                                navController.navigate(NavRoute.Profile.route) {
+                                    popUpTo(NavRoute.Onboarding.route) { inclusive = true }
+                                }
+                            } else {
+                                navController.navigate(NavRoute.ProfileReveal.route) {
+                                    popUpTo(NavRoute.Login.route) { inclusive = true }
+                                }
                             }
                         },
                         onNavigationHandled = onboardingViewModel::onHomeNavigated
@@ -202,9 +210,8 @@ fun HabitFlowNavGraph(
                     ProfileRoute(
                         viewModel = onboardingViewModel,
                         onRetakeAssessment = {
-                            navController.navigate(NavRoute.Onboarding.route) {
-                                popUpTo(NavRoute.Home.route) { inclusive = true }
-                            }
+                            onboardingViewModel.startRetake()
+                            navController.navigate(NavRoute.Onboarding.route)
                         },
                         onNavigateToSuccessJournal = {
                             navController.navigate(NavRoute.SuccessJournal.route)
