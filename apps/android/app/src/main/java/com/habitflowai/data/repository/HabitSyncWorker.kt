@@ -82,14 +82,13 @@ class HabitSyncWorker @AssistedInject constructor(
     private suspend fun pullServerChanges() {
         try {
             val remoteHabits = api.getHabits()
-            val currentUid = authManager.currentUserId.value ?: ""
             val entities = remoteHabits.map { remote ->
                 HabitEntity(
                     id = remote.id,
                     title = remote.title,
                     description = remote.description,
                     frequency = remote.frequency,
-                    userId = currentUid,
+                    userId = "",
                     completed = remote.completed,
                     syncStatus = SyncStatus.SYNCED,
                     serverId = remote.id,

@@ -178,6 +178,11 @@ interface HabitFlowApi {
         @Query("limit") limit: Int
     ): List<com.habitflowai.data.model.Post>
 
+    @GET("api/v1/posts/user/{userId}")
+    suspend fun getPostsByUserId(
+        @Path("userId") userId: String
+    ): List<com.habitflowai.data.model.Post>
+
     @Multipart
     @POST("api/v1/posts")
     suspend fun createPost(

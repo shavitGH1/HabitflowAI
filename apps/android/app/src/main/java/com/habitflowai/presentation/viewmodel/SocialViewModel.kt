@@ -1,5 +1,6 @@
 package com.habitflowai.presentation.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habitflowai.data.model.Comment
@@ -51,21 +52,25 @@ class SocialViewModel @Inject constructor(
     private val repository: SocialRepository,
     private val socketService: SocialChatSocketService,
     private val authManager: AuthManager,
-    private val chatLocalStorage: ChatLocalStorage
+    private val chatLocalStorage: ChatLocalStorage,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SocialUiState())
     val uiState: StateFlow<SocialUiState> = _uiState.asStateFlow()
 
+    private val initialChatId: String? = savedStateHandle.get<String>("chatId")
+    val autoOpenChatId = MutableStateFlow<String?>(null)
+
     private val pageSize = 10
     private var isTaskLoading = false
     private var loadChatsJob: kotlinx.coroutines.Job? = null
 
-    /** The real user ID from the JWT token, falling back to "me" if not yet authenticated. */
     private val currentUserId: String
         get() = authManager.currentUserId.value ?: "me"
 
     init {
+        autoOpenChatId.value = initialChatId
         // Start socket and load posts once
         socketService.connect()
         collectSocketEvents()

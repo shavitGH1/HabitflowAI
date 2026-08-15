@@ -20,6 +20,7 @@ import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.SocialRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -36,6 +37,7 @@ class SocialRepositoryImpl @Inject constructor(
 ) : SocialRepository {
 
     private val myId get() = authManager.currentUserId.value ?: "me"
+    private val cachedPosts = MutableStateFlow<List<Post>>(emptyList())
 
     override fun getPosts(page: Int, pageSize: Int): Flow<List<Post>> = flow {
         try {
@@ -45,9 +47,30 @@ class SocialRepositoryImpl @Inject constructor(
                     likeCount = p.likes.size
                 )
             }
+            if (page == 0) cachedPosts.value = posts
+            else cachedPosts.value = (cachedPosts.value + posts).distinctBy { it.id }
             emit(posts)
         } catch (e: Exception) {
             emit(emptyList())
+        }
+    }
+
+    override fun getPostsByUserId(userId: String): Flow<List<Post>> = flow {
+        // First emit from cache if available
+        val fromCache = cachedPosts.value.filter { it.authorId == userId || it.authorEmail == userId }
+        if (fromCache.isNotEmpty()) emit(fromCache)
+
+        try {
+            val posts = api.getPostsByUserId(userId).map { p ->
+                p.copy(
+                    isLiked = p.likes.contains(myId),
+                    likeCount = p.likes.size
+                )
+            }
+            emit(posts)
+        } catch (e: Exception) {
+            // If specific endpoint fails and we already emitted cache, don't emit empty
+            if (fromCache.isEmpty()) emit(emptyList())
         }
     }
 

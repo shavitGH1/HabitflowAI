@@ -54,6 +54,7 @@ import kotlinx.coroutines.launch
 fun SocialRoute(
     viewModel: SocialViewModel = hiltViewModel(),
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
+    onUserClick: (String) -> Unit,
     onToggleChat: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -70,6 +71,8 @@ fun SocialRoute(
     
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    val autoOpenChatId by viewModel.autoOpenChatId.collectAsState()
     
     var showCreateSheet by remember { mutableStateOf(false) }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
@@ -78,6 +81,23 @@ fun SocialRoute(
     var selectedPostForComments by remember { mutableStateOf<Post?>(null) }
     var selectedChatForView by remember { mutableStateOf<ChatResponse?>(null) }
     var showAddMemberDialog by remember { mutableStateOf<ChatResponse?>(null) }
+
+    LaunchedEffect(autoOpenChatId) {
+        autoOpenChatId?.let { chatId ->
+            val chat = uiState.groupChats.find { it.id == chatId }
+                ?: uiState.directChats.find { it.id == chatId }
+            
+            if (chat != null) {
+                selectedChatForView = chat
+                viewModel.loadMessages(chatId)
+                viewModel.autoOpenChatId.value = null
+            } else if (uiState.isLoadingChats == false) {
+                // If not found and not loading, maybe we need to fetch it specifically or it doesn't exist
+                // For now, if it's a DM we just created, it should be in directChats
+                viewModel.loadAllChats()
+            }
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -156,6 +176,7 @@ fun SocialRoute(
                     modifier = Modifier.fillMaxSize(),
                     onLikeClick = viewModel::toggleLike,
                     onLoadMore = viewModel::loadMorePosts,
+                    onUserClick = onUserClick,
                     onPostClick = { post ->
                         selectedPostForComments = post
                         viewModel.loadComments(post.id)
@@ -267,6 +288,7 @@ fun SocialRoute(
                     }
                 }
             },
+            onUserClick = onUserClick,
             onDismiss = { showJoinGroupDialog = false }
         )
     }
@@ -309,7 +331,8 @@ fun SocialRoute(
             onLikeClick = { viewModel.toggleLike(currentPost.id) },
             onAddComment = { content ->
                 viewModel.addComment(currentPost.id, content)
-            }
+            },
+            onUserClick = { onUserClick(currentPost.authorId) }
         )
     }
 }
@@ -814,6 +837,7 @@ fun JoinGroupDialog(
     onSearch: (String) -> Unit,
     onJoinGroup: (ChatResponse) -> Unit,
     onStartDm: (String) -> Unit,
+    onUserClick: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
@@ -879,7 +903,12 @@ fun JoinGroupDialog(
                                             subtitle = result.user.email,
                                             icon = Icons.Rounded.Person,
                                             personaColor = personaColor,
-                                            onClick = { onStartDm(result.user.id) }
+                                            onClick = { onUserClick(result.user.id) },
+                                            trailing = {
+                                                IconButton(onClick = { onStartDm(result.user.id) }) {
+                                                    Icon(Icons.AutoMirrored.Rounded.Message, contentDescription = "Message", tint = personaColor)
+                                                }
+                                            }
                                         )
                                     }
                                     is SearchResult.Group -> {
@@ -996,6 +1025,7 @@ fun SocialContent(
     modifier: Modifier = Modifier,
     onLikeClick: (String) -> Unit,
     onLoadMore: () -> Unit,
+    onUserClick: (String) -> Unit,
     onPostClick: (Post) -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -1016,6 +1046,29 @@ fun SocialContent(
 
     Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // Temporary ID Search for Profile
+            var searchId by remember { mutableStateOf("") }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = searchId,
+                    onValueChange = { searchId = it },
+                    placeholder = { Text("Search User ID...") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = { if (searchId.isNotBlank()) onUserClick(searchId) },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Rounded.Search, contentDescription = null)
+                }
+            }
+
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(16.dp),
@@ -1030,6 +1083,7 @@ fun SocialContent(
                         post = post,
                         personaColor = personaColor,
                         onLikeClick = { onLikeClick(post.id) },
+                        onUserClick = { onUserClick(post.authorId) },
                         onClick = { onPostClick(post) }
                     )
                 }
@@ -1054,6 +1108,7 @@ fun PostCard(
     post: Post,
     personaColor: Color,
     onLikeClick: () -> Unit,
+    onUserClick: () -> Unit,
     onClick: () -> Unit
 ) {
     Card(
@@ -1068,7 +1123,10 @@ fun PostCard(
             .clickable { onClick() }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onUserClick() }
+            ) {
                 Box(
                     modifier = Modifier.size(40.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
@@ -1104,7 +1162,10 @@ fun PostCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onUserClick() }
+            ) {
                     IconButton(onClick = onLikeClick) {
                         Icon(
                             if (post.isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
@@ -1138,7 +1199,8 @@ fun CommentsBottomSheet(
     isLoadingComments: Boolean,
     onDismiss: () -> Unit,
     onLikeClick: () -> Unit,
-    onAddComment: (String) -> Unit
+    onAddComment: (String) -> Unit,
+    onUserClick: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var commentText by remember { mutableStateOf("") }
@@ -1156,7 +1218,10 @@ fun CommentsBottomSheet(
                 .padding(horizontal = 16.dp)
         ) {
             // Expanded Post Content
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onUserClick() }
+            ) {
                 Box(
                     modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
@@ -1185,7 +1250,10 @@ fun CommentsBottomSheet(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onUserClick() }
+            ) {
                 IconButton(onClick = onLikeClick) {
                     Icon(
                         if (post.isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
@@ -1209,7 +1277,10 @@ fun CommentsBottomSheet(
             } else {
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(comments) { comment ->
-                        CommentItem(comment)
+                        CommentItem(
+                            comment = comment,
+                            onClick = onUserClick
+                        )
                     }
                 }
             }
@@ -1247,8 +1318,15 @@ fun CommentsBottomSheet(
 }
 
 @Composable
-fun CommentItem(comment: Comment) {
-    Row(modifier = Modifier.fillMaxWidth()) {
+fun CommentItem(
+    comment: Comment,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
         Box(
             modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
@@ -1507,6 +1585,7 @@ fun PreviewSocialFeedV2() {
                         personaColor = personaDetails.endColor,
                         onLikeClick = {},
                         onLoadMore = {},
+                        onUserClick = { _ -> },
                         onPostClick = {}
                     )
                 }
@@ -1531,6 +1610,7 @@ fun SocialRoutePreview() {
                 personaColor = Color(0xFF64B5F6),
                 onLikeClick = {},
                 onLoadMore = {},
+                onUserClick = { _ -> },
                 onPostClick = {}
             )
         }
