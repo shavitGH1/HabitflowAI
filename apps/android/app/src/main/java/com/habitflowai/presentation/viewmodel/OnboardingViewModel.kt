@@ -21,6 +21,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private fun extractErrorMessage(httpException: retrofit2.HttpException): String {
+    val fallback = "Server error: ${httpException.code()}"
+    val errorBody = httpException.response()?.errorBody()?.string() ?: return fallback
+    return try {
+        val messageElement = com.google.gson.JsonParser.parseString(errorBody).asJsonObject.get("message")
+        when {
+            messageElement == null || messageElement.isJsonNull -> fallback
+            messageElement.isJsonArray -> messageElement.asJsonArray.joinToString("\n") { it.asString }
+            else -> messageElement.asString
+        }
+    } catch (_: Exception) {
+        fallback
+    }
+}
+
 /**
  * ViewModel for the onboarding process, handling user goals, quiz answers,
  * persona classification, and user registration.
@@ -133,7 +148,7 @@ class OnboardingViewModel @Inject constructor(
                 val request = RegisterRequest(
                     email = currentState.email,
                     password = currentState.password,
-                    openAnswers = listOf(currentState.goal) + currentState.quizAnswers.drop(1).take(5),
+                    openAnswers = currentState.quizAnswers,
                     fcmToken = fcmToken
                 )
                 val response = authRepository.register(request)
@@ -162,13 +177,7 @@ class OnboardingViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 val errorMsg = if (e is retrofit2.HttpException) {
-                    try {
-                        val errorBody = e.response()?.errorBody()?.string()
-                        val jsonObject = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
-                        jsonObject.get("message").asString
-                    } catch (inner: Exception) {
-                        "Server error: ${e.code()}"
-                    }
+                    extractErrorMessage(e)
                 } else {
                     "Network error: ${e.message}"
                 }
@@ -212,13 +221,7 @@ class OnboardingViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 val errorMsg = if (e is retrofit2.HttpException) {
-                    try {
-                        val errorBody = e.response()?.errorBody()?.string()
-                        val jsonObject = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
-                        jsonObject.get("message").asString
-                    } catch (inner: Exception) {
-                        "Server error: ${e.code()}"
-                    }
+                    extractErrorMessage(e)
                 } else {
                     "Network error: ${e.message}"
                 }
