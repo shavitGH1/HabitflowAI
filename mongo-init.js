@@ -315,12 +315,18 @@ if (alexId && mayaId && benId && saraId && !db.chats.findOne({ isGroup: true, na
 
 if (alexId && mayaId && benId && saraId && db.posts.countDocuments() === 0) {
   const postDefs = [
-    { authorId: alexId, habitName: '5km morning run', completionNote: 'New personal best today!', likes: [mayaId, benId], imageUrl: '/uploads/demo/alex-morning-run.jpg' },
-    { authorId: mayaId, habitName: 'Daily meditation (15 min)', completionNote: 'Stayed calm through a stressful day.', likes: [alexId, benId], imageUrl: '/uploads/demo/maya-meditation.jpg' },
-    { authorId: benId, habitName: 'Group workout session', completionNote: 'Got the whole crew moving today.', likes: [alexId, mayaId, saraId], imageUrl: '/uploads/demo/ben-group-workout.jpg' },
-    { authorId: saraId, habitName: 'Join a community challenge', completionNote: 'Signed up for the 30-day challenge!', likes: [mayaId] },
+    { authorId: ObjectId(alexId), habitName: '5km morning run', completionNote: 'New personal best today!', likes: [mayaId, benId], imageUrl: '/uploads/demo/alex-morning-run.jpg' },
+    { authorId: ObjectId(mayaId), habitName: 'Daily meditation (15 min)', completionNote: 'Stayed calm through a stressful day.', likes: [alexId, benId], imageUrl: '/uploads/demo/maya-meditation.jpg' },
+    { authorId: ObjectId(benId), habitName: 'Group workout session', completionNote: 'Got the whole crew moving today.', likes: [alexId, mayaId, saraId], imageUrl: '/uploads/demo/ben-group-workout.jpg' },
+    { authorId: ObjectId(saraId), habitName: 'Join a community challenge', completionNote: 'Signed up for the 30-day challenge!', likes: [mayaId] },
   ];
 
+  // authorId/postId/userId are ObjectId refs on these schemas (Post.authorId,
+  // Comment.postId, Comment.userId) — the $lookup aggregations that resolve
+  // author/commenter names and fetch a post's comments do a type-sensitive
+  // match, so these can't be plain strings like the userId fields elsewhere
+  // in this file (Habit/Goal/LocationRecord/Follow all declare userId as
+  // plain String, so those stay as-is).
   const postIds = postDefs.map(def => db.posts.insertOne({
     ...def,
     createdAt: new Date(),
@@ -328,11 +334,11 @@ if (alexId && mayaId && benId && saraId && db.posts.countDocuments() === 0) {
   }).insertedId);
 
   const commentDefs = [
-    { postId: postIds[0].toString(), userId: mayaId, text: 'Incredible pace!' },
-    { postId: postIds[0].toString(), userId: saraId, text: 'Beat your own record next!' },
-    { postId: postIds[2].toString(), userId: saraId, text: 'Count me in next week.' },
-    { postId: postIds[3].toString(), userId: mayaId, text: 'So proud of you for stepping up!' },
-    { postId: postIds[3].toString(), userId: alexId, text: "Which challenge? I'm interested!" },
+    { postId: postIds[0], userId: ObjectId(mayaId), text: 'Incredible pace!' },
+    { postId: postIds[0], userId: ObjectId(saraId), text: 'Beat your own record next!' },
+    { postId: postIds[2], userId: ObjectId(saraId), text: 'Count me in next week.' },
+    { postId: postIds[3], userId: ObjectId(mayaId), text: 'So proud of you for stepping up!' },
+    { postId: postIds[3], userId: ObjectId(alexId), text: "Which challenge? I'm interested!" },
   ];
   commentDefs.forEach(def => db.comments.insertOne({ ...def, createdAt: new Date(), updatedAt: new Date() }));
 }

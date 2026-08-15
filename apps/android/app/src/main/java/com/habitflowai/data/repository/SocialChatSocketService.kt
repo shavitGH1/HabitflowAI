@@ -1,6 +1,7 @@
 package com.habitflowai.data.repository
 
 import com.habitflowai.BuildConfig
+import com.habitflowai.data.model.resolveImageUrl
 import com.habitflowai.di.AuthManager
 import io.socket.client.IO
 import io.socket.client.Socket
@@ -73,7 +74,7 @@ class SocialChatSocketService @Inject constructor(
                             messageId = data.optString("id"),
                             text = data.optString("text"),
                             senderId = data.optString("senderId"),
-                            imageUrl = data.optString("imageUrl").takeIf { it.isNotBlank() }
+                            imageUrl = resolveImageUrl(data.optString("imageUrl"))
                         )
                     )
                 }
@@ -130,7 +131,7 @@ class SocialChatSocketService @Inject constructor(
                             chatId = data.optString("chatId"),
                             description = data.optString("description").takeIf { it.isNotBlank() },
                             isPublic = if (data.has("isPublic")) data.optBoolean("isPublic") else null,
-                            imageUrl = data.optString("imageUrl").takeIf { it.isNotBlank() }
+                            imageUrl = resolveImageUrl(data.optString("imageUrl"))
                         )
                     )
                 }

@@ -1254,7 +1254,7 @@ fun PostCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CommentsBottomSheet(
     post: Post,
@@ -1265,14 +1265,35 @@ fun CommentsBottomSheet(
     onAddComment: (String) -> Unit,
     onUserClick: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // Prevent Material3's ModalBottomSheet from auto-collapsing to Hidden when the
+    // IME closes and its content remeasures (a known Compose bug) — the explicit
+    // close button below remains the guaranteed way to dismiss.
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { it != SheetValue.Hidden },
+    )
     var commentText by remember { mutableStateOf("") }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        // Material3's own back-press dismissal fires *before* any BackHandler we
+        // add inside content can reliably win priority over it (confirmed on
+        // device — inconsistent across sheets). Disable it at the source and let
+        // our own BackHandler below be the only thing back presses reach.
+        properties = ModalBottomSheetDefaults.properties(
+            shouldDismissOnBackPress = false
+        )
     ) {
+        // First back press should only dismiss the keyboard; only close the
+        // sheet on a second press once the IME is already hidden.
+        val keyboardController = LocalSoftwareKeyboardController.current
+        val imeVisible = WindowInsets.isImeVisible
+        BackHandler {
+            if (imeVisible) keyboardController?.hide() else onDismiss()
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1282,20 +1303,29 @@ fun CommentsBottomSheet(
         ) {
             // Expanded Post Content
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { onUserClick() }
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onUserClick() }
                 ) {
-                    Icon(Icons.Rounded.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Box(
+                        modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        val displayName = post.authorName ?: post.authorEmail?.substringBefore('@') ?: "User"
+                        Text(displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Text(post.createdAt ?: "Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    val displayName = post.authorName ?: post.authorEmail?.substringBefore('@') ?: "User"
-                    Text(displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text(post.createdAt ?: "Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Close")
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))

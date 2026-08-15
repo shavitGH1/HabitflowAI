@@ -59,13 +59,18 @@ fun RegisterCredentialsContent(
     onNext: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
+    // Arrangement.Center doesn't combine reliably with verticalScroll (the scroll
+    // container measures children with unbounded height, so "centering" collapses
+    // to top-aligned content plus leftover space stranded below it) — once
+    // imePadding() shrinks the available height for the keyboard, that leftover
+    // space showed up as a dead gap right above the keyboard. Top-aligned content
+    // (the default) avoids the ambiguity entirely.
     Column(
         modifier = Modifier
             .fillMaxSize()
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         RegisterLogo()
