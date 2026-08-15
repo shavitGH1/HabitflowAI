@@ -11,5 +11,6 @@ data class OnboardingUiState(
     val errorMessage: String? = null,
     val personaResult: ClassifyPersonaResponse? = null,
     val navigateToHome: Boolean = false,
-    val proceedToOnboarding: Boolean = false
+    val proceedToOnboarding: Boolean = false,
+    val isRetakeMode: Boolean = false
 )

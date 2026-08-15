@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -110,8 +112,12 @@ fun OnboardingScreen(
     onPersonaClassified: () -> Unit,
     onNavigationHandled: () -> Unit
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     LaunchedEffect(uiState.navigateToHome) {
         if (uiState.navigateToHome) {
+            keyboardController?.hide()
             onPersonaClassified()
             onNavigationHandled()
         }
@@ -249,6 +255,8 @@ fun OnboardingScreen(
                                 Spacer(modifier = Modifier.height(32.dp))
                                 Button(
                                     onClick = {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
                                         if (currentStep < totalSteps - 1) onStepChange(currentStep + 1) else onSubmit()
                                     },
                                     enabled = value.isNotBlank(),
@@ -289,6 +297,8 @@ fun OnboardingScreen(
                                                 )
                                             )
                                             .clickable {
+                                                keyboardController?.hide()
+                                                focusManager.clearFocus()
                                                 onQuizAnswerChange(step, option.value)
                                                 if (currentStep < totalSteps - 1) {
                                                     onStepChange(currentStep + 1)
@@ -385,7 +395,9 @@ fun OnboardingScreen(
                                 }
                                 Spacer(modifier = Modifier.height(24.dp))
                                 Button(
-                                    onClick = { 
+                                    onClick = {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
                                         if (currentStep < totalSteps - 1) onStepChange(currentStep + 1) else onSubmit()
                                     },
                                     enabled = uiState.quizAnswers[step].isNotBlank(),
@@ -404,7 +416,11 @@ fun OnboardingScreen(
             
             if (currentStep > 0) {
                 TextButton(
-                    onClick = { onStepChange(currentStep - 1) },
+                    onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                        onStepChange(currentStep - 1)
+                    },
                     modifier = Modifier.height(32.dp),
                     contentPadding = PaddingValues(0.dp)
                 ) {

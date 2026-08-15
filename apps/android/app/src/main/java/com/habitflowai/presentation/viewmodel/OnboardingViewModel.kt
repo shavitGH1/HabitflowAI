@@ -7,6 +7,7 @@ import com.habitflowai.data.model.CheckEmailRequest
 import com.habitflowai.data.model.ClassifyPersonaRequest
 import com.habitflowai.data.model.ClassifyPersonaResponse
 import com.habitflowai.data.model.LoginRequest
+import com.habitflowai.data.model.ReclassifyRequest
 import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.di.AuthManager
@@ -77,6 +78,10 @@ class OnboardingViewModel @Inject constructor(
 
     fun onOnboardingNavigated() {
         _uiState.value = _uiState.value.copy(proceedToOnboarding = false)
+    }
+
+    fun startRetake() {
+        _uiState.value = _uiState.value.copy(isRetakeMode = true, errorMessage = null, navigateToHome = false)
     }
 
     fun checkEmail() {
@@ -217,6 +222,54 @@ class OnboardingViewModel @Inject constructor(
                     _uiState.value = currentState.copy(
                         isLoading = false,
                         errorMessage = response.message ?: "Failed to classify persona"
+                    )
+                }
+            } catch (e: Exception) {
+                val errorMsg = if (e is retrofit2.HttpException) {
+                    extractErrorMessage(e)
+                } else {
+                    "Network error: ${e.message}"
+                }
+                _uiState.value = currentState.copy(
+                    isLoading = false,
+                    errorMessage = errorMsg
+                )
+            }
+        }
+    }
+
+    fun reclassifyPersona() {
+        val currentState = _uiState.value
+        val filledAnswers = currentState.quizAnswers.count { it.isNotBlank() }
+        if (filledAnswers < 4) {
+            _uiState.value = currentState.copy(errorMessage = "Please answer at least 4 questions before continuing.")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = currentState.copy(isLoading = true, errorMessage = null, navigateToHome = false)
+
+            try {
+                val response = repository.reclassifyPersona(ReclassifyRequest(currentState.quizAnswers))
+
+                if (response is Resource.Success && response.data != null) {
+                    val homeData = api.getHome()
+                    _uiState.value = currentState.copy(
+                        isLoading = false,
+                        isRetakeMode = false,
+                        personaResult = ClassifyPersonaResponse(
+                            id = "",
+                            personaType = homeData.personaType ?: response.data.personaType,
+                            motivationalMessage = homeData.motivationalMessage,
+                            success = true
+                        ),
+                        errorMessage = null,
+                        navigateToHome = true
+                    )
+                } else if (response is Resource.Error) {
+                    _uiState.value = currentState.copy(
+                        isLoading = false,
+                        errorMessage = response.message ?: "Failed to update persona"
                     )
                 }
             } catch (e: Exception) {

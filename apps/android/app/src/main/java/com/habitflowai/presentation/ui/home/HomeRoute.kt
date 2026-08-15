@@ -353,6 +353,11 @@ fun GoalPlanSection(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
+        Text(
+            text = "AI-generated based on your persona. To add your own custom habits, go to the Habits tab.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         goals.forEach { task ->
             val isChecked = checkedGoals[task.id] ?: task.completed
