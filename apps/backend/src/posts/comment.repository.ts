@@ -82,7 +82,8 @@ export class CommentRepository {
       postId: doc.postId.toString(),
       userId: doc.userId.toString(),
       userEmail: doc.user?.email,
-      userName: doc.user?.email ? doc.user.email.split('@')[0] : undefined,
+      userName: [doc.user?.firstName, doc.user?.lastName].filter(Boolean).join(' ')
+        || doc.user?.email?.split('@')[0],
       text: doc.text,
       createdAt: doc.createdAt.toISOString(),
     };

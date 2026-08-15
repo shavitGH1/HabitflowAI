@@ -123,7 +123,8 @@ export class PostRepository {
       id: doc._id.toString(),
       authorId: doc.authorId.toString(),
       authorEmail: doc.author?.email,
-      authorName: doc.author?.email ? doc.author.email.split('@')[0] : undefined,
+      authorName: [doc.author?.firstName, doc.author?.lastName].filter(Boolean).join(' ')
+        || doc.author?.email?.split('@')[0],
       habitName: doc.habitName,
       completionNote: doc.completionNote,
       imageUrl: doc.imageUrl,
