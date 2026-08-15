@@ -45,6 +45,7 @@ export class CoachToolset {
       tools: [
         this.progressSummaryTool(userId),
         this.habitListTool(userId),
+        this.dailyTasksTool(userId),
         this.personaProfileTool(userId),
         this.activeGoalTool(userId),
         this.driftTool(userId, state),
@@ -84,7 +85,7 @@ export class CoachToolset {
     return defineTool({
       name: 'get_habit_list',
       description:
-        'Every active habit of the user with its own streak, consistency percentage and the goal it is linked to. Call this when the user asks about a specific habit, or when you need to name habits in your reply. Do not use it to judge overall progress — get_progress_summary already carries that verdict.',
+        'Every active habit of the user with its own streak, consistency percentage and the goal it is linked to. Call this when the user asks about a specific habit, or when you need to name habits in your reply. Do not use it to judge overall progress — get_progress_summary already carries that verdict. This only covers habits created in the Habits tab — for the AI-generated goals and daily tasks from onboarding shown on the Home screen, call get_daily_tasks instead.',
       parameters: { type: Type.OBJECT, properties: {} },
       argsSchema: z.object({}),
       execute: async () => {
@@ -98,6 +99,31 @@ export class CoachToolset {
             consistencyPercent: Math.round(habit.consistencyScore * 100),
             linkedGoalId: habit.goalId ?? null,
           })),
+        };
+      },
+    });
+  }
+
+  private dailyTasksTool(userId: string): AgentTool {
+    return defineTool({
+      name: 'get_daily_tasks',
+      description:
+        "The AI-generated core goals and today's daily task variations from onboarding, shown to the user on the Home screen — separate from get_habit_list, which only covers habits created in the Habits tab. Call this when the user asks about their onboarding goals, Home screen tasks, or points, or when get_habit_list and get_progress_summary come back empty for a user who still completed onboarding.",
+      parameters: { type: Type.OBJECT, properties: {} },
+      argsSchema: z.object({}),
+      execute: async () => {
+        const user = await this.userRepository.findUserById(userId);
+        if (!user) throw new Error('User not found');
+        const toSummary = (tasks: { id: string; description: string; points: number; completed: boolean }[]) =>
+          tasks.map((task) => ({
+            id: task.id,
+            description: task.description,
+            points: task.points,
+            completed: task.completed,
+          }));
+        return {
+          coreGoals: toSummary(user.coreGoals),
+          dailyTasks: toSummary(user.dailyVariations),
         };
       },
     });
