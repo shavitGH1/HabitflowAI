@@ -66,6 +66,9 @@ interface HabitFlowApi {
     @PUT("api/v1/habits/{id}")
     suspend fun updateHabit(@Path("id") id: String, @Body habit: HabitRequest): HabitResponse
 
+    @PATCH("api/v1/habits/{id}/complete")
+    suspend fun completeHabit(@Path("id") id: String): Response<HabitResponse>
+
     @DELETE("api/v1/habits/{id}")
     suspend fun deleteHabit(@Path("id") id: String): Response<Unit>
 

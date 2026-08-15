@@ -8,4 +8,5 @@ interface HabitsRepository {
     suspend fun createHabit(habit: HabitEntity)
     suspend fun updateHabit(habit: HabitEntity)
     suspend fun deleteHabit(habit: HabitEntity)
+    suspend fun completeHabit(habit: HabitEntity): Boolean
 }
