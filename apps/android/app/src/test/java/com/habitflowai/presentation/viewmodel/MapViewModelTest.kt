@@ -4,6 +4,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.habitflowai.data.model.LocationResponse
 import com.habitflowai.domain.repository.LocationRepository
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,29 +26,33 @@ class MapViewModelTest {
     private val myLocations = listOf(
         LocationResponse(
             id = "loc-1",
+            userId = "u1",
             habitId = "h1",
             latitude = 32.0853,
             longitude = 34.7818,
             placeName = "Tel Aviv",
             taskDescription = "Morning Run",
             timestamp = 1000,
-            isPublic = true
+            isPublic = true,
+            username = "shavi"
         ),
         LocationResponse(
             id = "loc-2",
+            userId = "u2",
             habitId = "h2",
             latitude = 31.5,
             longitude = 34.5,
             placeName = "Home",
             timestamp = 2000,
-            isPublic = false
+            isPublic = false,
+            username = "yossi"
         )
     )
 
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        coEvery { locationRepository.getMyLocations() } returns myLocations
+        coEvery { locationRepository.getPublicLocations(any(), any(), any(), any()) } returns myLocations
         viewModel = MapViewModel(locationRepository)
     }
 
@@ -57,12 +62,13 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `markers are loaded only from my locations`() {
+    fun `markers are loaded from all public locations`() {
         val markers = viewModel.uiState.value.markers
         assertEquals(2, markers.size)
         assertEquals("Morning Run", markers[0].habitName)
         assertEquals(LatLng(32.0853, 34.7818), markers[0].latLng)
         assertFalse(viewModel.uiState.value.isLoading)
+        coVerify { locationRepository.getPublicLocations(any(), any(), any(), any()) }
     }
 
     @Test
@@ -70,6 +76,13 @@ class MapViewModelTest {
         val markers = viewModel.uiState.value.markers
         assertEquals(true, markers[0].isPublic)
         assertEquals(false, markers[1].isPublic)
+    }
+
+    @Test
+    fun `marker tag shows the completing user`() {
+        val markers = viewModel.uiState.value.markers
+        assertEquals("shavi", markers[0].username)
+        assertEquals("yossi", markers[1].username)
     }
 
     @Test
