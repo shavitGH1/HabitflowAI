@@ -28,6 +28,7 @@ import com.habitflowai.presentation.ui.onboarding.OnboardingRoute
 import com.habitflowai.presentation.ui.auth.LoginRoute
 import com.habitflowai.presentation.ui.auth.RegisterCredentialsRoute
 import com.habitflowai.presentation.ui.profile.ProfileRoute
+import com.habitflowai.presentation.ui.profile.PublicProfileRoute
 import com.habitflowai.presentation.ui.map.MapRoute
 import com.habitflowai.presentation.ui.drift.DriftCheckRoute
 import com.habitflowai.presentation.ui.drift.DriftReassessmentRoute
@@ -200,13 +201,45 @@ fun HabitFlowNavGraph(
                         }
                     )
                 }
-                composable(NavRoute.Social.route) {
+                composable(
+                    route = NavRoute.Social.route,
+                    arguments = listOf(
+                        androidx.navigation.navArgument("chatId") {
+                            type = androidx.navigation.NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        }
+                    )
+                ) {
                     SocialRoute(
+                        onUserClick = { userId ->
+                            navController.navigate(NavRoute.PublicProfile.createRoute(userId))
+                        },
                         onToggleChat = { chatViewModel.toggleChat() }
+                    )
+                }
+                composable(
+                    route = NavRoute.PublicProfile.route,
+                    arguments = listOf(
+                        androidx.navigation.navArgument("userId") {
+                            type = androidx.navigation.NavType.StringType
+                        }
+                    )
+                ) {
+                    PublicProfileRoute(
+                        onNavigateBack = { navController.popBackStack() },
+                        onSendMessage = { chatId ->
+                            navController.navigate(NavRoute.Social.createRoute(chatId)) {
+                                launchSingleTop = true
+                            }
+                        }
                     )
                 }
                 composable(NavRoute.SuccessJournal.route) {
                     SuccessJournalRoute(
+                        onUserClick = { userId ->
+                            navController.navigate(NavRoute.PublicProfile.createRoute(userId))
+                        },
                         onBack = { navController.popBackStack() }
                     )
                 }

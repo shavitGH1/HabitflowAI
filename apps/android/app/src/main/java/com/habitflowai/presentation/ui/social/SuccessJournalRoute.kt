@@ -23,6 +23,7 @@ import com.habitflowai.presentation.viewmodel.SocialViewModel
 fun SuccessJournalRoute(
     viewModel: SocialViewModel = hiltViewModel(),
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
+    onUserClick: (String) -> Unit = {},
     onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -89,6 +90,7 @@ fun SuccessJournalRoute(
                             post = post,
                             personaColor = personaDetails.endColor,
                             onLikeClick = { viewModel.toggleLike(post.id) },
+                            onUserClick = { onUserClick(post.authorId) },
                             onClick = {
                                 selectedPostForComments = post
                                 viewModel.loadComments(post.id)
@@ -108,7 +110,8 @@ fun SuccessJournalRoute(
                 onLikeClick = { viewModel.toggleLike(selectedPostForComments!!.id) },
                 onAddComment = { content ->
                     viewModel.addComment(selectedPostForComments!!.id, content)
-                }
+                },
+                onUserClick = { onUserClick(selectedPostForComments!!.authorId) }
             )
         }
     }

@@ -20,6 +20,7 @@ import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.SocialRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -36,10 +37,35 @@ class SocialRepositoryImpl @Inject constructor(
 ) : SocialRepository {
 
     private val myId get() = authManager.currentUserId.value ?: "me"
+    private val cachedPosts = MutableStateFlow<List<Post>>(emptyList())
 
-    override fun getPosts(page: Int, pageSize: Int): Flow<List<Post>> = flow {
+    override fun getPosts(page: Int, pageSize: Int, friendsOnly: Boolean?): Flow<List<Post>> = flow {
         try {
-            val posts = api.getPosts(page + 1, pageSize).map { p ->
+            val posts = api.getPosts(page + 1, pageSize, friendsOnly).map { p ->
+                p.copy(
+                    isLiked = p.likes.contains(myId),
+                    likeCount = p.likes.size
+                )
+            }
+            // Always update cache with any posts we've seen to improve profile navigation speed
+            if (page == 0 && friendsOnly == null) {
+                cachedPosts.value = posts
+            } else {
+                cachedPosts.value = (cachedPosts.value + posts).distinctBy { it.id }
+            }
+            emit(posts)
+        } catch (e: Exception) {
+            emit(emptyList())
+        }
+    }
+
+    override fun getPostsByUserId(userId: String): Flow<List<Post>> = flow {
+        // First emit from cache if available
+        val fromCache = cachedPosts.value.filter { it.authorId == userId || it.authorEmail == userId }
+        if (fromCache.isNotEmpty()) emit(fromCache)
+
+        try {
+            val posts = api.getPostsByUserId(userId).map { p ->
                 p.copy(
                     isLiked = p.likes.contains(myId),
                     likeCount = p.likes.size
@@ -47,7 +73,8 @@ class SocialRepositoryImpl @Inject constructor(
             }
             emit(posts)
         } catch (e: Exception) {
-            emit(emptyList())
+            // If specific endpoint fails and we already emitted cache, don't emit empty
+            if (fromCache.isEmpty()) emit(emptyList())
         }
     }
 
@@ -110,26 +137,43 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getAllChats(): List<ChatResponse> {
+        val serverChats = try { api.getChats() } catch (e: Exception) { emptyList() }
+        
+        if (serverChats.isNotEmpty()) {
+            try {
+                chatLocalStorage.saveGroupChats(myId, serverChats.filter { it.isGroup })
+                chatLocalStorage.saveDirectChats(myId, serverChats.filter { !it.isGroup })
+            } catch (_: Exception) {}
+        }
+
         val cachedGroups = try { chatLocalStorage.loadGroupChats(myId) } catch (_: Exception) { emptyList() }
         val cachedDms = try { chatLocalStorage.loadDirectChats(myId) } catch (_: Exception) { emptyList() }
-        val initialResult = cachedGroups + cachedDms
+        val allCached = cachedGroups + cachedDms
 
+        // Merge: Prefer server data, but keep local-only chats (e.g. optimistic creations)
+        val serverIds = serverChats.map { it.id }.toSet()
+        val localOnly = allCached.filter { it.id !in serverIds }
+        return serverChats + localOnly
+    }
+
+    override suspend fun getChat(chatId: String): ChatResponse? {
+        // Try local cache first
+        val cached = try {
+            val groups = chatLocalStorage.loadGroupChats(myId)
+            val dms = chatLocalStorage.loadDirectChats(myId)
+            (groups + dms).find { it.id == chatId }
+        } catch (_: Exception) { null }
+        
+        if (cached != null) return cached
+
+        // Try server
         return try {
-            val serverChats = api.getChats()
-            val groups = serverChats.filter { it.isGroup }
-            val dms = serverChats.filter { !it.isGroup }
-            try {
-                chatLocalStorage.saveGroupChats(myId, groups)
-                chatLocalStorage.saveDirectChats(myId, dms)
-            } catch (_: Exception) {}
-            
-            // Merge: Prefer server data, but keep local-only chats (e.g. optimistic creations)
-            val serverIds = serverChats.map { it.id }.toSet()
-            val localOnly = initialResult.filter { it.id !in serverIds }
-            serverChats + localOnly
-        } catch (e: Exception) {
-            initialResult
-        }
+            val all = api.getChats()
+            all.find { it.id == chatId }?.also { chat ->
+                if (chat.isGroup) chatLocalStorage.saveGroupChats(myId, listOf(chat))
+                else chatLocalStorage.saveDirectChats(myId, listOf(chat))
+            }
+        } catch (_: Exception) { null }
     }
 
     override suspend fun getGroupChats(): List<ChatResponse> {
@@ -350,6 +394,32 @@ class SocialRepositoryImpl @Inject constructor(
         return try {
             api.getFollowing(userId)
         } catch (_: Exception) { emptyList() }
+    }
+
+    override suspend fun followUser(userId: String): Boolean {
+        return try {
+            val response = api.followUser(userId)
+            response.isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun unfollowUser(userId: String): Boolean {
+        return try {
+            val response = api.unfollowUser(userId)
+            response.isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun getFollowers(userId: String): List<String> {
+        return try {
+            api.getFollowers(userId)
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     override suspend fun getAllUsers(): List<AppUser> {

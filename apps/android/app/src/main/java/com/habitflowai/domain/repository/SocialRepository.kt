@@ -8,7 +8,8 @@ import com.habitflowai.data.model.ChatResponse
 import kotlinx.coroutines.flow.Flow
 
 interface SocialRepository {
-    fun getPosts(page: Int, pageSize: Int): Flow<List<Post>>
+    fun getPosts(page: Int, pageSize: Int, friendsOnly: Boolean? = null): Flow<List<Post>>
+    fun getPostsByUserId(userId: String): Flow<List<Post>>
     fun getComments(postId: String): Flow<List<Comment>>
     suspend fun createPost(habitName: String, completionNote: String, imageUri: android.net.Uri? = null): Post?
     suspend fun likePost(postId: String): Boolean
@@ -33,6 +34,10 @@ interface SocialRepository {
     suspend fun deleteGroup(chatId: String): Boolean
     suspend fun getDirectChats(): List<ChatResponse>
     suspend fun createDirectChat(userId: String): ChatResponse
+    suspend fun getChat(chatId: String): ChatResponse?
+    suspend fun followUser(userId: String): Boolean
+    suspend fun unfollowUser(userId: String): Boolean
+    suspend fun getFollowers(userId: String): List<String>
     suspend fun getFollowing(userId: String): List<String>
     suspend fun getAllUsers(): List<AppUser>
 }

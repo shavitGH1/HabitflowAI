@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.rounded.Message
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -46,6 +47,7 @@ import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.SocialUiState
 import com.habitflowai.presentation.viewmodel.SocialViewModel
 import com.habitflowai.presentation.viewmodel.SearchResult
+import com.habitflowai.presentation.viewmodel.FeedFilter
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
 
@@ -54,6 +56,7 @@ import kotlinx.coroutines.launch
 fun SocialRoute(
     viewModel: SocialViewModel = hiltViewModel(),
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
+    onUserClick: (String) -> Unit,
     onToggleChat: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -70,6 +73,8 @@ fun SocialRoute(
     
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    val autoOpenChatId by viewModel.autoOpenChatId.collectAsState()
     
     var showCreateSheet by remember { mutableStateOf(false) }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
@@ -78,6 +83,19 @@ fun SocialRoute(
     var selectedPostForComments by remember { mutableStateOf<Post?>(null) }
     var selectedChatForView by remember { mutableStateOf<ChatResponse?>(null) }
     var showAddMemberDialog by remember { mutableStateOf<ChatResponse?>(null) }
+
+    LaunchedEffect(autoOpenChatId, uiState.groupChats, uiState.directChats, uiState.isLoadingChats) {
+        autoOpenChatId?.let { chatId ->
+            val chat = uiState.groupChats.find { it.id == chatId }
+                ?: uiState.directChats.find { it.id == chatId }
+            
+            if (chat != null) {
+                selectedChatForView = chat
+                viewModel.loadMessages(chatId)
+                viewModel.autoOpenChatId.value = null
+            }
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -156,6 +174,8 @@ fun SocialRoute(
                     modifier = Modifier.fillMaxSize(),
                     onLikeClick = viewModel::toggleLike,
                     onLoadMore = viewModel::loadMorePosts,
+                    onFilterChange = viewModel::setFilter,
+                    onUserClick = onUserClick,
                     onPostClick = { post ->
                         selectedPostForComments = post
                         viewModel.loadComments(post.id)
@@ -268,6 +288,7 @@ fun SocialRoute(
                     }
                 }
             },
+            onUserClick = onUserClick,
             onDismiss = { showJoinGroupDialog = false }
         )
     }
@@ -310,7 +331,8 @@ fun SocialRoute(
             onLikeClick = { viewModel.toggleLike(currentPost.id) },
             onAddComment = { content ->
                 viewModel.addComment(currentPost.id, content)
-            }
+            },
+            onUserClick = { onUserClick(currentPost.authorId) }
         )
     }
 }
@@ -815,6 +837,7 @@ fun JoinGroupDialog(
     onSearch: (String) -> Unit,
     onJoinGroup: (ChatResponse) -> Unit,
     onStartDm: (String) -> Unit,
+    onUserClick: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
@@ -880,7 +903,19 @@ fun JoinGroupDialog(
                                             subtitle = result.user.email,
                                             icon = Icons.Rounded.Person,
                                             personaColor = personaColor,
-                                            onClick = { onStartDm(result.user.id) }
+                                            onClick = { onUserClick(result.user.id) },
+                                            trailing = {
+                                                Row {
+                                                    // Follow icon could be added here if we had follow state in SearchResult
+                                                    // For now, let's keep it simple with just DM, or add a generic "View Profile" + icon
+                                                    IconButton(onClick = { onUserClick(result.user.id) }) {
+                                                        Icon(Icons.Rounded.PersonAdd, contentDescription = "View Profile", tint = personaColor)
+                                                    }
+                                                    IconButton(onClick = { onStartDm(result.user.id) }) {
+                                                        Icon(Icons.AutoMirrored.Rounded.Message, contentDescription = "Message", tint = personaColor)
+                                                    }
+                                                }
+                                            }
                                         )
                                     }
                                     is SearchResult.Group -> {
@@ -997,6 +1032,8 @@ fun SocialContent(
     modifier: Modifier = Modifier,
     onLikeClick: (String) -> Unit,
     onLoadMore: () -> Unit,
+    onFilterChange: (FeedFilter) -> Unit,
+    onUserClick: (String) -> Unit,
     onPostClick: (Post) -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -1017,31 +1054,110 @@ fun SocialContent(
 
     Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // Feed Filter
+            TabRow(
+                selectedTabIndex = uiState.filter.ordinal,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = personaColor,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.filter.ordinal]),
+                        color = personaColor
+                    )
+                }
+            ) {
+                FeedFilter.entries.forEach { filter ->
+                    Tab(
+                        selected = uiState.filter == filter,
+                        onClick = { onFilterChange(filter) },
+                        text = {
+                            Text(
+                                text = when (filter) {
+                                    FeedFilter.ALL -> "All"
+                                    FeedFilter.FRIENDS -> "Friends"
+                                    FeedFilter.MINE -> "Mine"
+                                },
+                                fontWeight = if (uiState.filter == filter) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
+
+            // Temporary ID Search for Profile
+            var searchId by remember { mutableStateOf("") }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = searchId,
+                    onValueChange = { searchId = it },
+                    placeholder = { Text("Search User ID...") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = { if (searchId.isNotBlank()) onUserClick(searchId) },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Rounded.Search, contentDescription = null)
+                }
+            }
+
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                itemsIndexed(
-                    items = uiState.posts,
-                    key = { _, post -> post.id }
-                ) { _, post ->
-                    PostCard(
-                        post = post,
-                        personaColor = personaColor,
-                        onLikeClick = { onLikeClick(post.id) },
-                        onClick = { onPostClick(post) }
-                    )
-                }
-
-                if (uiState.isLoading) {
+                if (uiState.posts.isEmpty() && !uiState.isLoading) {
                     item {
                         Box(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            modifier = Modifier.fillParentMaxSize().padding(bottom = 100.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            val emptyMessage = when (uiState.filter) {
+                                FeedFilter.FRIENDS -> {
+                                    if (uiState.followingIds.isEmpty()) "Seems like you didn't connect with friends yet"
+                                    else "Looks like your friends didn't post anything yet"
+                                }
+                                FeedFilter.MINE -> "You haven't posted anything yet"
+                                FeedFilter.ALL -> "No posts found"
+                            }
+                            Text(
+                                text = emptyMessage,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 32.dp)
+                            )
+                        }
+                    }
+                } else {
+                    itemsIndexed(
+                        items = uiState.posts,
+                        key = { _, post -> post.id }
+                    ) { _, post ->
+                        PostCard(
+                            post = post,
+                            personaColor = personaColor,
+                            onLikeClick = { onLikeClick(post.id) },
+                            onUserClick = { onUserClick(post.authorId) },
+                            onClick = { onPostClick(post) }
+                        )
+                    }
+
+                    if (uiState.isLoading) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
                         }
                     }
                 }
@@ -1055,6 +1171,7 @@ fun PostCard(
     post: Post,
     personaColor: Color,
     onLikeClick: () -> Unit,
+    onUserClick: () -> Unit,
     onClick: () -> Unit
 ) {
     Card(
@@ -1069,7 +1186,10 @@ fun PostCard(
             .clickable { onClick() }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onUserClick() }
+            ) {
                 Box(
                     modifier = Modifier.size(40.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
@@ -1105,7 +1225,10 @@ fun PostCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onUserClick() }
+            ) {
                     IconButton(onClick = onLikeClick) {
                         Icon(
                             if (post.isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
@@ -1139,7 +1262,8 @@ fun CommentsBottomSheet(
     isLoadingComments: Boolean,
     onDismiss: () -> Unit,
     onLikeClick: () -> Unit,
-    onAddComment: (String) -> Unit
+    onAddComment: (String) -> Unit,
+    onUserClick: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var commentText by remember { mutableStateOf("") }
@@ -1157,7 +1281,10 @@ fun CommentsBottomSheet(
                 .padding(horizontal = 16.dp)
         ) {
             // Expanded Post Content
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onUserClick() }
+            ) {
                 Box(
                     modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
@@ -1186,7 +1313,10 @@ fun CommentsBottomSheet(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onUserClick() }
+            ) {
                 IconButton(onClick = onLikeClick) {
                     Icon(
                         if (post.isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
@@ -1210,7 +1340,10 @@ fun CommentsBottomSheet(
             } else {
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(comments) { comment ->
-                        CommentItem(comment)
+                        CommentItem(
+                            comment = comment,
+                            onClick = onUserClick
+                        )
                     }
                 }
             }
@@ -1248,8 +1381,15 @@ fun CommentsBottomSheet(
 }
 
 @Composable
-fun CommentItem(comment: Comment) {
-    Row(modifier = Modifier.fillMaxWidth()) {
+fun CommentItem(
+    comment: Comment,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
         Box(
             modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
@@ -1508,6 +1648,8 @@ fun PreviewSocialFeedV2() {
                         personaColor = personaDetails.endColor,
                         onLikeClick = {},
                         onLoadMore = {},
+                        onFilterChange = {},
+                        onUserClick = { _ -> },
                         onPostClick = {}
                     )
                 }
@@ -1532,6 +1674,8 @@ fun SocialRoutePreview() {
                 personaColor = Color(0xFF64B5F6),
                 onLikeClick = {},
                 onLoadMore = {},
+                onFilterChange = {},
+                onUserClick = { _ -> },
                 onPostClick = {}
             )
         }
