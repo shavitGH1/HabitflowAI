@@ -25,25 +25,22 @@ class ChatViewModel @Inject constructor(
     private val repository: ChatRepository,
     private val authManager: AuthManager
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(ChatUiState())
+    private val _uiState = MutableStateFlow<ChatUiState>(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     private var socket: Socket? = null
     private var botChatId: String? = null
 
     init {
-        // The access token isn't necessarily valid yet when this ViewModel is first created
-        // (it's created once at the nav-graph root, before the user has logged in, or with a
-        // stale token from a previous session). Re-run setup every time a token becomes
-        // available rather than once at construction, so a fresh login always reconnects.
+        // Setup will be triggered manually after login or on first need to avoid loops
+    }
+
+    fun initializeChat() {
+        if (botChatId != null) return
         viewModelScope.launch {
-            authManager.accessToken.filterNotNull().distinctUntilChanged().collect {
-                socket?.disconnect()
-                socket?.off()
-                botChatId = repository.getCoachChatId()
-                setupSocket()
-                loadHistory()
-            }
+            botChatId = repository.getCoachChatId()
+            setupSocket()
+            loadHistory()
         }
     }
 

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.habitflowai.presentation.viewmodel.OnboardingUiState
+import com.habitflowai.presentation.ui.social.AuthErrorBanner
 import com.habitflowai.util.GoogleSignInOutcome
 import com.habitflowai.util.requestGoogleIdToken
 import kotlinx.coroutines.launch
@@ -122,7 +123,7 @@ fun RegisterCredentialsContent(
         OutlinedTextField(
             value = uiState.email,
             onValueChange = onEmailChange,
-            label = { Text("Email") },
+            label = { Text("Email Address") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(12.dp)
@@ -140,16 +141,15 @@ fun RegisterCredentialsContent(
             shape = RoundedCornerShape(12.dp)
         )
 
-        if (uiState.errorMessage != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = uiState.errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
+        androidx.compose.animation.AnimatedVisibility(
+            visible = uiState.errorMessage != null,
+            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
+        ) {
+            uiState.errorMessage?.let { msg ->
+                Spacer(modifier = Modifier.height(16.dp))
+                AuthErrorBanner(message = msg)
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -195,7 +195,7 @@ fun RegisterCredentialsContent(
                     )
                 } else {
                     Text(
-                        "Next",
+                        "Continue",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -227,7 +227,7 @@ fun RegisterCredentialsContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(onClick = onNavigateBack) {
-            Text("Already have an account? Login", color = Color(0xFF1E88E5))
+            Text("Already a member? Log In", color = Color(0xFF1E88E5))
         }
     }
 }

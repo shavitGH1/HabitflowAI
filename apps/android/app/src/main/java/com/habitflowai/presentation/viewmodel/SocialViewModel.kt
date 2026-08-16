@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,6 +27,14 @@ sealed class SearchResult {
     data class User(val user: AppUser) : SearchResult()
     data class Group(val chat: ChatResponse) : SearchResult()
     data class Message(val message: ChatMessage, val chatId: String, val chatName: String?) : SearchResult()
+}
+
+sealed class SocialUiError {
+    data class Network(val message: String) : SocialUiError()
+    data class PostError(val message: String) : SocialUiError()
+    data class ChatError(val message: String) : SocialUiError()
+    data class ActionError(val message: String) : SocialUiError()
+    data class Generic(val message: String) : SocialUiError()
 }
 
 enum class FeedFilter {
@@ -52,6 +61,7 @@ data class SocialUiState(
     val isRefreshing: Boolean = false,
     val canLoadMore: Boolean = true,
     val page: Int = 0,
+    val error: SocialUiError? = null
 )
 
 @HiltViewModel
@@ -114,10 +124,7 @@ class SocialViewModel @Inject constructor(
         
         // Use a single launch for all initial sync logic to avoid parallel bursts
         viewModelScope.launch {
-            // First load posts
-            loadMorePosts()
-            
-            // Then wait for auth and load chats
+            // Wait for auth and load chats
             authManager.currentUserId.collect { uid ->
                 val oldUid = _uiState.value.currentUserId
                 val newUid = uid ?: "me"
@@ -133,15 +140,11 @@ class SocialViewModel @Inject constructor(
                             followingIds = emptyList()
                         ) }
                     } else {
-                        // Logged in: Reconnect socket and sync data
-                        socketService.connect()
+                        // Logged in: Sync data
+                        loadMorePosts()
                         loadFollowingIds()
-                        kotlinx.coroutines.delay(800) // Staggered start
                         loadAllChats()
                     }
-                } else if (newUid != "me" && (_uiState.value.groupChats.isEmpty())) {
-                    // One-time sync for existing session
-                    loadAllChats()
                 }
             }
         }
@@ -843,6 +846,10 @@ class SocialViewModel @Inject constructor(
                 chatMessages = state.chatMessages - event.chatId
             )
         }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 
     override fun onCleared() {
