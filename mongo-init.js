@@ -218,7 +218,6 @@ if (toInsert.length > 0) {
   db.users.insertMany(toInsert);
 }
 
-// Fixed id — must stay in sync with COACH_USER_ID in apps/backend/src/coach/coach.templates.ts
 const COACH_ID = ObjectId('000000000000000000000c0a');
 if (!db.users.findOne({ _id: COACH_ID })) {
   db.users.insertOne({

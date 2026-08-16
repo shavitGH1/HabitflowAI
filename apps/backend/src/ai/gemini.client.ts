@@ -22,6 +22,8 @@ export interface ToolTurn {
   toolCalls: ToolCallRequest[];
 }
 
+const EMBEDDING_MODEL = 'gemini-embedding-001';
+
 @Injectable()
 export class GeminiClient {
   private readonly ai: GoogleGenAI;
@@ -33,6 +35,21 @@ export class GeminiClient {
     this.models = configured
       ? [configured]
       : ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
+  }
+
+  async embedContent(text: string): Promise<number[]> {
+    try {
+      const response = await this.ai.models.embedContent({ model: EMBEDDING_MODEL, contents: text });
+      const values = response.embeddings?.[0]?.values;
+      if (!values || values.length === 0) throw new Error('Empty embedding response');
+      return values;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error({ err: msg }, 'Gemini embedding call failed');
+      throw new InternalServerErrorException(
+        'AI Service is currently overloaded. Please try again in a few seconds.',
+      );
+    }
   }
 
   async generateJson<T>(prompt: string, schema?: ZodSchema<T>): Promise<T> {

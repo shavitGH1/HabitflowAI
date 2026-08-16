@@ -1,7 +1,10 @@
 const mockGenerateContent = jest.fn();
+const mockEmbedContent = jest.fn();
 
 jest.mock('@google/genai', () => ({
-  GoogleGenAI: jest.fn(() => ({ models: { generateContent: mockGenerateContent } })),
+  GoogleGenAI: jest.fn(() => ({
+    models: { generateContent: mockGenerateContent, embedContent: mockEmbedContent },
+  })),
 }));
 
 import { InternalServerErrorException } from '@nestjs/common';
@@ -66,5 +69,40 @@ describe('GeminiClient fallback chain', () => {
       recovered: true,
     });
     expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('GeminiClient.embedContent', () => {
+  beforeEach(() => {
+    mockEmbedContent.mockReset();
+  });
+
+  it('returns the embedding values on success', async () => {
+    mockEmbedContent.mockResolvedValue({ embeddings: [{ values: [0.1, 0.2, 0.3] }] });
+
+    const client = new GeminiClient(makeConfig());
+
+    await expect(client.embedContent('some text')).resolves.toEqual([0.1, 0.2, 0.3]);
+    expect(mockEmbedContent.mock.calls[0][0].model).toBe('gemini-embedding-001');
+  });
+
+  it('throws a friendly error when the response has no embedding', async () => {
+    mockEmbedContent.mockResolvedValue({ embeddings: [] });
+
+    const client = new GeminiClient(makeConfig());
+
+    await expect(client.embedContent('some text')).rejects.toBeInstanceOf(
+      InternalServerErrorException,
+    );
+  });
+
+  it('throws a friendly error when the API call fails', async () => {
+    mockEmbedContent.mockRejectedValue(new Error('quota exceeded'));
+
+    const client = new GeminiClient(makeConfig());
+
+    await expect(client.embedContent('some text')).rejects.toBeInstanceOf(
+      InternalServerErrorException,
+    );
   });
 });

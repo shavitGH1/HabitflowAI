@@ -10,6 +10,8 @@ import { CoachPhrasingFeature } from './features/coach-phrasing.feature';
 import { HabitGoalRelevanceFeature } from './features/habit-goal-relevance.feature';
 import { TaskVerificationFeature } from './features/task-verification.feature';
 import { OnboardingSuggestionsFeature } from './features/onboarding-suggestions.feature';
+import { RagSearchFeature } from './features/rag-search.feature';
+import { ResearchSearchFeature } from './features/research-search.feature';
 import { MotivationFeedbackStore } from './feedback/motivation-feedback.store';
 import { GeminiClient } from './gemini.client';
 
@@ -27,6 +29,8 @@ import { GeminiClient } from './gemini.client';
     HabitGoalRelevanceFeature,
     TaskVerificationFeature,
     OnboardingSuggestionsFeature,
+    RagSearchFeature,
+    ResearchSearchFeature,
     MotivationFeedbackStore,
   ],
   exports: [
