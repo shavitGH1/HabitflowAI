@@ -23,12 +23,12 @@ data class TokenRefreshResponse(
 
 data class RegisterRequest(
     val email: String,
-    val firstName: String? = null,
-    val lastName: String? = null,
     val password: String,
     val goal: String,
     val openAnswers: List<String>,
-    val fcmToken: String? = null
+    val fcmToken: String? = null,
+    val firstName: String = "",
+    val lastName: String = ""
 )
 
 data class CheckEmailRequest(val email: String)
@@ -106,5 +106,7 @@ data class HomeResponse(
     @SerializedName("failurePatterns") val failurePatterns: List<String>? = null,
     @SerializedName("confidenceScore") val confidenceScore: Double? = null,
     @SerializedName("driftDetected") val driftDetected: Boolean = false,
-    @SerializedName("driftRationale") val driftRationale: String? = null
+    @SerializedName("driftRationale") val driftRationale: String? = null,
+    val firstName: String? = null,
+    val lastName: String? = null
 )

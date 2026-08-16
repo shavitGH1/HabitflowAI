@@ -231,6 +231,8 @@ class OnboardingViewModel @Inject constructor(
                 if (homeData.success) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
+                        firstName = homeData.firstName ?: "",
+                        lastName = homeData.lastName ?: "",
                         personaResult = ClassifyPersonaResponse(
                             id = "",
                             personaType = homeData.personaType ?: "Achiever",
@@ -273,12 +275,12 @@ class OnboardingViewModel @Inject constructor(
 
                 val request = RegisterRequest(
                     email = currentState.email,
-                    firstName = currentState.firstName,
-                    lastName = currentState.lastName,
                     password = currentState.password,
                     goal = currentState.goal,
                     openAnswers = currentState.quizAnswers,
-                    fcmToken = fcmToken
+                    fcmToken = fcmToken,
+                    firstName = currentState.firstName,
+                    lastName = currentState.lastName
                 )
                 val response = authRepository.register(request)
 
@@ -345,7 +347,7 @@ class OnboardingViewModel @Inject constructor(
                 } else if (response is Resource.Error) {
                     _uiState.value = currentState.copy(
                         isLoading = false,
-                        errorMessage = response.message ?: "Failed to classify persona"
+                        errorMessage = response.message
                     )
                 }
             } catch (e: Exception) {
@@ -395,7 +397,7 @@ class OnboardingViewModel @Inject constructor(
                 } else if (response is Resource.Error) {
                     _uiState.value = currentState.copy(
                         isLoading = false,
-                        errorMessage = response.message ?: "Failed to update persona"
+                        errorMessage = response.message
                     )
                 }
             } catch (e: Exception) {
