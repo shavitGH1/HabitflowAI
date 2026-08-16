@@ -1,5 +1,6 @@
 package com.habitflowai.data.model
 
+import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 
 data class LoginRequest(
@@ -86,6 +87,16 @@ data class GoogleRegisterResponse(
     val motivationalMessage: String? = null
 )
 
+data class UpdateProfilePictureRequest(
+    val profilePicture: String
+)
+
+data class UpdateProfileResponse(
+    @JsonAdapter(ProfilePictureDeserializer::class)
+    val profilePicture: String,
+    val success: Boolean = true
+)
+
 data class HomeGoalTask(
     val description: String,
     val points: Int,
@@ -95,6 +106,7 @@ data class HomeGoalTask(
 )
 
 data class HomeResponse(
+    @SerializedName("email") val email: String? = null,
     @SerializedName("goal") val goal: String,
     @SerializedName("motivationalMessage") val motivationalMessage: String,
     @SerializedName("coreGoals") val coreGoals: List<HomeGoalTask>,
@@ -106,5 +118,8 @@ data class HomeResponse(
     @SerializedName("failurePatterns") val failurePatterns: List<String>? = null,
     @SerializedName("confidenceScore") val confidenceScore: Double? = null,
     @SerializedName("driftDetected") val driftDetected: Boolean = false,
-    @SerializedName("driftRationale") val driftRationale: String? = null
+    @SerializedName("driftRationale") val driftRationale: String? = null,
+    @SerializedName("profilePicture")
+    @JsonAdapter(ProfilePictureDeserializer::class)
+    val profilePicture: String? = null
 )

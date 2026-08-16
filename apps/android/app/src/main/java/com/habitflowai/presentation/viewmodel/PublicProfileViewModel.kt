@@ -20,6 +20,7 @@ import javax.inject.Inject
 data class PublicProfileUiState(
     val userId: String = "",
     val username: String = "",
+    val profilePicture: String? = null,
     val posts: List<Post> = emptyList(),
     val followerCount: Int = 0,
     val followingCount: Int = 0,
@@ -63,7 +64,7 @@ class PublicProfileViewModel @Inject constructor(
             val user = allUsers.find { it.id == targetUserId }
             var name = user?.email?.substringBefore('@') ?: targetUserId
             
-            _uiState.update { it.copy(username = name) }
+            _uiState.update { it.copy(username = name, profilePicture = user?.profilePicture) }
 
             // Get followers/following info
             launch {

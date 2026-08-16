@@ -13,5 +13,6 @@ data class UserEntity(
     val portfolioSummary: String? = null,
     val tips: String? = null,
     val failurePatterns: String? = null,
-    val confidenceScore: Double? = null
+    val confidenceScore: Double? = null,
+    val profilePicture: String? = null
 )

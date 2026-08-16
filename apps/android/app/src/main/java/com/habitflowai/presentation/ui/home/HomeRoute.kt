@@ -1,6 +1,7 @@
 package com.habitflowai.presentation.ui.home
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.style.TextAlign
@@ -46,15 +49,19 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.SmartToy
 import com.habitflowai.presentation.ui.chat.ChatOverlay
 import com.habitflowai.data.model.ChatUiState
+import com.habitflowai.presentation.ui.profile.PresetAvatars
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 
 import com.habitflowai.presentation.viewmodel.HomeUiState
 import com.habitflowai.data.model.HomeResponse
+import com.habitflowai.data.model.resolveProfilePicture
+import coil.compose.AsyncImage
 
 @Composable
 fun HomeRoute(
     personaResult: ClassifyPersonaResponse?,
     userId: String,
+    profilePicture: String? = null,
     onNavigateToReassessment: () -> Unit,
     onToggleChat: () -> Unit
 ) {
@@ -80,6 +87,7 @@ fun HomeRoute(
     HomeScreen(
         uiState = uiState,
         personaResult = personaResult,
+        profilePicture = profilePicture,
         onCompleteTask = { viewModel.completeTask(it) },
         onDismissDriftBanner = { viewModel.dismissDriftBanner() },
         onStartReassessment = onNavigateToReassessment,
@@ -92,6 +100,7 @@ fun HomeRoute(
 fun HomeScreen(
     uiState: HomeUiState,
     personaResult: ClassifyPersonaResponse?,
+    profilePicture: String? = null,
     onCompleteTask: (String) -> Unit,
     onDismissDriftBanner: () -> Unit,
     onStartReassessment: () -> Unit,
@@ -212,12 +221,27 @@ fun HomeScreen(
                     .background(Brush.linearGradient(listOf(startColor, endColor))),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Face,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(60.dp)
-                )
+                val presetDrawable = PresetAvatars.drawableFor(profilePicture)
+                when {
+                    presetDrawable != null -> Image(
+                        painter = painterResource(presetDrawable),
+                        contentDescription = "Profile picture",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    !profilePicture.isNullOrBlank() -> AsyncImage(
+                        model = resolveProfilePicture(profilePicture),
+                        contentDescription = "Profile picture",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    else -> Icon(
+                        imageVector = Icons.Rounded.Face,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(60.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

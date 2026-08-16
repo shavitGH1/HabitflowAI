@@ -46,6 +46,9 @@ export class User {
   @Prop({ default: '' })
   lastName: string;
 
+  @Prop()
+  profilePicture?: string;
+
   @Prop({ required: true })
   password: string;
 
