@@ -275,8 +275,6 @@ class OnboardingViewModel @Inject constructor(
 
                 val request = RegisterRequest(
                     email = currentState.email,
-                    firstName = currentState.firstName,
-                    lastName = currentState.lastName,
                     password = currentState.password,
                     goal = currentState.goal,
                     openAnswers = currentState.quizAnswers,
@@ -349,7 +347,7 @@ class OnboardingViewModel @Inject constructor(
                 } else if (response is Resource.Error) {
                     _uiState.value = currentState.copy(
                         isLoading = false,
-                        errorMessage = response.message ?: "Failed to classify persona"
+                        errorMessage = response.message
                     )
                 }
             } catch (e: Exception) {
@@ -399,7 +397,7 @@ class OnboardingViewModel @Inject constructor(
                 } else if (response is Resource.Error) {
                     _uiState.value = currentState.copy(
                         isLoading = false,
-                        errorMessage = response.message ?: "Failed to update persona"
+                        errorMessage = response.message
                     )
                 }
             } catch (e: Exception) {

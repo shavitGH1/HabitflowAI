@@ -53,8 +53,6 @@ fun RegisterCredentialsRoute(
         uiState = uiState,
         onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
-        onFirstNameChange = viewModel::onFirstNameChange,
-        onLastNameChange = viewModel::onLastNameChange,
         onNext = viewModel::checkEmail,
         onGoogleClick = {
             scope.launch {
@@ -74,8 +72,6 @@ fun RegisterCredentialsContent(
     uiState: OnboardingUiState,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
-    onFirstNameChange: (String) -> Unit,
-    onLastNameChange: (String) -> Unit,
     onNext: () -> Unit,
     onGoogleClick: () -> Unit = {},
     onNavigateBack: () -> Unit
@@ -97,27 +93,6 @@ fun RegisterCredentialsContent(
         RegisterLogo()
 
         Spacer(modifier = Modifier.height(48.dp))
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            OutlinedTextField(
-                value = uiState.firstName,
-                onValueChange = onFirstNameChange,
-                label = { Text("First Name") },
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-            OutlinedTextField(
-                value = uiState.lastName,
-                onValueChange = onLastNameChange,
-                label = { Text("Last Name") },
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = uiState.email,
@@ -275,8 +250,6 @@ fun RegisterCredentialsPreview() {
         uiState = OnboardingUiState(),
         onEmailChange = {},
         onPasswordChange = {},
-        onFirstNameChange = {},
-        onLastNameChange = {},
         onNext = {},
         onNavigateBack = {}
     )
@@ -293,8 +266,6 @@ fun RegisterCredentialsErrorPreview() {
         ),
         onEmailChange = {},
         onPasswordChange = {},
-        onFirstNameChange = {},
-        onLastNameChange = {},
         onNext = {},
         onNavigateBack = {}
     )

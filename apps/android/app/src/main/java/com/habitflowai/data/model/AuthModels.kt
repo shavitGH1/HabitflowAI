@@ -23,8 +23,6 @@ data class TokenRefreshResponse(
 
 data class RegisterRequest(
     val email: String,
-    val firstName: String? = null,
-    val lastName: String? = null,
     val password: String,
     val goal: String,
     val openAnswers: List<String>,
