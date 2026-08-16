@@ -1,11 +1,16 @@
 package com.habitflowai.presentation.ui.map
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +23,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material3.*
@@ -26,11 +32,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.luminance
@@ -40,12 +48,16 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import com.google.maps.android.compose.clustering.Clustering
+import com.habitflowai.data.model.AudienceFilter
 import com.habitflowai.data.model.HabitMarker
+import com.habitflowai.data.model.MarkerRelationship
+import com.habitflowai.data.model.TimeRangeFilter
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.MapUiState
 import com.habitflowai.presentation.viewmodel.MapViewModel
 import com.habitflowai.presentation.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun MapRoute(
@@ -55,6 +67,17 @@ fun MapRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val chatUiState by chatViewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> hasLocationPermission = granted }
 
     LaunchedEffect(personaType) {
         chatViewModel.setPersonaType(personaType)
@@ -62,6 +85,9 @@ fun MapRoute(
 
     LaunchedEffect(Unit) {
         viewModel.refreshMarkers()
+        if (!hasLocationPermission) {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().imePadding()) {
@@ -71,7 +97,12 @@ fun MapRoute(
             onSearchQueryChange = viewModel::onSearchQueryChange,
             onSearch = viewModel::onSearch,
             onCameraMoved = viewModel::onCameraMoved,
-            onToggleChat = { chatViewModel.toggleChat() }
+            onToggleChat = { chatViewModel.toggleChat() },
+            onTimeRangeChange = viewModel::onTimeRangeChange,
+            onAudienceChange = viewModel::onAudienceChange,
+            hasLocationPermission = hasLocationPermission,
+            onRequestLocationPermission = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
+            onLocateMe = { viewModel.getMyLocation() }
         )
 
         ChatOverlay(
@@ -91,13 +122,19 @@ fun MapContent(
     onSearchQueryChange: (String) -> Unit = {},
     onSearch: () -> Unit = {},
     onCameraMoved: () -> Unit = {},
-    onToggleChat: () -> Unit = {}
+    onToggleChat: () -> Unit = {},
+    onTimeRangeChange: (TimeRangeFilter) -> Unit = {},
+    onAudienceChange: (AudienceFilter) -> Unit = {},
+    hasLocationPermission: Boolean = false,
+    onRequestLocationPermission: () -> Unit = {},
+    onLocateMe: suspend () -> LatLng? = { null }
 ) {
     val isDark = isSystemInDarkTheme()
     val telAviv = LatLng(32.0853, 34.7818)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(telAviv, 13f)
     }
+    val scope = rememberCoroutineScope()
 
     val personaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
 
@@ -107,6 +144,19 @@ fun MapContent(
                 com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(latLng, 13f)
             )
             onCameraMoved()
+        }
+    }
+
+    // Default the map to the user's own location once permission is available —
+    // if it can't be resolved (denied, GPS off, timeout), silently keep the
+    // Tel Aviv fallback already set above instead of showing an error.
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission) {
+            onLocateMe()?.let { latLng ->
+                cameraPositionState.animate(
+                    com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(latLng, 14f)
+                )
+            }
         }
     }
 
@@ -153,6 +203,36 @@ fun MapContent(
                 onClusterItemClick = { marker ->
                     selectedMarker = marker
                     true // Consume the click — show our own detail card instead of the default info window
+                },
+                clusterItemContent = { marker ->
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(markerColor(marker.relationship))
+                            .border(2.dp, Color.White, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = marker.personaEmoji, fontSize = 14.sp)
+                    }
+                },
+                clusterContent = { cluster ->
+                    val clusterColor = personaDetails.endColor
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(clusterColor)
+                            .border(2.dp, Color.White, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${cluster.size}",
+                            color = if (clusterColor.luminance() > 0.5f) Color.Black else Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             )
         }
@@ -281,12 +361,89 @@ fun MapContent(
                                     )
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "Time range",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(TimeRangeFilter.entries.toList()) { range ->
+                                    FilterChip(
+                                        isSelected = uiState.timeRangeFilter == range,
+                                        text = range.label,
+                                        personaColor = personaDetails.endColor,
+                                        onClick = { onTimeRangeChange(range) }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "Show",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(AudienceFilter.entries.toList()) { audience ->
+                                    FilterChip(
+                                        isSelected = uiState.audienceFilter == audience,
+                                        text = audience.label,
+                                        personaColor = personaDetails.endColor,
+                                        onClick = { onAudienceChange(audience) }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                MarkerLegendItem(color = markerColor(MarkerRelationship.MINE), label = "Mine")
+                                MarkerLegendItem(color = markerColor(MarkerRelationship.FRIEND), label = "Friends")
+                                MarkerLegendItem(color = markerColor(MarkerRelationship.STRANGER), label = "Others")
+                            }
                         }
                     }
                 }
             }
         }
-        
+
+        // Locate-me button — bottom-left, clear of the detail card/stats overlay
+        // zone that spans the bottom-center, so it never gets covered.
+        FloatingActionButton(
+            onClick = {
+                if (!hasLocationPermission) {
+                    onRequestLocationPermission()
+                } else {
+                    scope.launch {
+                        onLocateMe()?.let { latLng ->
+                            cameraPositionState.animate(
+                                com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(latLng, 15f)
+                            )
+                        }
+                    }
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 16.dp, bottom = 72.dp)
+                .size(48.dp),
+            containerColor = if (isDark) Color(0xFF1E1E1E).copy(alpha = 0.95f) else MaterialTheme.colorScheme.surface,
+            contentColor = personaDetails.endColor,
+            shape = CircleShape,
+            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+        ) {
+            Icon(Icons.Rounded.MyLocation, contentDescription = "Go to my location")
+        }
+
         // Marker detail card — shown instead of the stock Google Maps info window,
         // which is small and doesn't reliably read as "here's the completed task".
         AnimatedVisibility(
@@ -309,6 +466,8 @@ fun MapContent(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(markerColor(marker.relationship)))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(text = marker.personaEmoji, fontSize = 28.sp)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -391,6 +550,8 @@ fun MapContent(
                                 .padding(vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(markerColor(marker.relationship)))
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(text = marker.personaEmoji, fontSize = 24.sp)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -410,6 +571,21 @@ fun MapContent(
                 }
             }
         }
+    }
+}
+
+fun markerColor(relationship: MarkerRelationship): Color = when (relationship) {
+    MarkerRelationship.MINE -> Color(0xFFE53935)
+    MarkerRelationship.FRIEND -> Color(0xFF1E88E5)
+    MarkerRelationship.STRANGER -> Color(0xFF43A047)
+}
+
+@Composable
+fun MarkerLegendItem(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(color))
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

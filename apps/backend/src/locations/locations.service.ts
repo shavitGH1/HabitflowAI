@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { logger } from '../logger';
 import { LocationDto } from './dto/location.dto';
-import { LocationData, LocationRepository } from './location.repository';
+import { LocationData, LocationRepository, LocationScope } from './location.repository';
 import { GeocodingService } from './geocoding.service';
 import { UserRepository } from '../users/user.repository';
 import { HabitRepository } from '../habits/habit.repository';
+import { FollowRepository } from '../follows/follow.repository';
 
 @Injectable()
 export class LocationsService {
@@ -13,6 +14,7 @@ export class LocationsService {
     private readonly geocoding: GeocodingService,
     private readonly userRepository: UserRepository,
     private readonly habitRepository: HabitRepository,
+    private readonly followRepository: FollowRepository,
   ) {}
 
   async recordLocation(userId: string, dto: LocationDto): Promise<{ success: boolean }> {
@@ -56,19 +58,39 @@ export class LocationsService {
     maxLat: number,
     minLng: number,
     maxLng: number,
+    requestingUserId: string,
+    scope: LocationScope = 'all',
+    sinceTimestamp?: number,
   ): Promise<LocationData[]> {
-    const records = await this.locationRepository.findByBbox(minLat, maxLat, minLng, maxLng);
-    return this.attachUsernames(records);
+    const followingIds = await this.followRepository.findFollowingIds(requestingUserId);
+    if (scope === 'friends' && followingIds.length === 0) return [];
+
+    const records = await this.locationRepository.findByBbox(minLat, maxLat, minLng, maxLng, {
+      sinceTimestamp,
+      scope,
+      requestingUserId,
+      followingIds,
+    });
+    return this.attachUsernamesAndRelationship(records, requestingUserId, followingIds);
   }
 
-  private async attachUsernames(records: LocationData[]): Promise<LocationData[]> {
+  private async attachUsernamesAndRelationship(
+    records: LocationData[],
+    requestingUserId: string,
+    followingIds: string[],
+  ): Promise<LocationData[]> {
     if (records.length === 0) return records;
     const ids = [...new Set(records.map(r => r.userId))];
     const users = await this.userRepository.findUserEmailsByIds(ids);
     const usernameById = new Map(
       users.map(u => [u.id, [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email.split('@')[0]]),
     );
-    return records.map(r => ({ ...r, username: usernameById.get(r.userId) }));
+    const followingSet = new Set(followingIds);
+    return records.map(r => ({
+      ...r,
+      username: usernameById.get(r.userId),
+      relationship: r.userId === requestingUserId ? 'mine' : followingSet.has(r.userId) ? 'friend' : 'stranger',
+    }));
   }
 
   private async resolveTaskDescription(userId: string, taskId: string): Promise<string> {
