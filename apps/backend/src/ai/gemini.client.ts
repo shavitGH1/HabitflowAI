@@ -41,7 +41,7 @@ export class GeminiClient {
     try {
       const response = await this.ai.models.embedContent({ model: EMBEDDING_MODEL, contents: text });
       const values = response.embeddings?.[0]?.values;
-      if (!values) throw new Error('Empty embedding response');
+      if (!values || values.length === 0) throw new Error('Empty embedding response');
       return values;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
