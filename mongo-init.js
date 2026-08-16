@@ -247,6 +247,10 @@ const alexId = demoUserIds['demo.alex@habitflow.ai'];
 const mayaId = demoUserIds['demo.maya@habitflow.ai'];
 const benId = demoUserIds['demo.ben@habitflow.ai'];
 const saraId = demoUserIds['demo.sara@habitflow.ai'];
+const tomId = demoUserIds['demo.tom@habitflow.ai'];
+const lenaId = demoUserIds['demo.lena@habitflow.ai'];
+const danaId = demoUserIds['demo.dana@habitflow.ai'];
+const ronId = demoUserIds['demo.ron@habitflow.ai'];
 
 if (alexId && mayaId && !db.chats.findOne({ isGroup: false, participantIds: { $all: [alexId, mayaId], $size: 2 } })) {
   const directChatId = db.chats.insertOne({
@@ -539,5 +543,34 @@ if (benId && db.driftflags.countDocuments() === 0) {
     dismissed: false,
     createdAt: daysAgoDate(1),
     updatedAt: daysAgoDate(1),
+  });
+}
+
+// GET /leaderboard reads only LeaderboardMonth (running totals), never
+// LeaderboardWeek — a real completion later just $inc's on top of these,
+// consistent with the "running total" design, so seeding month docs alone
+// is enough for the table to show real standings without fabricating
+// day-by-day week data nothing currently reads.
+if (alexId && db.leaderboardmonths.countDocuments() === 0) {
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const monthPoints = {
+    [alexId]: 5450,
+    [mayaId]: 4800,
+    [ronId]: 4100,
+    [danaId]: 3600,
+    [tomId]: 3150,
+    [saraId]: 2700,
+    [benId]: 2200,
+    [lenaId]: 1650,
+  };
+  Object.entries(monthPoints).forEach(([userId, points]) => {
+    if (!userId || userId === 'undefined') return;
+    db.leaderboardmonths.insertOne({
+      userId,
+      monthStart,
+      monthPoints: points,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   });
 }
