@@ -3,6 +3,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { LocationRecord, LocationRecordDocument } from './schemas/location.schema';
 
+export type LocationScope = 'all' | 'friends' | 'mine';
+export type LocationRelationship = 'mine' | 'friend' | 'stranger';
+
 export interface LocationData {
   id: string;
   userId: string;
@@ -16,7 +19,15 @@ export interface LocationData {
   isPublic: boolean;
   type: 'habit' | 'task';
   username?: string;
+  relationship?: LocationRelationship;
   createdAt: string;
+}
+
+export interface BboxScopeOptions {
+  sinceTimestamp?: number;
+  scope: LocationScope;
+  requestingUserId: string;
+  followingIds: string[];
 }
 
 export interface CreateLocationInput {
@@ -49,15 +60,28 @@ export class LocationRepository {
     maxLat: number,
     minLng: number,
     maxLng: number,
+    options: BboxScopeOptions,
   ): Promise<LocationData[]> {
-    const docs = await this.locationModel
-      .find({
-        isPublic: true,
-        latitude: { $gte: minLat, $lte: maxLat },
-        longitude: { $gte: minLng, $lte: maxLng },
-      })
-      .sort({ createdAt: -1 })
-      .exec();
+    const query: Record<string, unknown> = {
+      latitude: { $gte: minLat, $lte: maxLat },
+      longitude: { $gte: minLng, $lte: maxLng },
+    };
+
+    if (options.sinceTimestamp !== undefined) {
+      query.timestamp = { $gte: options.sinceTimestamp };
+    }
+
+    if (options.scope === 'mine') {
+      // Always see your own pins, public or not.
+      query.userId = options.requestingUserId;
+    } else {
+      query.isPublic = true;
+      if (options.scope === 'friends') {
+        query.userId = { $in: options.followingIds };
+      }
+    }
+
+    const docs = await this.locationModel.find(query).sort({ createdAt: -1 }).exec();
     return docs.map(doc => this.toLocationData(doc));
   }
 

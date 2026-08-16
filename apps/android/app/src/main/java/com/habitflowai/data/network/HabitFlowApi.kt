@@ -118,7 +118,9 @@ interface HabitFlowApi {
         @Query("minLat") minLat: Double,
         @Query("maxLat") maxLat: Double,
         @Query("minLng") minLng: Double,
-        @Query("maxLng") maxLng: Double
+        @Query("maxLng") maxLng: Double,
+        @Query("since") since: Long? = null,
+        @Query("scope") scope: String? = null
     ): List<LocationResponse>
 
     // Chat

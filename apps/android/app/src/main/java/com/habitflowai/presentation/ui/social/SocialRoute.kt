@@ -1492,74 +1492,83 @@ fun CommentsBottomSheet(
                 .imePadding()
                 .padding(horizontal = 16.dp)
         ) {
-            // Expanded Post Content
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { onUserClick() }
-                ) {
-                    Box(
-                        modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
+            // Header, image and comments all live in one scrollable LazyColumn so
+            // overflow (a fixed-height post image plus the keyboard inset once
+            // imePadding shrinks the available space) scrolls instead of pushing
+            // the comment input below the visible area. The input row below stays
+            // a fixed sibling, outside this LazyColumn, so it's never squeezed off.
+            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item {
+                    // Expanded Post Content
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Rounded.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { onUserClick() }
+                        ) {
+                            Box(
+                                modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                val displayName = post.authorName ?: post.authorEmail?.substringBefore('@') ?: "User"
+                                Text(displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                Text(post.createdAt ?: "Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Rounded.Close, contentDescription = "Close")
+                        }
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        val displayName = post.authorName ?: post.authorEmail?.substringBefore('@') ?: "User"
-                        Text(displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        Text(post.createdAt ?: "Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(post.habitName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(post.completionNote, style = MaterialTheme.typography.bodyLarge)
+
+                    if (post.imageUrl != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        AsyncImage(
+                            model = post.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { onUserClick() }
+                    ) {
+                        IconButton(onClick = onLikeClick) {
+                            Icon(
+                                if (post.isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                contentDescription = "Like",
+                                tint = if (post.isLiked) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text("${post.likeCount} Likes", style = MaterialTheme.typography.bodySmall)
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    Text("Comments", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (isLoadingComments) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Close")
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(post.habitName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Text(post.completionNote, style = MaterialTheme.typography.bodyLarge)
-            
-            if (post.imageUrl != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                AsyncImage(
-                    model = post.imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { onUserClick() }
-            ) {
-                IconButton(onClick = onLikeClick) {
-                    Icon(
-                        if (post.isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        contentDescription = "Like",
-                        tint = if (post.isLiked) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text("${post.likeCount} Likes", style = MaterialTheme.typography.bodySmall)
-            }
-            
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            
-            Text("Comments", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (isLoadingComments) {
-                Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (!isLoadingComments) {
                     items(comments) { comment ->
                         CommentItem(
                             comment = comment,
