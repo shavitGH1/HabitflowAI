@@ -134,9 +134,13 @@ export class CoachService {
   }
 
   private async ensureCoachChat(userId: string): Promise<string> {
+    // Named explicitly so the client never has to resolve "the other participant"
+    // for this one chat — that resolution depends on the coach account being
+    // present in whatever user list the client has loaded at the time.
     const chat = await this.chatService.createChat(userId, {
       participantIds: [COACH_USER_ID],
       isGroup: false,
+      name: 'Coach',
     });
     return chat.id;
   }

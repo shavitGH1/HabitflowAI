@@ -264,4 +264,16 @@ interface HabitFlowApi {
         @Path("id") id: String,
         @Body request: com.habitflowai.data.model.CommentRequest
     ): com.habitflowai.data.model.Comment
+
+    @POST("api/v1/posts/{postId}/comments/{commentId}/like")
+    suspend fun toggleCommentLike(
+        @Path("postId") postId: String,
+        @Path("commentId") commentId: String
+    ): com.habitflowai.data.model.Comment
+
+    @DELETE("api/v1/posts/{postId}/comments/{commentId}/like")
+    suspend fun unlikeComment(
+        @Path("postId") postId: String,
+        @Path("commentId") commentId: String
+    ): com.habitflowai.data.model.Comment
 }

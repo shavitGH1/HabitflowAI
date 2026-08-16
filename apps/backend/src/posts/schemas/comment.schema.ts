@@ -11,6 +11,9 @@ export class Comment {
 
   @Prop({ required: true })
   text: string;
+
+  @Prop({ type: [String], default: [] })
+  likes: string[];
 }
 
 export const CommentSchema = SchemaFactory.createForClass(Comment);

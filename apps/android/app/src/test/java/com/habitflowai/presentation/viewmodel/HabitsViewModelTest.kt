@@ -2,6 +2,7 @@ package com.habitflowai.presentation.viewmodel
 
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
+import com.habitflowai.domain.repository.GoalsRepository
 import com.habitflowai.domain.repository.HabitsRepository
 import com.habitflowai.domain.repository.LocationRepository
 import io.mockk.coEvery
@@ -29,6 +30,7 @@ import org.junit.Test
 class HabitsViewModelTest {
 
     private val habitsRepository: HabitsRepository = mockk()
+    private val goalsRepository: GoalsRepository = mockk()
     private val locationRepository: LocationRepository = mockk()
     private lateinit var viewModel: HabitsViewModel
 
@@ -64,7 +66,7 @@ class HabitsViewModelTest {
         coEvery { habitsRepository.completeHabit(any()) } returns true
         coEvery { locationRepository.captureAndSaveLocation(any(), any(), any()) } just runs
 
-        viewModel = HabitsViewModel(habitsRepository, locationRepository)
+        viewModel = HabitsViewModel(habitsRepository, goalsRepository, locationRepository)
     }
 
     @After
@@ -137,7 +139,7 @@ class HabitsViewModelTest {
         val errorRepo: HabitsRepository = mockk()
         every { errorRepo.getHabits(any()) } returns flowOf()
 
-        val errorViewModel = HabitsViewModel(errorRepo, locationRepository)
+        val errorViewModel = HabitsViewModel(errorRepo, goalsRepository, locationRepository)
         assertEquals(0, errorViewModel.uiState.value.habits.size)
     }
 

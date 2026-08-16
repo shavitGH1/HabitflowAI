@@ -15,6 +15,8 @@ interface SocialRepository {
     suspend fun likePost(postId: String): Boolean
     suspend fun unlikePost(postId: String): Boolean
     suspend fun addComment(postId: String, content: String): Comment?
+    suspend fun likeComment(postId: String, commentId: String): Boolean
+    suspend fun unlikeComment(postId: String, commentId: String): Boolean
     suspend fun getAllChats(): List<ChatResponse>
     suspend fun getGroupChats(): List<ChatResponse>
     suspend fun createGroup(name: String, participantIds: List<String> = emptyList(), isPublic: Boolean = false): ChatResponse

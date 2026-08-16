@@ -8,10 +8,12 @@ export interface PostData {
   authorId: string;
   authorEmail?: string;
   authorName?: string;
+  authorProfilePicture?: string;
   habitName: string;
   completionNote: string;
   imageUrl?: string;
   likes: string[];
+  commentCount: number;
   createdAt: string;
 }
 
@@ -25,6 +27,24 @@ export interface CreatePostInput {
 @Injectable()
 export class PostRepository {
   constructor(@InjectModel(Post.name) private readonly postModel: Model<PostDocument>) {}
+
+  // Counts comments per post via $lookup rather than a stored/incremented counter — no
+  // extra write path to keep in sync when a comment is added or deleted.
+  private readonly commentCountStages = [
+    {
+      $lookup: {
+        from: 'comments',
+        localField: '_id',
+        foreignField: 'postId',
+        as: 'postComments',
+      },
+    },
+    {
+      $addFields: {
+        commentCount: { $size: '$postComments' },
+      },
+    },
+  ];
 
   async createPost(input: CreatePostInput): Promise<PostData> {
     const saved = await new this.postModel({
@@ -47,7 +67,8 @@ export class PostRepository {
           as: 'author'
         }
       },
-      { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } }
+      { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+      ...this.commentCountStages,
     ]).exec();
 
     return posts.map(p => this.fromAggregateToPostData(p));
@@ -65,7 +86,8 @@ export class PostRepository {
           as: 'author'
         }
       },
-      { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } }
+      { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+      ...this.commentCountStages,
     ]).exec();
 
     return posts.map(p => this.fromAggregateToPostData(p));
@@ -86,7 +108,8 @@ export class PostRepository {
           as: 'author'
         }
       },
-      { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } }
+      { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+      ...this.commentCountStages,
     ]).exec();
 
     return posts.map(p => this.fromAggregateToPostData(p));
@@ -103,7 +126,8 @@ export class PostRepository {
           as: 'author'
         }
       },
-      { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } }
+      { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+      ...this.commentCountStages,
     ]).exec();
 
     return posts.length > 0 ? this.fromAggregateToPostData(posts[0]) : null;
@@ -125,10 +149,12 @@ export class PostRepository {
       authorEmail: doc.author?.email,
       authorName: [doc.author?.firstName, doc.author?.lastName].filter(Boolean).join(' ')
         || doc.author?.email?.split('@')[0],
+      authorProfilePicture: doc.author?.profilePicture,
       habitName: doc.habitName,
       completionNote: doc.completionNote,
       imageUrl: doc.imageUrl,
       likes: doc.likes || [],
+      commentCount: doc.commentCount ?? 0,
       createdAt: (doc.createdAt as Date)?.toISOString() || new Date().toISOString(),
     };
   }

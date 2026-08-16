@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,13 +51,17 @@ import com.habitflowai.data.model.Post
 import com.habitflowai.data.model.Comment
 import com.habitflowai.data.model.ChatResponse
 import com.habitflowai.data.model.AppUser
+import com.habitflowai.data.model.resolveProfilePicture
 import com.habitflowai.presentation.ui.persona.PersonaUiData
+import com.habitflowai.presentation.ui.profile.PresetAvatars
 import com.habitflowai.presentation.ui.theme.*
 import com.habitflowai.presentation.viewmodel.SocialUiState
 import com.habitflowai.presentation.viewmodel.SocialViewModel
 import com.habitflowai.presentation.viewmodel.SearchResult
 import com.habitflowai.presentation.viewmodel.FeedFilter
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
+import com.habitflowai.util.formatCommentTime
+import com.habitflowai.util.formatPostTime
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -531,7 +537,8 @@ fun SocialRoute(
             onAddComment = { content ->
                 viewModel.addComment(currentPost.id, content)
             },
-            onUserClick = { onUserClick(currentPost.authorId) }
+            onUserClick = { onUserClick(currentPost.authorId) },
+            onLikeCommentClick = { commentId -> viewModel.toggleCommentLike(currentPost.id, commentId) }
         )
     }
 }
@@ -597,7 +604,7 @@ fun GroupChatsDrawerContent(
                         )
                     }
                     items(uiState.groupChats) { chat ->
-                        SocialGroupChatListItem(chat = chat, personaColor = personaColor, currentUserId = uiState.currentUserId, onClick = { onChatClick(chat) })
+                        SocialGroupChatListItem(chat = chat, personaColor = personaColor, currentUserId = uiState.currentUserId, allUsers = uiState.allUsers, onClick = { onChatClick(chat) })
                     }
                 }
 
@@ -614,7 +621,7 @@ fun GroupChatsDrawerContent(
                         )
                     }
                     items(uiState.directChats, key = { it.id }) { chat ->
-                        SocialGroupChatListItem(chat = chat, personaColor = personaColor, currentUserId = uiState.currentUserId, onClick = { onChatClick(chat) })
+                        SocialGroupChatListItem(chat = chat, personaColor = personaColor, currentUserId = uiState.currentUserId, allUsers = uiState.allUsers, onClick = { onChatClick(chat) })
                     }
                 }
 
@@ -939,7 +946,7 @@ fun CreateGroupBottomSheet(
                                     onClick = { selectedUsersStr = (selectedUsers - userId).joinToString(",") },
                                     label = { Text(username, fontSize = 12.sp) },
                                     leadingIcon = {
-                                        SocialUserAvatar(name = username, personaColor = personaColor, size = 20)
+                                        SocialUserAvatar(name = username, personaColor = personaColor, size = 20, profilePicture = allUsers.find { it.id == userId }?.profilePicture)
                                     },
                                     trailingIcon = {
                                         Icon(Icons.Rounded.Close, contentDescription = "Remove", modifier = Modifier.size(14.dp))
@@ -1381,17 +1388,32 @@ fun PostCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable { onUserClick() }
             ) {
+                val postPresetDrawable = PresetAvatars.drawableFor(post.authorProfilePicture)
                 Box(
                     modifier = Modifier.size(40.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Rounded.Person, contentDescription = null, tint = personaColor)
+                    when {
+                        postPresetDrawable != null -> Image(
+                            painter = painterResource(postPresetDrawable),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        !post.authorProfilePicture.isNullOrBlank() -> AsyncImage(
+                            model = resolveProfilePicture(post.authorProfilePicture),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        else -> Icon(Icons.Rounded.Person, contentDescription = null, tint = personaColor)
+                    }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     val displayName = post.authorName ?: post.authorEmail?.substringBefore('@') ?: "User"
                     Text(displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text(post.createdAt ?: "Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(formatPostTime(post.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -1454,7 +1476,8 @@ fun CommentsBottomSheet(
     onDismiss: () -> Unit,
     onLikeClick: () -> Unit,
     onAddComment: (String) -> Unit,
-    onUserClick: () -> Unit
+    onUserClick: () -> Unit,
+    onLikeCommentClick: (String) -> Unit = {}
 ) {
     // Prevent Material3's ModalBottomSheet from auto-collapsing to Hidden when the
     // IME closes and its content remeasures (a known Compose bug) — the explicit
@@ -1519,7 +1542,7 @@ fun CommentsBottomSheet(
                             Column {
                                 val displayName = post.authorName ?: post.authorEmail?.substringBefore('@') ?: "User"
                                 Text(displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                Text(post.createdAt ?: "Just now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(formatPostTime(post.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         IconButton(onClick = onDismiss) {
@@ -1572,7 +1595,8 @@ fun CommentsBottomSheet(
                     items(comments) { comment ->
                         CommentItem(
                             comment = comment,
-                            onClick = onUserClick
+                            onClick = onUserClick,
+                            onLikeClick = { onLikeCommentClick(comment.id) }
                         )
                     }
                 }
@@ -1613,25 +1637,53 @@ fun CommentsBottomSheet(
 @Composable
 fun CommentItem(
     comment: Comment,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLikeClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
     ) {
+        val commentPresetDrawable = PresetAvatars.drawableFor(comment.userProfilePicture)
         Box(
-            modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+            modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onClick() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.Person, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+            when {
+                commentPresetDrawable != null -> Image(
+                    painter = painterResource(commentPresetDrawable),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                !comment.userProfilePicture.isNullOrBlank() -> AsyncImage(
+                    model = resolveProfilePicture(comment.userProfilePicture),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                else -> Icon(Icons.Rounded.Person, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+            }
         }
         Spacer(modifier = Modifier.width(12.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f).clickable { onClick() }) {
             val displayName = comment.userName ?: comment.userEmail?.substringBefore('@') ?: comment.userId
             Text(displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
             Text(comment.text, style = MaterialTheme.typography.bodySmall)
-            Text(comment.createdAt ?: "Just now", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(formatCommentTime(comment.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            IconButton(onClick = onLikeClick, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    if (comment.isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = "Like comment",
+                    tint = if (comment.isLiked) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            if (comment.likeCount > 0) {
+                Text("${comment.likeCount}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

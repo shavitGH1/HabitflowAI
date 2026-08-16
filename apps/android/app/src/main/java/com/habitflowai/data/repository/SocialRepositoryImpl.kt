@@ -80,7 +80,9 @@ class SocialRepositoryImpl @Inject constructor(
 
     override fun getComments(postId: String): Flow<List<Comment>> = flow {
         try {
-            val comments = api.getComments(postId)
+            val comments = api.getComments(postId).map { c ->
+                c.copy(isLiked = c.likes.contains(myId), likeCount = c.likes.size)
+            }
             emit(comments)
         } catch (e: Exception) {
             emit(emptyList())
@@ -122,6 +124,24 @@ class SocialRepositoryImpl @Inject constructor(
     override suspend fun unlikePost(postId: String): Boolean {
         return try {
             api.unlikePost(postId)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun likeComment(postId: String, commentId: String): Boolean {
+        return try {
+            api.toggleCommentLike(postId, commentId)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun unlikeComment(postId: String, commentId: String): Boolean {
+        return try {
+            api.unlikeComment(postId, commentId)
             true
         } catch (e: Exception) {
             false
