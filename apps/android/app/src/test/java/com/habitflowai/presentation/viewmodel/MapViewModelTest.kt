@@ -1,7 +1,10 @@
 package com.habitflowai.presentation.viewmodel
 
 import com.google.android.gms.maps.model.LatLng
+import com.habitflowai.data.model.AudienceFilter
 import com.habitflowai.data.model.LocationResponse
+import com.habitflowai.data.model.MarkerRelationship
+import com.habitflowai.data.model.TimeRangeFilter
 import com.habitflowai.domain.repository.LocationRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -35,6 +38,7 @@ class MapViewModelTest {
             timestamp = 1000,
             isPublic = true,
             username = "shavi",
+            relationship = "mine",
             type = "habit"
         ),
         LocationResponse(
@@ -47,6 +51,7 @@ class MapViewModelTest {
             timestamp = 2000,
             isPublic = false,
             username = "yossi",
+            relationship = "friend",
             type = "task"
         )
     )
@@ -54,7 +59,7 @@ class MapViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        coEvery { locationRepository.getPublicLocations(any(), any(), any(), any()) } returns myLocations
+        coEvery { locationRepository.getPublicLocations(any(), any(), any(), any(), any(), any()) } returns myLocations
         viewModel = MapViewModel(locationRepository)
     }
 
@@ -70,7 +75,7 @@ class MapViewModelTest {
         assertEquals("Morning Run", markers[0].habitName)
         assertEquals(LatLng(32.0853, 34.7818), markers[0].latLng)
         assertFalse(viewModel.uiState.value.isLoading)
-        coVerify { locationRepository.getPublicLocations(any(), any(), any(), any()) }
+        coVerify { locationRepository.getPublicLocations(any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -98,5 +103,52 @@ class MapViewModelTest {
     fun `markers fall back to place name when no task description`() {
         val markers = viewModel.uiState.value.markers
         assertEquals("Home", markers[1].habitName)
+    }
+
+    @Test
+    fun `markers map relationship and userId from the backend`() {
+        val markers = viewModel.uiState.value.markers
+        assertEquals("u1", markers[0].userId)
+        assertEquals(MarkerRelationship.MINE, markers[0].relationship)
+        assertEquals("u2", markers[1].userId)
+        assertEquals(MarkerRelationship.FRIEND, markers[1].relationship)
+    }
+
+    @Test
+    fun `unknown relationship defaults to stranger`() {
+        coEvery { locationRepository.getPublicLocations(any(), any(), any(), any(), any(), any()) } returns listOf(
+            myLocations[0].copy(relationship = null)
+        )
+        val vm = MapViewModel(locationRepository)
+        assertEquals(MarkerRelationship.STRANGER, vm.uiState.value.markers[0].relationship)
+    }
+
+    @Test
+    fun `changing time range refetches with a since cutoff and updates state`() {
+        viewModel.onTimeRangeChange(TimeRangeFilter.LAST_WEEK)
+
+        assertEquals(TimeRangeFilter.LAST_WEEK, viewModel.uiState.value.timeRangeFilter)
+        coVerify {
+            locationRepository.getPublicLocations(any(), any(), any(), any(), since = match { it != null && it > 0L }, scope = any())
+        }
+    }
+
+    @Test
+    fun `all time filter passes no since cutoff`() {
+        viewModel.onTimeRangeChange(TimeRangeFilter.ALL_TIME)
+
+        coVerify {
+            locationRepository.getPublicLocations(any(), any(), any(), any(), since = null, scope = any())
+        }
+    }
+
+    @Test
+    fun `changing audience refetches with the matching scope and updates state`() {
+        viewModel.onAudienceChange(AudienceFilter.FRIENDS)
+
+        assertEquals(AudienceFilter.FRIENDS, viewModel.uiState.value.audienceFilter)
+        coVerify {
+            locationRepository.getPublicLocations(any(), any(), any(), any(), any(), scope = "friends")
+        }
     }
 }

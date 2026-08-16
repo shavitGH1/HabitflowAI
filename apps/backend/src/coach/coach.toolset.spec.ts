@@ -3,6 +3,8 @@ import { GoalRepository } from '../goals/goal.repository';
 import { HabitData, HabitRepository } from '../habits/habit.repository';
 import { PersonasService } from '../personas/personas.service';
 import { UserRepository } from '../users/user.repository';
+import { ArticlesService } from '../articles/articles.service';
+import { ResearchChunksService } from '../research-chunks/research-chunks.service';
 import { CoachToolset } from './coach.toolset';
 
 const USER_ID = 'user-1';
@@ -13,6 +15,8 @@ const mockUserRepository = { findUserById: jest.fn() };
 const mockHabitRepository = { findByUserId: jest.fn() };
 const mockGoalRepository = { findActiveByUserId: jest.fn() };
 const mockPersonasService = { driftCheck: jest.fn() };
+const mockArticlesService = { search: jest.fn() };
+const mockResearchChunksService = { search: jest.fn() };
 
 const makeHabit = (overrides: Partial<HabitData> = {}): HabitData =>
   ({
@@ -33,6 +37,8 @@ const makeToolset = () =>
     mockHabitRepository as unknown as HabitRepository,
     mockGoalRepository as unknown as GoalRepository,
     mockPersonasService as unknown as PersonasService,
+    mockArticlesService as unknown as ArticlesService,
+    mockResearchChunksService as unknown as ResearchChunksService,
   );
 
 const toolNamed = (tools: AgentTool[], name: string): AgentTool =>
@@ -41,22 +47,92 @@ const toolNamed = (tools: AgentTool[], name: string): AgentTool =>
 describe('CoachToolset', () => {
   beforeEach(() => {
     jest.resetAllMocks();
-    mockUserRepository.findUserById.mockResolvedValue({ personaType: 'Achiever', goal: 'Run a 10k' });
+    mockUserRepository.findUserById.mockResolvedValue({
+      personaType: 'Achiever',
+      goal: 'Run a 10k',
+      coreGoals: [],
+      dailyVariations: [],
+    });
     mockHabitRepository.findByUserId.mockResolvedValue([]);
     mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+    mockArticlesService.search.mockResolvedValue([]);
+    mockResearchChunksService.search.mockResolvedValue([]);
   });
 
-  it('exposes six tools with disjoint responsibilities', () => {
+  it('exposes nine tools with disjoint responsibilities', () => {
     const { tools } = makeToolset().open(USER_ID);
 
     expect(tools.map((tool) => tool.name)).toEqual([
       'get_progress_summary',
       'get_habit_list',
+      'get_daily_tasks',
       'get_persona_profile',
       'get_active_goal',
       'check_persona_drift',
       'propose_change',
+      'search_articles',
+      'search_research',
     ]);
+  });
+
+  it('search_articles returns just title/url, dropping the ranking score', async () => {
+    mockArticlesService.search.mockResolvedValue([
+      { id: 'a1', title: 'Three Steps to Building Better Habits', url: 'https://example.com/a1', score: 0.91 },
+    ]);
+
+    const { tools } = makeToolset().open(USER_ID);
+    const output = await toolNamed(tools, 'search_articles').run({ query: 'how to build a habit' });
+
+    expect(mockArticlesService.search).toHaveBeenCalledWith('how to build a habit');
+    expect(output).toEqual({
+      articles: [{ title: 'Three Steps to Building Better Habits', url: 'https://example.com/a1' }],
+    });
+  });
+
+  it('search_research returns the matched chunks, dropping the ranking score', async () => {
+    mockResearchChunksService.search.mockResolvedValue([
+      {
+        id: 'r1',
+        sourceTitle: 'The Architecture of Digital Behavior',
+        section: 'Neuroscience of Habit Formation',
+        content: 'Habit formation is the process through which...',
+        score: 0.87,
+      },
+    ]);
+
+    const { tools } = makeToolset().open(USER_ID);
+    const output = await toolNamed(tools, 'search_research').run({ query: 'why do habits take so long to form' });
+
+    expect(mockResearchChunksService.search).toHaveBeenCalledWith('why do habits take so long to form');
+    expect(output).toEqual({
+      chunks: [
+        {
+          sourceTitle: 'The Architecture of Digital Behavior',
+          section: 'Neuroscience of Habit Formation',
+          content: 'Habit formation is the process through which...',
+        },
+      ],
+    });
+  });
+
+  it('get_daily_tasks surfaces the onboarding-generated goals and today\'s variations', async () => {
+    mockUserRepository.findUserById.mockResolvedValue({
+      personaType: 'Achiever',
+      goal: 'Run a 10k',
+      coreGoals: [
+        { id: 'core-1', description: 'Run three times a week', points: 30, completed: true, genre: 'goal' },
+      ],
+      dailyVariations: [
+        { id: 'daily-1', description: 'Stretch for 10 minutes', points: 10, completed: false, genre: 'persona' },
+      ],
+    });
+
+    const { tools } = makeToolset().open(USER_ID);
+
+    expect(await toolNamed(tools, 'get_daily_tasks').run({})).toEqual({
+      coreGoals: [{ id: 'core-1', description: 'Run three times a week', points: 30, completed: true }],
+      dailyTasks: [{ id: 'daily-1', description: 'Stretch for 10 minutes', points: 10, completed: false }],
+    });
   });
 
   it('get_progress_summary hands the model a band and a verdict it did not compute', async () => {

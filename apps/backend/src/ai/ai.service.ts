@@ -19,6 +19,12 @@ import {
 } from './features/habit-goal-relevance.feature';
 import { TaskVerificationFeature, TaskVerificationInput } from './features/task-verification.feature';
 import { OnboardingSuggestionsFeature } from './features/onboarding-suggestions.feature';
+import { RagSearchFeature, RagSearchInput, RankedArticle } from './features/rag-search.feature';
+import {
+  ResearchSearchFeature,
+  ResearchSearchInput,
+  RankedResearchChunk,
+} from './features/research-search.feature';
 import {
   MotivationFeedbackStore,
   MotivationVote,
@@ -48,6 +54,8 @@ export class AiService {
     private readonly habitGoalRelevance: HabitGoalRelevanceFeature,
     private readonly taskVerification: TaskVerificationFeature,
     private readonly onboardingSuggestions: OnboardingSuggestionsFeature,
+    private readonly ragSearch: RagSearchFeature,
+    private readonly researchSearch: ResearchSearchFeature,
     private readonly feedbackStore: MotivationFeedbackStore,
   ) {}
 
@@ -101,6 +109,14 @@ export class AiService {
 
   getOnboardingSuggestions(goal: string): Promise<OnboardingSuggestionsOutput> {
     return this.onboardingSuggestions.generate({ goal });
+  }
+
+  searchArticles(input: RagSearchInput): Promise<RankedArticle[]> {
+    return this.ragSearch.search(input);
+  }
+
+  searchResearch(input: ResearchSearchInput): Promise<RankedResearchChunk[]> {
+    return this.researchSearch.search(input);
   }
 
   recordMotivationFeedback(userId: string, vote: MotivationVote): FeedbackTally {

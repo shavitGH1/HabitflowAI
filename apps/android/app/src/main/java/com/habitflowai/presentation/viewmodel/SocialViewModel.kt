@@ -25,6 +25,7 @@ import javax.inject.Inject
 sealed class SearchResult {
     data class User(val user: AppUser) : SearchResult()
     data class Group(val chat: ChatResponse) : SearchResult()
+    data class Message(val message: ChatMessage, val chatId: String, val chatName: String?) : SearchResult()
 }
 
 enum class FeedFilter {
@@ -639,11 +640,14 @@ class SocialViewModel @Inject constructor(
 
         _uiState.update { it.copy(isSearching = true) }
         
-        // Local filtering for users (by username/email) and groups (by name)
+        // Local filtering for users (by username/email/name) and groups (by name)
         val userResults = _uiState.value.allUsers
             .filter { user -> 
                 user.email.substringBefore('@').contains(query, ignoreCase = true) ||
-                user.email.contains(query, ignoreCase = true)
+                user.email.contains(query, ignoreCase = true) ||
+                (user.firstName?.contains(query, ignoreCase = true) == true) ||
+                (user.lastName?.contains(query, ignoreCase = true) == true) ||
+                "${user.firstName} ${user.lastName}".contains(query, ignoreCase = true)
             }
             .take(10)
             .map { SearchResult.User(it) }
@@ -653,11 +657,19 @@ class SocialViewModel @Inject constructor(
             .take(5)
             .map { SearchResult.Group(it) }
 
+        val messageResults = _uiState.value.chatMessages.flatMap { (chatId, messages) ->
+            val chat = _uiState.value.groupChats.find { it.id == chatId }
+                ?: _uiState.value.directChats.find { it.id == chatId }
+            messages.filter { it.text.contains(query, ignoreCase = true) }
+                .map { SearchResult.Message(it, chatId, chat?.name) }
+        }.take(10)
+
         _uiState.update { it.copy(
-            searchResults = (userResults + groupResults).sortedBy { result ->
+            searchResults = (userResults + groupResults + messageResults).sortedBy { result ->
                 when(result) {
                     is SearchResult.User -> result.user.email
                     is SearchResult.Group -> result.chat.name ?: ""
+                    is SearchResult.Message -> (Long.MAX_VALUE - result.message.timestamp).toString()
                 }
             },
             isSearching = false

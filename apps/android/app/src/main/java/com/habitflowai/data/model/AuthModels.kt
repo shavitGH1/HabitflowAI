@@ -24,12 +24,12 @@ data class TokenRefreshResponse(
 
 data class RegisterRequest(
     val email: String,
-    val firstName: String? = null,
-    val lastName: String? = null,
     val password: String,
     val goal: String,
     val openAnswers: List<String>,
-    val fcmToken: String? = null
+    val fcmToken: String? = null,
+    val firstName: String = "",
+    val lastName: String = ""
 )
 
 data class CheckEmailRequest(val email: String)

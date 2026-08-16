@@ -4,10 +4,12 @@ import { z } from 'zod';
 import { AgentTool, defineTool, ToolRejectedError } from '../ai/agent/agent-tool';
 import { PERSONA_TYPES, PersonaType } from '../ai/pillars';
 import { proposedChangeSchema, ProposedChange } from '../ai/schemas/coaching-agent.schema';
+import { ArticlesService } from '../articles/articles.service';
 import { GoalRepository } from '../goals/goal.repository';
 import { HabitData, HabitRepository } from '../habits/habit.repository';
 import { logger } from '../logger';
 import { PersonasService } from '../personas/personas.service';
+import { ResearchChunksService } from '../research-chunks/research-chunks.service';
 import { UserRepository } from '../users/user.repository';
 import { DriftFinding, ProposalContext, rejectionReason } from './coach.policy';
 import { CoachStats, computeStats, isGoalFailing, pickBand, weeklySummary } from './coach.rules';
@@ -33,6 +35,8 @@ export class CoachToolset {
     private readonly habitRepository: HabitRepository,
     private readonly goalRepository: GoalRepository,
     private readonly personasService: PersonasService,
+    private readonly articlesService: ArticlesService,
+    private readonly researchChunksService: ResearchChunksService,
   ) {}
 
   open(userId: string): CoachToolSession {
@@ -45,10 +49,13 @@ export class CoachToolset {
       tools: [
         this.progressSummaryTool(userId),
         this.habitListTool(userId),
+        this.dailyTasksTool(userId),
         this.personaProfileTool(userId),
         this.activeGoalTool(userId),
         this.driftTool(userId, state),
         this.proposeChangeTool(userId, state),
+        this.searchArticlesTool(),
+        this.searchResearchTool(),
       ],
       proposedChange: () => state.staged,
       fallbackReply: () => this.fallbackReply(userId),
@@ -84,7 +91,7 @@ export class CoachToolset {
     return defineTool({
       name: 'get_habit_list',
       description:
-        'Every active habit of the user with its own streak, consistency percentage and the goal it is linked to. Call this when the user asks about a specific habit, or when you need to name habits in your reply. Do not use it to judge overall progress — get_progress_summary already carries that verdict.',
+        'Every active habit of the user with its own streak, consistency percentage and the goal it is linked to. Call this when the user asks about a specific habit, or when you need to name habits in your reply. Do not use it to judge overall progress — get_progress_summary already carries that verdict. This only covers habits created in the Habits tab — for the AI-generated goals and daily tasks from onboarding shown on the Home screen, call get_daily_tasks instead.',
       parameters: { type: Type.OBJECT, properties: {} },
       argsSchema: z.object({}),
       execute: async () => {
@@ -98,6 +105,31 @@ export class CoachToolset {
             consistencyPercent: Math.round(habit.consistencyScore * 100),
             linkedGoalId: habit.goalId ?? null,
           })),
+        };
+      },
+    });
+  }
+
+  private dailyTasksTool(userId: string): AgentTool {
+    return defineTool({
+      name: 'get_daily_tasks',
+      description:
+        "The AI-generated core goals and today's daily task variations from onboarding, shown to the user on the Home screen — separate from get_habit_list, which only covers habits created in the Habits tab. Call this when the user asks about their onboarding goals, Home screen tasks, or points, or when get_habit_list and get_progress_summary come back empty for a user who still completed onboarding.",
+      parameters: { type: Type.OBJECT, properties: {} },
+      argsSchema: z.object({}),
+      execute: async () => {
+        const user = await this.userRepository.findUserById(userId);
+        if (!user) throw new Error('User not found');
+        const toSummary = (tasks: { id: string; description: string; points: number; completed: boolean }[]) =>
+          tasks.map((task) => ({
+            id: task.id,
+            description: task.description,
+            points: task.points,
+            completed: task.completed,
+          }));
+        return {
+          coreGoals: toSummary(user.coreGoals),
+          dailyTasks: toSummary(user.dailyVariations),
         };
       },
     });
@@ -206,6 +238,54 @@ export class CoachToolset {
           staged: true,
           awaitingUserConfirmation: true,
           note: 'Tell the user what you proposed and that nothing changes until they confirm it.',
+        };
+      },
+    });
+  }
+
+  private searchArticlesTool(): AgentTool {
+    return defineTool({
+      name: 'search_articles',
+      description:
+        'Search a small curated set of habit-formation articles (title + link) by meaning, not keyword. Call this when the user wants further reading or a resource to share — a concrete link, not an explanation. For the science/reasoning behind a suggestion, call search_research instead.',
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          query: {
+            type: Type.STRING,
+            description: 'What the user wants reading material about, in their own words.',
+          },
+        },
+        required: ['query'],
+      },
+      argsSchema: z.object({ query: z.string() }),
+      execute: async ({ query }) => {
+        const results = await this.articlesService.search(query);
+        return { articles: results.map(({ title, url }) => ({ title, url })) };
+      },
+    });
+  }
+
+  private searchResearchTool(): AgentTool {
+    return defineTool({
+      name: 'search_research',
+      description:
+        'Search chunked behavior-change research (neuroscience, motivation frameworks) by meaning, not keyword. Call this when the user asks "why" a suggestion works, not when they just want a link — for that call search_articles instead. Quote or paraphrase the returned content rather than inventing an explanation.',
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          query: {
+            type: Type.STRING,
+            description: 'What the user wants the underlying research/explanation for, in their own words.',
+          },
+        },
+        required: ['query'],
+      },
+      argsSchema: z.object({ query: z.string() }),
+      execute: async ({ query }) => {
+        const results = await this.researchChunksService.search(query);
+        return {
+          chunks: results.map(({ sourceTitle, section, content }) => ({ sourceTitle, section, content })),
         };
       },
     });

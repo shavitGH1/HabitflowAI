@@ -29,19 +29,33 @@ export class LocationsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get public locations within a bounding box for the Activity Map' })
+  @ApiOperation({ summary: 'Get locations within a bounding box for the Activity Map' })
   @ApiQuery({ name: 'minLat', type: Number, example: 31.0 })
   @ApiQuery({ name: 'maxLat', type: Number, example: 33.0 })
   @ApiQuery({ name: 'minLng', type: Number, example: 34.0 })
   @ApiQuery({ name: 'maxLng', type: Number, example: 36.0 })
-  @ApiResponse({ status: 200, description: 'Public location records within the bounding box' })
+  @ApiQuery({ name: 'since', required: false, type: Number, description: 'Epoch ms cutoff — only locations at or after this time' })
+  @ApiQuery({ name: 'scope', required: false, enum: ['all', 'friends', 'mine'], example: 'all' })
+  @ApiResponse({ status: 200, description: 'Location records within the bounding box, each tagged with relationship: mine/friend/stranger' })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   getBbox(
+    @Req() req: { user: { id: string } },
     @Query('minLat') minLat: string,
     @Query('maxLat') maxLat: string,
     @Query('minLng') minLng: string,
     @Query('maxLng') maxLng: string,
+    @Query('since') since?: string,
+    @Query('scope') scope?: string,
   ) {
-    return this.locationsService.getBbox(Number(minLat), Number(maxLat), Number(minLng), Number(maxLng));
+    const validScope = scope === 'friends' || scope === 'mine' ? scope : 'all';
+    return this.locationsService.getBbox(
+      Number(minLat),
+      Number(maxLat),
+      Number(minLng),
+      Number(maxLng),
+      req.user.id,
+      validScope,
+      since ? Number(since) : undefined,
+    );
   }
 }

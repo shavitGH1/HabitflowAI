@@ -103,6 +103,7 @@ fun OnboardingRoute(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OnboardingScreen(
     uiState: OnboardingUiState,
@@ -128,6 +129,12 @@ fun OnboardingScreen(
 
     val totalSteps = onboardingQuestions.size
     val scrollState = rememberScrollState()
+    // Only reshape the layout while the keyboard is actually up — forcing the
+    // card to wrap its content and pinning "Back" to the bottom via a trailing
+    // weighted Spacer closes the gap above the keyboard. Doing this unconditionally
+    // was tried before and reverted: it made the keyboard-closed, full-height
+    // card look worse, so the original weight(1f) card is left untouched then.
+    val imeVisible = WindowInsets.isImeVisible
 
     val isDark = isSystemInDarkTheme()
     val backgroundBrush = if (isDark) {
@@ -202,7 +209,7 @@ fun OnboardingScreen(
                 transitionSpec = {
                     (fadeIn() + slideInHorizontally { it }) togetherWith (fadeOut() + slideOutHorizontally { -it })
                 },
-                modifier = Modifier.weight(1f)
+                modifier = if (imeVisible) Modifier else Modifier.weight(1f)
             ) { step ->
                 val question = onboardingQuestions[step]
                 Card(
@@ -457,7 +464,11 @@ fun OnboardingScreen(
             }
             
             Spacer(modifier = Modifier.height(8.dp))
-            
+
+            if (imeVisible) {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+
             if (currentStep > 0) {
                 TextButton(
                     onClick = {

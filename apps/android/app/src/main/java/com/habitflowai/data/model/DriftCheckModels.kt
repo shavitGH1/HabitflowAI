@@ -41,5 +41,6 @@ data class LocationResponse(
     @SerializedName("timestamp") val timestamp: Long = 0,
     @SerializedName("isPublic") val isPublic: Boolean = true,
     @SerializedName("username") val username: String? = null,
+    @SerializedName("relationship") val relationship: String? = null,
     @SerializedName("type") val type: String = "task"
 )

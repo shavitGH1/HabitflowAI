@@ -36,6 +36,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Context
+import android.net.Uri
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
@@ -44,19 +45,18 @@ import com.habitflowai.data.model.AppUser
 import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.data.model.ChatResponse
 import com.habitflowai.presentation.ui.persona.PersonaUiData
-import com.habitflowai.presentation.ui.theme.HabitFlowTheme
+import com.habitflowai.presentation.ui.theme.*
 import java.io.File
 
-// Users don't have a name/displayName field yet — fall back to the part of
-// their email before '@'. If we don't have a matching user record at all,
-// fall back to the raw id rather than showing nothing.
-fun resolveDisplayName(userId: String, allUsers: List<AppUser>): String =
-    allUsers.find { it.id == userId }?.email?.substringBefore('@') ?: userId
+fun resolveDisplayName(userId: String, allUsers: List<AppUser>): String {
+    val user = allUsers.find { it.id == userId } ?: return userId
+    return if (user.firstName != null || user.lastName != null) {
+        "${user.firstName ?: ""} ${user.lastName ?: ""}".trim()
+    } else {
+        user.email.substringBefore('@')
+    }
+}
 
-// ─────────────────────────────────────────────
-// SocialGroupChatScreen
-// Dialog wrapper — previews use SocialGroupChatContent directly.
-// ─────────────────────────────────────────────
 @Composable
 fun SocialGroupChatScreen(
     chat: ChatResponse,
@@ -78,7 +78,7 @@ fun SocialGroupChatScreen(
     onPromoteAdmin: (String) -> Unit = {},
     onDemoteAdmin: (String) -> Unit = {},
     onDeleteGroup: () -> Unit = {},
-    onUploadGroupPhoto: (android.net.Uri) -> Unit = {}
+    onUploadGroupPhoto: (Uri) -> Unit = {}
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -109,10 +109,6 @@ fun SocialGroupChatScreen(
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialGroupChatContent
-// The full-screen chat UI, decoupled from Dialog so it can be previewed.
-// ─────────────────────────────────────────────
 @Composable
 fun SocialGroupChatContent(
     chat: ChatResponse,
@@ -134,7 +130,7 @@ fun SocialGroupChatContent(
     onPromoteAdmin: (String) -> Unit = {},
     onDemoteAdmin: (String) -> Unit = {},
     onDeleteGroup: () -> Unit = {},
-    onUploadGroupPhoto: (android.net.Uri) -> Unit = {}
+    onUploadGroupPhoto: (Uri) -> Unit = {}
 ) {
     val isAdmin = currentUserId in chat.admins ||
         currentUserId == chat.owner ||
@@ -215,9 +211,6 @@ fun SocialGroupChatContent(
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialChatTopBar — simplified, all editing lives in EditGroupSheet
-// ─────────────────────────────────────────────
 @Composable
 fun SocialChatTopBar(
     chat: ChatResponse,
@@ -240,7 +233,6 @@ fun SocialChatTopBar(
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = contentColor)
         }
 
-        // Avatar + name row — tappable for group info
         Row(
             modifier = Modifier
                 .weight(1f)
@@ -276,8 +268,9 @@ fun SocialChatTopBar(
             Spacer(modifier = Modifier.width(10.dp))
 
             Column {
+                val displayName = chat.name ?: if (chat.isGroup) "Group Chat" else "Direct Message"
                 Text(
-                    text = chat.name ?: if (chat.isGroup) "Group Chat" else "Direct Message",
+                    text = displayName,
                     fontWeight = FontWeight.Bold,
                     color = contentColor,
                     style = MaterialTheme.typography.titleMedium
@@ -299,7 +292,6 @@ fun SocialChatTopBar(
             }
         }
 
-        // Overflow
         Box {
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(Icons.Rounded.MoreVert, contentDescription = "More options", tint = contentColor)
@@ -322,10 +314,6 @@ fun SocialChatTopBar(
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialMembersSheet
-// Admin-only bottom sheet for member management.
-// ─────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SocialMembersSheet(
@@ -350,7 +338,7 @@ fun SocialMembersSheet(
                 Text("Members", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "${chat.participantIds.size}",
+                    text = "${chat.participantIds.size}",
                     style = MaterialTheme.typography.labelMedium,
                     color = personaColor
                 )
@@ -379,9 +367,6 @@ fun SocialMembersSheet(
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialMemberRow
-// ─────────────────────────────────────────────
 @Composable
 fun SocialMemberRow(
     userId: String,
@@ -403,13 +388,11 @@ fun SocialMemberRow(
         SocialUserAvatar(name = if (isSelf) "me" else displayName, personaColor = personaColor, size = 36)
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = if (isSelf) "$displayName (You)" else displayName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+            Text(
+                text = if (isSelf) "$displayName (You)" else displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
             val badge = when {
                 isOwner -> "Owner"
                 isAdmin -> "Admin"
@@ -443,9 +426,6 @@ fun SocialMemberRow(
     }
 }
 
-// ─────────────────────────────────────────────
-// EditGroupSheet — WhatsApp-style group info + all edit actions
-// ─────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditGroupSheet(
@@ -459,7 +439,7 @@ fun EditGroupSheet(
     onRenameGroup: (String) -> Unit,
     onUpdateDescription: (String) -> Unit,
     onUpdateVisibility: (Boolean) -> Unit,
-    onUploadGroupPhoto: (android.net.Uri) -> Unit,
+    onUploadGroupPhoto: (Uri) -> Unit,
     onAddMember: () -> Unit,
     onRemoveMember: (String) -> Unit,
     onPromoteAdmin: (String) -> Unit,
@@ -473,7 +453,7 @@ fun EditGroupSheet(
     var showPhotoDialog by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var pendingCameraUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
 
     val cameraPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
@@ -494,16 +474,12 @@ fun EditGroupSheet(
         pendingCameraUri?.let { cameraLauncher.launch(it) }
     }
 
-    // Photo source dialog (AlertDialog — safe inside ModalBottomSheet)
     if (showPhotoDialog) {
         AlertDialog(
             onDismissRequest = { showPhotoDialog = false },
             title = { Text("Group Photo") },
             text = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedCard(
                         modifier = Modifier.weight(1f).height(80.dp).clickable {
                             cameraPermLauncher.launch(android.Manifest.permission.CAMERA)
@@ -566,7 +542,6 @@ fun EditGroupSheet(
                 .imePadding(),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            // ── Group Photo ──────────────────────────────
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp),
@@ -588,54 +563,33 @@ fun EditGroupSheet(
                                 contentScale = ContentScale.Crop
                             )
                         } else {
-                            Icon(
-                                Icons.Rounded.Groups,
-                                contentDescription = null,
-                                tint = personaColor,
-                                modifier = Modifier.size(48.dp)
-                            )
+                            Icon(Icons.Rounded.Groups, contentDescription = null, tint = personaColor, modifier = Modifier.size(48.dp))
                         }
                         if (canManage) {
                             Box(
                                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
-                                Surface(
-                                    color = Color.Black.copy(alpha = 0.5f),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
+                                Surface(color = Color.Black.copy(alpha = 0.5f), modifier = Modifier.fillMaxWidth()) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                         horizontalArrangement = Arrangement.Center,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            Icons.Rounded.PhotoCamera,
-                                            contentDescription = "Edit photo",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(14.dp)
-                                        )
+                                        Icon(Icons.Rounded.PhotoCamera, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                                         Spacer(Modifier.width(4.dp))
-                                        Text(
-                                            "Edit",
-                                            color = Color.White,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
+                                        Text("Edit", color = Color.White, style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
                             }
                         }
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        chat.name ?: "Group Chat",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = chat.name ?: "Group Chat", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     if (!chat.description.isNullOrBlank()) {
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            chat.description,
+                            text = chat.description,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 24.dp)
@@ -645,16 +599,10 @@ fun EditGroupSheet(
                 HorizontalDivider()
             }
 
-            // ── Edit Name (admin only) ────────────────────
             if (canManage) {
                 item {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
-                        Text(
-                            "Group Name",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = personaColor,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Text("Group Name", style = MaterialTheme.typography.labelMedium, color = personaColor, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
@@ -662,10 +610,7 @@ fun EditGroupSheet(
                                 onValueChange = { editedName = it },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = personaColor,
-                                    focusedLabelColor = personaColor
-                                )
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = personaColor, focusedLabelColor = personaColor)
                             )
                             Spacer(Modifier.width(8.dp))
                             IconButton(
@@ -675,8 +620,7 @@ fun EditGroupSheet(
                                 Icon(
                                     Icons.Rounded.Check,
                                     contentDescription = "Save name",
-                                    tint = if (editedName.isNotBlank() && editedName.trim() != chat.name)
-                                        personaColor else MaterialTheme.colorScheme.outlineVariant
+                                    tint = if (editedName.isNotBlank() && editedName.trim() != chat.name) personaColor else MaterialTheme.colorScheme.outlineVariant
                                 )
                             }
                         }
@@ -684,15 +628,9 @@ fun EditGroupSheet(
                     HorizontalDivider()
                 }
 
-                // ── Edit Description ──────────────────────
                 item {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
-                        Text(
-                            "Description",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = personaColor,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Text("Description", style = MaterialTheme.typography.labelMedium, color = personaColor, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
@@ -701,10 +639,7 @@ fun EditGroupSheet(
                                 modifier = Modifier.weight(1f),
                                 maxLines = 3,
                                 placeholder = { Text("Add a description…") },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = personaColor,
-                                    focusedLabelColor = personaColor
-                                )
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = personaColor, focusedLabelColor = personaColor)
                             )
                             Spacer(Modifier.width(8.dp))
                             IconButton(
@@ -714,40 +649,25 @@ fun EditGroupSheet(
                                 Icon(
                                     Icons.Rounded.Check,
                                     contentDescription = "Save description",
-                                    tint = if (editedDescription.trim() != (chat.description ?: ""))
-                                        personaColor else MaterialTheme.colorScheme.outlineVariant
+                                    tint = if (editedDescription.trim() != (chat.description ?: "")) personaColor else MaterialTheme.colorScheme.outlineVariant
                                 )
                             }
                         }
                     }
                     HorizontalDivider()
                 }
-            }
 
-            // ── Group Visibility (admin only) ─────────────
-            if (canManage) {
                 item {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Public Group",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    "Anyone can find and join this group via search.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Text("Public Group", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Text("Anyone can find and join this group via search.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Switch(
                                 checked = chat.isPublic,
                                 onCheckedChange = { onUpdateVisibility(it) },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = personaColor
-                                )
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = personaColor)
                             )
                         }
                     }
@@ -755,61 +675,32 @@ fun EditGroupSheet(
                 }
             }
 
-            // ── Members Header ────────────────────────────
             item {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Members",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = personaColor,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        "${chat.participantIds.size}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text("Members", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = personaColor, modifier = Modifier.weight(1f))
+                    Text(text = "${chat.participantIds.size}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
-            // ── Add Member button (admin) ──────────────────
             if (canManage) {
                 item {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onAddMember() }
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth().clickable { onAddMember() }.padding(horizontal = 20.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(personaColor.copy(alpha = 0.1f)),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
                             Icon(Icons.Rounded.PersonAdd, contentDescription = null, tint = personaColor)
                         }
                         Spacer(Modifier.width(16.dp))
-                        Text(
-                            "Add Members",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = personaColor,
-                            fontWeight = FontWeight.Medium
-                        )
+                        Text("Add Members", style = MaterialTheme.typography.bodyMedium, color = personaColor, fontWeight = FontWeight.Medium)
                     }
                     HorizontalDivider()
                 }
             }
 
-            // ── Member list ───────────────────────────────
             items(chat.participantIds) { userId ->
                 val isAlreadyAdmin = userId in chat.admins
                 val isOwnerMark = userId == chat.owner
@@ -823,41 +714,21 @@ fun EditGroupSheet(
                     personaColor = personaColor,
                     canManage = canManage && !isSelf && !isOwnerMark,
                     onRemove = { onRemoveMember(userId) },
-                    onToggleAdmin = {
-                        if (isAlreadyAdmin) onDemoteAdmin(userId) else onPromoteAdmin(userId)
-                    }
+                    onToggleAdmin = { if (isAlreadyAdmin) onDemoteAdmin(userId) else onPromoteAdmin(userId) }
                 )
             }
 
-            // ── Danger Zone ───────────────────────────────
             item {
                 HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    TextButton(
-                        onClick = { showLeaveConfirm = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.ExitToApp,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = { showLeaveConfirm = true }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.AutoMirrored.Rounded.ExitToApp, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.width(8.dp))
                         Text("Leave Group", color = MaterialTheme.colorScheme.error)
                     }
                     if (isOwner) {
-                        TextButton(
-                            onClick = { showDeleteConfirm = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Rounded.Delete,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error
-                            )
+                        TextButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                             Spacer(Modifier.width(8.dp))
                             Text("Delete Group", color = MaterialTheme.colorScheme.error)
                         }
@@ -868,9 +739,6 @@ fun EditGroupSheet(
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialMessageList
-// ─────────────────────────────────────────────
 @Composable
 fun SocialMessageList(
     modifier: Modifier = Modifier,
@@ -881,72 +749,32 @@ fun SocialMessageList(
     onLikeMessage: (String) -> Unit
 ) {
     val listState = rememberLazyListState()
+    LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1) }
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(personaColor.copy(alpha = 0.04f), MaterialTheme.colorScheme.background)))
-    ) {
+    Box(modifier = modifier.fillMaxSize().background(Brush.verticalGradient(listOf(personaColor.copy(alpha = 0.04f), MaterialTheme.colorScheme.background)))) {
         if (messages.isEmpty()) {
             SocialChatEmptyState(personaColor = personaColor)
         } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(messages, key = { it.id }) { message ->
-                    SocialMessageBubble(
-                        message = message,
-                        senderDisplayName = resolveDisplayName(message.senderId, allUsers),
-                        personaColor = personaColor,
-                        currentUserId = currentUserId,
-                        onLikeClick = { onLikeMessage(message.id) }
-                    )
+                    SocialMessageBubble(message = message, senderDisplayName = resolveDisplayName(message.senderId, allUsers), personaColor = personaColor, currentUserId = currentUserId, onLikeClick = { onLikeMessage(message.id) })
                 }
             }
         }
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialChatEmptyState
-// ─────────────────────────────────────────────
 @Composable
 fun SocialChatEmptyState(personaColor: Color) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                Icons.Rounded.Forum, 
-                contentDescription = null, 
-                tint = personaColor.copy(alpha = 0.4f), 
-                modifier = Modifier.size(48.dp)
-            )
-            Text(
-                "No messages yet", 
-                style = MaterialTheme.typography.titleSmall, 
-                color = personaColor.copy(alpha = 0.7f)
-            )
-            Text(
-                "Be the first to say hi! 👋", 
-                style = MaterialTheme.typography.bodySmall, 
-                color = personaColor.copy(alpha = 0.5f)
-            )
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(Icons.Rounded.Forum, contentDescription = null, tint = personaColor.copy(alpha = 0.4f), modifier = Modifier.size(48.dp))
+            Text("No messages yet", style = MaterialTheme.typography.titleSmall, color = personaColor.copy(alpha = 0.7f))
+            Text("Be the first to say hi! 👋", style = MaterialTheme.typography.bodySmall, color = personaColor.copy(alpha = 0.5f))
         }
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialTypingIndicator
-// ─────────────────────────────────────────────
 @Composable
 fun SocialTypingIndicator(typingUserIds: Set<String>, allUsers: List<AppUser> = emptyList(), personaColor: Color) {
     val names = typingUserIds.map { resolveDisplayName(it, allUsers) }
@@ -956,20 +784,13 @@ fun SocialTypingIndicator(typingUserIds: Set<String>, allUsers: List<AppUser> = 
         else -> "Several people are typing…"
     }
     Surface(color = MaterialTheme.colorScheme.surface) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.6f)))
             Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialMessageBubble
-// ─────────────────────────────────────────────
 @Composable
 fun SocialMessageBubble(
     message: ChatMessage,
@@ -981,99 +802,45 @@ fun SocialMessageBubble(
     val isMe = message.senderId == currentUserId
     val isLiked = message.likedBy.contains(currentUserId)
     val likeCount = message.likedBy.size
-    // Users can't like their own messages
     val canLike = !isMe
-
     val bubbleColor = if (isMe) personaColor else MaterialTheme.colorScheme.surfaceVariant
-    val bubbleContentColor = if (isMe) {
-        if (personaColor.luminance() > 0.5f) Color.Black else Color.White
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val bubbleContentColor = if (isMe) (if (personaColor.luminance() > 0.5f) Color.Black else Color.White) else MaterialTheme.colorScheme.onSurfaceVariant
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Bottom
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start, verticalAlignment = Alignment.Bottom) {
         if (!isMe) {
             SocialUserAvatar(name = senderDisplayName, personaColor = personaColor, size = 32)
             Spacer(modifier = Modifier.width(8.dp))
         }
-
-        Column(
-            horizontalAlignment = if (isMe) Alignment.End else Alignment.Start,
-            modifier = Modifier.widthIn(max = 280.dp)
-        ) {
+        Column(horizontalAlignment = if (isMe) Alignment.End else Alignment.Start, modifier = Modifier.widthIn(max = 280.dp)) {
             if (!isMe) {
-                Text(
-                    text = senderDisplayName,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = personaColor,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
-                )
+                Text(text = senderDisplayName, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = personaColor, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp))
             }
-
-            Surface(
-                color = bubbleColor,
-                shape = RoundedCornerShape(
-                    topStart = 16.dp, topEnd = 16.dp,
-                    bottomStart = if (isMe) 16.dp else 4.dp,
-                    bottomEnd = if (isMe) 4.dp else 16.dp
-                )
-            ) {
+            Surface(color = bubbleColor, shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMe) 16.dp else 4.dp, bottomEnd = if (isMe) 4.dp else 16.dp)) {
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                     if (message.imageUrl != null) {
-                        AsyncImage(
-                            model = message.imageUrl,
-                            contentDescription = "Image",
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp).clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                        AsyncImage(model = message.imageUrl, contentDescription = null, modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
                         if (message.text.isNotBlank()) Spacer(modifier = Modifier.height(6.dp))
                     }
-
                     if (message.text.isNotBlank()) {
-                        Text(
-                            text = message.text,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = bubbleContentColor
-                        )
+                        Text(text = message.text, style = MaterialTheme.typography.bodyMedium, color = bubbleContentColor)
                     }
-
-                    // Like row: only show for other messages, or when there are existing likes
                     if (canLike || likeCount > 0) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.End,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                             if (canLike) {
                                 IconButton(onClick = onLikeClick, modifier = Modifier.size(20.dp)) {
-                                    Icon(
-                                        imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                                        contentDescription = if (isLiked) "Unlike" else "Like",
-                                        tint = if (isLiked) Color.Red else personaColor.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(14.dp)
-                                    )
+                                    Icon(imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, contentDescription = null, tint = if (isLiked) Color.Red else personaColor.copy(alpha = 0.6f), modifier = Modifier.size(14.dp))
                                 }
                             }
                             if (likeCount > 0) {
                                 Spacer(modifier = Modifier.width(2.dp))
-                                Text(
-                                    text = "$likeCount",
-                                    fontSize = 11.sp,
-                                    color = bubbleContentColor.copy(alpha = 0.7f)
-                                )
+                                Text(text = "$likeCount", fontSize = 11.sp, color = bubbleContentColor.copy(alpha = 0.7f))
                             }
                         }
                     }
                 }
             }
         }
-
         if (isMe) {
             Spacer(modifier = Modifier.width(8.dp))
             SocialUserAvatar(name = "me", personaColor = MaterialTheme.colorScheme.outline, size = 32)
@@ -1081,9 +848,6 @@ fun SocialMessageBubble(
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialChatInput
-// ─────────────────────────────────────────────
 @Composable
 fun SocialChatInput(
     modifier: Modifier = Modifier,
@@ -1092,44 +856,30 @@ fun SocialChatInput(
     onTypingChanged: (Boolean) -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
-
-    // Debounce typing indicator to avoid spamming the socket on every keystroke
     LaunchedEffect(text) {
         if (text.isNotBlank()) {
             onTypingChanged(true)
-            kotlinx.coroutines.delay(2000) // Keep "typing" active for 2s after last key
+            kotlinx.coroutines.delay(2000)
             onTypingChanged(false)
         } else {
             onTypingChanged(false)
         }
     }
-
     Surface(modifier = modifier.fillMaxWidth(), tonalElevation = 4.dp, color = MaterialTheme.colorScheme.surface) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                placeholder = { Text("Type a message…", fontSize = 14.sp) },
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp, max = 120.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = personaColor,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                ),
+                value = text, onValueChange = { text = it }, placeholder = { Text("Type a message…", fontSize = 14.sp) },
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp, max = 120.dp), shape = RoundedCornerShape(24.dp),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = personaColor, unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant),
                 maxLines = 4
             )
             Spacer(modifier = Modifier.width(10.dp))
             val canSend = text.isNotBlank()
             FloatingActionButton(
                 onClick = { if (canSend) { onSendMessage(text.trim()); text = ""; onTypingChanged(false) } },
-                modifier = Modifier.size(44.dp),
-                containerColor = if (canSend) personaColor else MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.size(44.dp), containerColor = if (canSend) personaColor else MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = if (canSend) (if (personaColor.luminance() > 0.5f) Color.Black else Color.White) else MaterialTheme.colorScheme.onSurfaceVariant,
-                shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(0.dp)
+                shape = CircleShape, elevation = FloatingActionButtonDefaults.elevation(0.dp)
             ) {
                 Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send", modifier = Modifier.size(20.dp))
             }
@@ -1137,28 +887,14 @@ fun SocialChatInput(
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialUserAvatar
-// ─────────────────────────────────────────────
 @Composable
 fun SocialUserAvatar(name: String, personaColor: Color, size: Int = 40) {
-    val displayInitial = if (name.equals("me", ignoreCase = true)) {
-        "M" 
-    } else {
-        name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
-    }
-    
-    Box(
-        modifier = Modifier.size(size.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.15f)),
-        contentAlignment = Alignment.Center
-    ) {
+    val displayInitial = if (name.equals("me", ignoreCase = true)) "M" else name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+    Box(modifier = Modifier.size(size.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
         Text(text = displayInitial, fontSize = (size * 0.4f).sp, fontWeight = FontWeight.Bold, color = personaColor)
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialGroupChatListItem — shows unread badge
-// ─────────────────────────────────────────────
 @Composable
 fun SocialGroupChatListItem(
     chat: ChatResponse,
@@ -1167,25 +903,15 @@ fun SocialGroupChatListItem(
     onClick: () -> Unit
 ) {
     val unreadCount = chat.unreadCount[currentUserId] ?: 0
-
-    Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onClick() }.padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onClick() }.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         if (chat.imageUrl != null) {
             AsyncImage(model = chat.imageUrl, contentDescription = null, modifier = Modifier.size(44.dp).clip(CircleShape), contentScale = ContentScale.Crop)
         } else {
             Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
-                Icon(
-                    if (chat.isGroup) Icons.Rounded.Groups else Icons.Rounded.Person,
-                    contentDescription = null,
-                    tint = personaColor
-                )
+                Icon(if (chat.isGroup) Icons.Rounded.Groups else Icons.Rounded.Person, contentDescription = null, tint = personaColor)
             }
         }
-
         Spacer(modifier = Modifier.width(12.dp))
-
         Column(modifier = Modifier.weight(1f)) {
             Text(text = chat.name ?: "Unnamed Group", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
             val subtitle = chat.lastMessage?.takeIf { it.isNotBlank() } ?: chat.description
@@ -1193,9 +919,7 @@ fun SocialGroupChatListItem(
                 Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
-
         Spacer(modifier = Modifier.width(8.dp))
-
         if (unreadCount > 0) {
             val badgeContentColor = if (personaColor.luminance() > 0.5f) Color.Black else Color.White
             Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(personaColor), contentAlignment = Alignment.Center) {
@@ -1207,377 +931,156 @@ fun SocialGroupChatListItem(
     }
 }
 
-// ─────────────────────────────────────────────
-// SocialTextInputDialog
-// ─────────────────────────────────────────────
 @Composable
-fun SocialTextInputDialog(
-    title: String,
-    label: String,
-    initialValue: String = "",
-    personaColor: Color,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
+fun SocialTextInputDialog(title: String, label: String, initialValue: String = "", personaColor: Color, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     var value by remember(initialValue) { mutableStateOf(initialValue) }
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = value, onValueChange = { value = it },
-                label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = personaColor)
-            )
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(value) }, enabled = value.isNotBlank(), colors = ButtonDefaults.buttonColors(containerColor = personaColor)) { Text("Save") }
-        },
+        onDismissRequest = onDismiss, title = { Text(title) },
+        text = { OutlinedTextField(value = value, onValueChange = { value = it }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = personaColor)) },
+        confirmButton = { Button(onClick = { onConfirm(value) }, enabled = value.isNotBlank(), colors = ButtonDefaults.buttonColors(containerColor = personaColor)) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
-// ─────────────────────────────────────────────
-// SocialConfirmDialog
-// ─────────────────────────────────────────────
 @Composable
-fun SocialConfirmDialog(
-    title: String,
-    message: String,
-    confirmLabel: String,
-    personaColor: Color,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
+fun SocialConfirmDialog(title: String, message: String, confirmLabel: String, personaColor: Color, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = personaColor)) { Text(confirmLabel) }
-        },
+        onDismissRequest = onDismiss, title = { Text(title) }, text = { Text(message) },
+        confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = personaColor)) { Text(confirmLabel) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
-// ─────────────────────────────────────────────
-// createImageFileUri — FileProvider helper for camera
-// ─────────────────────────────────────────────
-fun createImageFileUri(context: Context): android.net.Uri {
-    // Use external cache if available, as some camera apps struggle with internal cache URIs
+fun createImageFileUri(context: Context): Uri {
     val directory = context.externalCacheDir ?: context.cacheDir
     val file = File(directory, "img_${System.currentTimeMillis()}.jpg")
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }
 
-// ─────────────────────────────────────────────
-// ImageSourceDialog — AlertDialog-based photo source picker.
-// Safe to use inside ModalBottomSheet (no nested sheets).
-// ─────────────────────────────────────────────
 @Composable
-fun ImageSourceSheet(
-    onDismiss: () -> Unit,
-    onImageSelected: (android.net.Uri) -> Unit
-) {
+fun ImageSourceSheet(onDismiss: () -> Unit, onImageSelected: (Uri) -> Unit) {
     val context = LocalContext.current
-    var pendingCameraUri by remember { mutableStateOf<android.net.Uri?>(null) }
-
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     val cameraPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
-            val uri = createImageFileUri(context)
-            pendingCameraUri = uri
-        }
+        if (granted) { val uri = createImageFileUri(context); pendingCameraUri = uri }
         onDismiss()
     }
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success) pendingCameraUri?.let { onImageSelected(it) }
-    }
-    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { onImageSelected(it) }
-    }
-
-    LaunchedEffect(pendingCameraUri) {
-        pendingCameraUri?.let { cameraLauncher.launch(it) }
-    }
-
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success -> if (success) pendingCameraUri?.let { onImageSelected(it) } }
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> uri?.let { onImageSelected(it) } }
+    LaunchedEffect(pendingCameraUri) { pendingCameraUri?.let { cameraLauncher.launch(it) } }
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Choose Photo") },
+        onDismissRequest = onDismiss, title = { Text("Choose Photo") },
         text = {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedCard(
-                    modifier = Modifier.weight(1f).height(80.dp).clickable {
-                        cameraPermLauncher.launch(android.Manifest.permission.CAMERA)
-                    }
-                ) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(Icons.Rounded.PhotoCamera, contentDescription = null)
-                            Text("Camera", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
+                OutlinedCard(modifier = Modifier.weight(1f).height(80.dp).clickable { cameraPermLauncher.launch(android.Manifest.permission.CAMERA) }) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) { Icon(Icons.Rounded.PhotoCamera, contentDescription = null); Text("Camera", style = MaterialTheme.typography.labelMedium) } }
                 }
-                OutlinedCard(
-                    modifier = Modifier.weight(1f).height(80.dp).clickable {
-                        galleryLauncher.launch("image/*")
-                        onDismiss()
-                    }
-                ) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(Icons.Rounded.PhotoLibrary, contentDescription = null)
-                            Text("Gallery", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
+                OutlinedCard(modifier = Modifier.weight(1f).height(80.dp).clickable { galleryLauncher.launch("image/*"); onDismiss() }) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) { Icon(Icons.Rounded.PhotoLibrary, contentDescription = null); Text("Gallery", style = MaterialTheme.typography.labelMedium) } }
                 }
             }
         },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        confirmButton = {}, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
-// ─────────────────────────────────────────────
-// MemberPickerSheet — searchable list of all app users with checkboxes.
-// Falls back to a text-input if the list is empty (e.g. no network).
-// ─────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MemberPickerSheet(
     title: String,
-    allUsers: List<com.habitflowai.data.model.AppUser>,
-    /** IDs already in the chat — excluded from the list */
+    allUsers: List<AppUser>,
     excludeIds: Set<String> = emptySet(),
-    /** Already-selected IDs to pre-check */
     initialSelected: Set<String> = emptySet(),
-    /** Multi-select (group) vs single-select (DM / add one member) */
     multiSelect: Boolean = true,
     personaColor: Color,
     onDismiss: () -> Unit,
-    /** Returns selected user IDs */
     onConfirm: (Set<String>) -> Unit
 ) {
     val eligible = remember(allUsers, excludeIds) { allUsers.filter { it.id !in excludeIds } }
     var search by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf(initialSelected) }
-
     val filtered = remember(search, eligible) {
         if (search.isBlank()) eligible
         else eligible.filter { user ->
             val username = user.email.substringBefore('@')
             username.contains(search, ignoreCase = true) ||
             user.email.contains(search, ignoreCase = true) ||
-            user.id.contains(search, ignoreCase = true)
+            user.id.contains(search, ignoreCase = true) ||
+            (user.firstName?.contains(search, ignoreCase = true) == true) ||
+            (user.lastName?.contains(search, ignoreCase = true) == true) ||
+            "${user.firstName} ${user.lastName}".contains(search, ignoreCase = true)
         }
     }
-    // Prevent Material3's ModalBottomSheet from auto-collapsing to Hidden when the
-    // IME closes and its content remeasures (a known Compose bug).
-    val sheetState = rememberModalBottomSheetState(
-        confirmValueChange = { it != SheetValue.Hidden },
-    )
-
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { it != SheetValue.Hidden })
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        // Material3's own back-press dismissal fires *before* any BackHandler we
-        // add inside content can reliably win priority over it. Disable it at the
-        // source and let our own BackHandler below be the only thing back
-        // presses reach.
+        onDismissRequest = onDismiss, sheetState = sheetState, dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         properties = ModalBottomSheetDefaults.properties(shouldDismissOnBackPress = false)
     ) {
-        // First back press should only dismiss the keyboard (the search field
-        // can summon it); only close the sheet on a second press once the IME
-        // is already hidden.
         val keyboardController = LocalSoftwareKeyboardController.current
+        @OptIn(ExperimentalLayoutApi::class)
         val imeVisible = WindowInsets.isImeVisible
-        BackHandler {
-            if (imeVisible) keyboardController?.hide() else onDismiss()
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.85f)
-                .imePadding()
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        BackHandler { if (imeVisible) keyboardController?.hide() else onDismiss() }
+        Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f).imePadding()) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-                    if (multiSelect) {
-                        Text(
-                            if (selected.isEmpty()) "Select members to add" else "${selected.size} selected",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (selected.isNotEmpty()) personaColor else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    if (multiSelect) { Text(if (selected.isEmpty()) "Select members to add" else "${selected.size} selected", style = MaterialTheme.typography.labelMedium, color = if (selected.isNotEmpty()) personaColor else MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 if (multiSelect && selected.isNotEmpty()) {
-                    Button(
-                        onClick = { onConfirm(selected); onDismiss() },
-                        colors = ButtonDefaults.buttonColors(containerColor = personaColor),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text("Add", fontWeight = FontWeight.Bold)
-                    }
+                    Button(onClick = { onConfirm(selected); onDismiss() }, colors = ButtonDefaults.buttonColors(containerColor = personaColor), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) { Text("Add", fontWeight = FontWeight.Bold) }
                 }
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Close")
-                }
+                IconButton(onClick = onDismiss) { Icon(Icons.Rounded.Close, contentDescription = "Close") }
             }
-
-            // Search bar
-            Surface(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+            Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = RoundedCornerShape(16.dp)) {
                 OutlinedTextField(
-                    value = search,
-                    onValueChange = { search = it },
-                    placeholder = { Text("Search for friends…", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
+                    value = search, onValueChange = { search = it }, placeholder = { Text("Search for friends…", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
                     leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = personaColor) },
-                    trailingIcon = if (search.isNotBlank()) {
-                        { IconButton(onClick = { search = "" }) { Icon(Icons.Rounded.Close, contentDescription = "Clear") } }
-                    } else null,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        cursorColor = personaColor
-                    )
+                    trailingIcon = if (search.isNotBlank()) { { IconButton(onClick = { search = "" }) { Icon(Icons.Rounded.Close, contentDescription = "Clear") } } } else null,
+                    modifier = Modifier.fillMaxWidth(), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent, cursorColor = personaColor)
                 )
             }
-
             Spacer(Modifier.height(8.dp))
-
-            // User list
-            LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (eligible.isEmpty()) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Surface(
-                                    modifier = Modifier.size(80.dp),
-                                    shape = CircleShape,
-                                    color = personaColor.copy(alpha = 0.1f)
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.PeopleOutline, 
-                                        contentDescription = null, 
-                                        tint = personaColor.copy(alpha = 0.4f), 
-                                        modifier = Modifier.padding(20.dp)
-                                    )
-                                }
-                                Text(
-                                    "No users found", 
-                                    style = MaterialTheme.typography.titleMedium, 
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    "Invite some friends to get started!", 
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                )
+                                Surface(modifier = Modifier.size(80.dp), shape = CircleShape, color = personaColor.copy(alpha = 0.1f)) { Icon(Icons.Rounded.PeopleOutline, contentDescription = null, tint = personaColor.copy(alpha = 0.4f), modifier = Modifier.padding(20.dp)) }
+                                Text("No users found", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Invite some friends to get started!", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                             }
                         }
                     }
                 } else if (filtered.isEmpty()) {
-                    item {
-                        Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                            Text("No results for \"$search\"", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
+                    item { Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { Text("No results for \"$search\"", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                 }
-                
                 items(filtered, key = { it.id }) { user ->
                     val isSelected = user.id in selected
-                    val username = user.email.substringBefore('@')
-                    
+                    val displayName = resolveDisplayName(user.id, allUsers)
                     Surface(
-                        onClick = {
-                            if (!multiSelect) {
-                                onConfirm(setOf(user.id)); onDismiss()
-                            } else {
-                                selected = if (isSelected) selected - user.id else selected + user.id
-                            }
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        color = if (isSelected) personaColor.copy(alpha = 0.08f) else Color.Transparent,
-                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, personaColor.copy(alpha = 0.3f)) else null,
-                        modifier = Modifier.fillMaxWidth()
+                        onClick = { if (!multiSelect) { onConfirm(setOf(user.id)); onDismiss() } else { selected = if (isSelected) selected - user.id else selected + user.id } },
+                        shape = RoundedCornerShape(16.dp), color = if (isSelected) personaColor.copy(alpha = 0.08f) else Color.Transparent,
+                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, personaColor.copy(alpha = 0.3f)) else null, modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            SocialUserAvatar(name = username, personaColor = personaColor, size = 44)
+                        Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            SocialUserAvatar(name = displayName, personaColor = personaColor, size = 44)
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(username, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+                                Text(displayName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1)
                                 Text(user.email, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1)
                             }
-                            if (multiSelect) {
-                                Checkbox(
-                                    checked = isSelected,
-                                    onCheckedChange = { selected = if (it) selected + user.id else selected - user.id },
-                                    colors = CheckboxDefaults.colors(checkedColor = personaColor)
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Rounded.ChevronRight, 
-                                    contentDescription = null, 
-                                    tint = MaterialTheme.colorScheme.outlineVariant
-                                )
-                            }
+                            if (multiSelect) { Checkbox(checked = isSelected, onCheckedChange = { selected = if (it) selected + user.id else selected - user.id }, colors = CheckboxDefaults.colors(checkedColor = personaColor)) }
+                            else { Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outlineVariant) }
                         }
                     }
                 }
             }
-
-            // Confirm button (multi-select)
             if (multiSelect) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    tonalElevation = 8.dp,
-                    shadowElevation = 8.dp,
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    Button(
-                        onClick = { onConfirm(selected); onDismiss() },
-                        enabled = selected.isNotEmpty(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp)
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = personaColor,
-                            disabledContainerColor = personaColor.copy(alpha = 0.3f)
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
+                Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 8.dp, shadowElevation = 8.dp, color = MaterialTheme.colorScheme.surface) {
+                    Button(onClick = { onConfirm(selected); onDismiss() }, enabled = selected.isNotEmpty(), modifier = Modifier.fillMaxWidth().padding(24.dp).height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = personaColor, disabledContainerColor = personaColor.copy(alpha = 0.3f)), shape = RoundedCornerShape(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (selected.isNotEmpty()) {
-                                Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
-                            }
-                            Text(
-                                if (selected.isEmpty()) "Select Members" else "Confirm Selection (${selected.size})",
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 16.sp
-                            )
+                            if (selected.isNotEmpty()) { Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                            Text(if (selected.isEmpty()) "Select Members" else "Confirm Selection (${selected.size})", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                         }
                     }
                 }
@@ -1585,10 +1088,6 @@ fun MemberPickerSheet(
         }
     }
 }
-
-// ─────────────────────────────────────────────
-// Previews — use SocialGroupChatContent (no Dialog wrapper)
-// ─────────────────────────────────────────────
 
 @Preview(showBackground = true, name = "Chat – Light Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
 @Preview(showBackground = true, name = "Chat – Dark Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
@@ -1597,17 +1096,8 @@ private fun PreviewChatWithMessages() {
     HabitFlowTheme {
         val personaColor = PersonaUiData.getDetails("Socializer").endColor
         SocialGroupChatContent(
-            chat = ChatResponse(
-                id = "1", name = "Mountain Climbers", isGroup = true,
-                lastMessage = "Who's hiking Sunday?", participantIds = listOf("alex", "mia", "me"),
-                admins = listOf("me"), owner = "me"
-            ),
-            messages = listOf(
-                ChatMessage(text = "Hey everyone! Ready for Sunday?", senderId = "alex"),
-                ChatMessage(text = "Absolutely! 🏔️", senderId = "mia"),
-                ChatMessage(text = "Count me in!", senderId = "me"),
-                ChatMessage(text = "7am at the trailhead!", senderId = "alex", likedBy = listOf("me", "mia"))
-            ),
+            chat = ChatResponse(id = "1", name = "Mountain Climbers", isGroup = true, lastMessage = "Who's hiking Sunday?", participantIds = listOf("alex", "mia", "me"), admins = listOf("me"), owner = "me"),
+            messages = listOf(ChatMessage(text = "Hey everyone! Ready for Sunday?", senderId = "alex"), ChatMessage(text = "Absolutely! 🏔️", senderId = "mia"), ChatMessage(text = "Count me in!", senderId = "me"), ChatMessage(text = "7am at the trailhead!", senderId = "alex", likedBy = listOf("me", "mia"))),
             personaColor = personaColor, currentUserId = "me", typingUserIds = setOf("mia"),
             onDismiss = {}, onSendMessage = {}, onLikeMessage = {}, onAddMember = {}
         )

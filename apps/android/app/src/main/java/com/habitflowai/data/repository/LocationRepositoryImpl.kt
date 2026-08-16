@@ -100,6 +100,8 @@ class LocationRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getCurrentDeviceLocation(): Location? = getCurrentLocation()
+
     override fun getLastLocation(): LocationEntity? {
         return kotlinx.coroutines.runBlocking {
             locationDao.getLastLocation()
@@ -127,10 +129,12 @@ class LocationRepositoryImpl @Inject constructor(
         minLat: Double,
         maxLat: Double,
         minLng: Double,
-        maxLng: Double
+        maxLng: Double,
+        since: Long?,
+        scope: String?
     ): List<LocationResponse> {
         return try {
-            api.getPublicLocations(minLat, maxLat, minLng, maxLng)
+            api.getPublicLocations(minLat, maxLat, minLng, maxLng, since, scope)
                 .also { Log.d(TAG, "getPublicLocations: ${it.size} records") }
         } catch (e: Exception) {
             Log.w(TAG, "getPublicLocations failed: ${e.message}")

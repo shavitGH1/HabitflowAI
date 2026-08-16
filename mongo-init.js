@@ -218,7 +218,6 @@ if (toInsert.length > 0) {
   db.users.insertMany(toInsert);
 }
 
-// Fixed id — must stay in sync with COACH_USER_ID in apps/backend/src/coach/coach.templates.ts
 const COACH_ID = ObjectId('000000000000000000000c0a');
 if (!db.users.findOne({ _id: COACH_ID })) {
   db.users.insertOne({
@@ -247,6 +246,10 @@ const alexId = demoUserIds['demo.alex@habitflow.ai'];
 const mayaId = demoUserIds['demo.maya@habitflow.ai'];
 const benId = demoUserIds['demo.ben@habitflow.ai'];
 const saraId = demoUserIds['demo.sara@habitflow.ai'];
+const tomId = demoUserIds['demo.tom@habitflow.ai'];
+const lenaId = demoUserIds['demo.lena@habitflow.ai'];
+const danaId = demoUserIds['demo.dana@habitflow.ai'];
+const ronId = demoUserIds['demo.ron@habitflow.ai'];
 
 if (alexId && mayaId && !db.chats.findOne({ isGroup: false, participantIds: { $all: [alexId, mayaId], $size: 2 } })) {
   const directChatId = db.chats.insertOne({
@@ -505,12 +508,12 @@ if (alexId && mayaId && benId && saraId && db.locationrecords.countDocuments() =
   const saraChallengeHabitId = saraChallengeHabit ? saraChallengeHabit._id.toString() : undefined;
 
   const locationDefs = [
-    { userId: alexId, habitId: alexRunHabitId, latitude: 32.0880, longitude: 34.7801, daysAgo: 0, personaType: 'Achiever' },
-    { userId: alexId, habitId: alexRunHabitId, latitude: 32.0902, longitude: 34.7838, daysAgo: 1, personaType: 'Achiever' },
-    { userId: mayaId, habitId: mayaMeditationHabitId, latitude: 32.0838, longitude: 34.7679, daysAgo: 1, personaType: 'Achiever' },
+    { userId: alexId, habitId: alexRunHabitId, taskDescription: '5km morning run', latitude: 32.0880, longitude: 34.7801, daysAgo: 0, personaType: 'Achiever' },
+    { userId: alexId, habitId: alexRunHabitId, taskDescription: '5km morning run', latitude: 32.0902, longitude: 34.7838, daysAgo: 1, personaType: 'Achiever' },
+    { userId: mayaId, habitId: mayaMeditationHabitId, taskDescription: 'Daily meditation (15 min)', latitude: 32.0838, longitude: 34.7679, daysAgo: 1, personaType: 'Achiever' },
     // Matches the completion gap above, not a fresh visit.
-    { userId: benId, habitId: benWorkoutHabitId, latitude: 32.0925, longitude: 34.7845, daysAgo: 10, personaType: 'Socializer' },
-    { userId: saraId, habitId: saraChallengeHabitId, latitude: 32.0797, longitude: 34.7746, daysAgo: 0, personaType: 'Socializer' },
+    { userId: benId, habitId: benWorkoutHabitId, taskDescription: 'Group workout session', latitude: 32.0925, longitude: 34.7845, daysAgo: 10, personaType: 'Socializer' },
+    { userId: saraId, habitId: saraChallengeHabitId, taskDescription: 'Join a community challenge', latitude: 32.0797, longitude: 34.7746, daysAgo: 0, personaType: 'Socializer' },
   ];
 
   locationDefs.forEach(def => {
@@ -518,6 +521,7 @@ if (alexId && mayaId && benId && saraId && db.locationrecords.countDocuments() =
     db.locationrecords.insertOne({
       userId: def.userId,
       habitId: def.habitId,
+      taskDescription: def.taskDescription,
       latitude: def.latitude,
       longitude: def.longitude,
       timestamp,
@@ -538,5 +542,34 @@ if (benId && db.driftflags.countDocuments() === 0) {
     dismissed: false,
     createdAt: daysAgoDate(1),
     updatedAt: daysAgoDate(1),
+  });
+}
+
+// GET /leaderboard reads only LeaderboardMonth (running totals), never
+// LeaderboardWeek — a real completion later just $inc's on top of these,
+// consistent with the "running total" design, so seeding month docs alone
+// is enough for the table to show real standings without fabricating
+// day-by-day week data nothing currently reads.
+if (alexId && db.leaderboardmonths.countDocuments() === 0) {
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const monthPoints = {
+    [alexId]: 5450,
+    [mayaId]: 4800,
+    [ronId]: 4100,
+    [danaId]: 3600,
+    [tomId]: 3150,
+    [saraId]: 2700,
+    [benId]: 2200,
+    [lenaId]: 1650,
+  };
+  Object.entries(monthPoints).forEach(([userId, points]) => {
+    if (!userId || userId === 'undefined') return;
+    db.leaderboardmonths.insertOne({
+      userId,
+      monthStart,
+      monthPoints: points,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   });
 }

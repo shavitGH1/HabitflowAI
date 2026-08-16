@@ -4,6 +4,7 @@ import { CreateHabitDto } from './dto/create-habit.dto';
 import { HabitData, HabitRepository } from './habit.repository';
 import { GoalData, GoalRepository } from '../goals/goal.repository';
 import { AiService } from '../ai/ai.service';
+import { LeaderboardService } from '../leaderboard/leaderboard.service';
 import { HabitsService } from './habits.service';
 
 const mockHabitRepository = {
@@ -22,6 +23,10 @@ const mockGoalRepository = {
 const mockAiService = {
   checkHabitGoalRelevance: jest.fn(),
   checkTaskVerification: jest.fn(),
+};
+
+const mockLeaderboardService = {
+  recordCompletion: jest.fn(),
 };
 
 const USER_ID = 'user-123';
@@ -66,6 +71,7 @@ describe('HabitsService', () => {
         { provide: HabitRepository, useValue: mockHabitRepository },
         { provide: GoalRepository, useValue: mockGoalRepository },
         { provide: AiService, useValue: mockAiService },
+        { provide: LeaderboardService, useValue: mockLeaderboardService },
       ],
     }).compile();
 
@@ -413,6 +419,25 @@ describe('HabitsService', () => {
       const result = await service.completeHabit(USER_ID, HABIT_ID, 'Ran 5km this morning');
 
       expect(result.verificationWarning).toBeUndefined();
+    });
+
+    it('records a leaderboard completion when the habit was not already completed today', async () => {
+      mockHabitRepository.findById.mockResolvedValue(makeHabit({ completionHistory: [] }));
+      mockHabitRepository.completeHabit.mockResolvedValue(makeHabit());
+
+      await service.completeHabit(USER_ID, HABIT_ID);
+
+      expect(mockLeaderboardService.recordCompletion).toHaveBeenCalledWith(USER_ID);
+    });
+
+    it('does not double-record leaderboard points for a repeat completion the same day', async () => {
+      const today = new Date().toISOString().split('T')[0];
+      mockHabitRepository.findById.mockResolvedValue(makeHabit({ completionHistory: [today] }));
+      mockHabitRepository.completeHabit.mockResolvedValue(makeHabit({ completionHistory: [today] }));
+
+      await service.completeHabit(USER_ID, HABIT_ID);
+
+      expect(mockLeaderboardService.recordCompletion).not.toHaveBeenCalled();
     });
   });
 

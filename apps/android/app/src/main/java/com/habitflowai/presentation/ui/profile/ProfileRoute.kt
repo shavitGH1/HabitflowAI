@@ -23,7 +23,7 @@ import com.habitflowai.presentation.ui.chat.ChatOverlay
 import com.habitflowai.presentation.ui.persona.*
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.habitflowai.presentation.viewmodel.OnboardingUiState
-import com.habitflowai.presentation.ui.theme.HabitFlowTheme
+import com.habitflowai.presentation.ui.theme.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -115,7 +115,19 @@ fun ProfileContent(
                 onClick = { showAvatarEditor = true }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (uiState.firstName.isNotEmpty() || uiState.lastName.isNotEmpty()) {
+                Text(
+                    text = "${uiState.firstName} ${uiState.lastName}".trim(),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            } else {
+                Spacer(modifier = Modifier.height(24.dp))
+            }
 
             SummaryCard(
                 type = details.type,
