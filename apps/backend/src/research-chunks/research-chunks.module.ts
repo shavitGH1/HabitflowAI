@@ -15,5 +15,6 @@ import { ResearchChunksService } from './research-chunks.service';
   ],
   providers: [ResearchChunkRepository, ResearchChunksService],
   controllers: [ResearchChunksController],
+  exports: [ResearchChunksService],
 })
 export class ResearchChunksModule {}

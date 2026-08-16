@@ -4,10 +4,12 @@ import { z } from 'zod';
 import { AgentTool, defineTool, ToolRejectedError } from '../ai/agent/agent-tool';
 import { PERSONA_TYPES, PersonaType } from '../ai/pillars';
 import { proposedChangeSchema, ProposedChange } from '../ai/schemas/coaching-agent.schema';
+import { ArticlesService } from '../articles/articles.service';
 import { GoalRepository } from '../goals/goal.repository';
 import { HabitData, HabitRepository } from '../habits/habit.repository';
 import { logger } from '../logger';
 import { PersonasService } from '../personas/personas.service';
+import { ResearchChunksService } from '../research-chunks/research-chunks.service';
 import { UserRepository } from '../users/user.repository';
 import { DriftFinding, ProposalContext, rejectionReason } from './coach.policy';
 import { CoachStats, computeStats, isGoalFailing, pickBand, weeklySummary } from './coach.rules';
@@ -33,6 +35,8 @@ export class CoachToolset {
     private readonly habitRepository: HabitRepository,
     private readonly goalRepository: GoalRepository,
     private readonly personasService: PersonasService,
+    private readonly articlesService: ArticlesService,
+    private readonly researchChunksService: ResearchChunksService,
   ) {}
 
   open(userId: string): CoachToolSession {
@@ -50,6 +54,8 @@ export class CoachToolset {
         this.activeGoalTool(userId),
         this.driftTool(userId, state),
         this.proposeChangeTool(userId, state),
+        this.searchArticlesTool(),
+        this.searchResearchTool(),
       ],
       proposedChange: () => state.staged,
       fallbackReply: () => this.fallbackReply(userId),
@@ -232,6 +238,54 @@ export class CoachToolset {
           staged: true,
           awaitingUserConfirmation: true,
           note: 'Tell the user what you proposed and that nothing changes until they confirm it.',
+        };
+      },
+    });
+  }
+
+  private searchArticlesTool(): AgentTool {
+    return defineTool({
+      name: 'search_articles',
+      description:
+        'Search a small curated set of habit-formation articles (title + link) by meaning, not keyword. Call this when the user wants further reading or a resource to share — a concrete link, not an explanation. For the science/reasoning behind a suggestion, call search_research instead.',
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          query: {
+            type: Type.STRING,
+            description: 'What the user wants reading material about, in their own words.',
+          },
+        },
+        required: ['query'],
+      },
+      argsSchema: z.object({ query: z.string() }),
+      execute: async ({ query }) => {
+        const results = await this.articlesService.search(query);
+        return { articles: results.map(({ title, url }) => ({ title, url })) };
+      },
+    });
+  }
+
+  private searchResearchTool(): AgentTool {
+    return defineTool({
+      name: 'search_research',
+      description:
+        'Search chunked behavior-change research (neuroscience, motivation frameworks) by meaning, not keyword. Call this when the user asks "why" a suggestion works, not when they just want a link — for that call search_articles instead. Quote or paraphrase the returned content rather than inventing an explanation.',
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          query: {
+            type: Type.STRING,
+            description: 'What the user wants the underlying research/explanation for, in their own words.',
+          },
+        },
+        required: ['query'],
+      },
+      argsSchema: z.object({ query: z.string() }),
+      execute: async ({ query }) => {
+        const results = await this.researchChunksService.search(query);
+        return {
+          chunks: results.map(({ sourceTitle, section, content }) => ({ sourceTitle, section, content })),
         };
       },
     });
