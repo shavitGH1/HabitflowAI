@@ -4,6 +4,7 @@ dotenv.config();
 import mongoose from 'mongoose';
 import { GoogleGenAI } from '@google/genai';
 import { Article, ArticleSchema } from '../src/articles/schemas/article.schema';
+import { logger } from '../src/logger';
 
 const EMBEDDING_MODEL = 'gemini-embedding-001';
 
@@ -60,7 +61,7 @@ async function main(): Promise<void> {
     });
     const embedding = response.embeddings?.[0]?.values;
     if (!embedding) {
-      console.warn(`No embedding returned for "${article.title}", skipping`);
+      logger.warn(`No embedding returned for "${article.title}", skipping`);
       continue;
     }
 
@@ -68,11 +69,11 @@ async function main(): Promise<void> {
     inserted++;
   }
 
-  console.log(`Seeded ${inserted} articles, skipped ${skipped} already present.`);
+  logger.info(`Seeded ${inserted} articles, skipped ${skipped} already present.`);
   await mongoose.disconnect();
 }
 
 main().catch(error => {
-  console.error(error);
+  logger.error(error);
   process.exit(1);
 });

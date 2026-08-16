@@ -4,6 +4,7 @@ dotenv.config();
 import mongoose from 'mongoose';
 import { GoogleGenAI } from '@google/genai';
 import { ResearchChunk, ResearchChunkSchema } from '../src/research-chunks/schemas/research-chunk.schema';
+import { logger } from '../src/logger';
 
 const EMBEDDING_MODEL = 'gemini-embedding-001';
 
@@ -127,7 +128,7 @@ async function main(): Promise<void> {
     });
     const embedding = response.embeddings?.[0]?.values;
     if (!embedding) {
-      console.warn(`No embedding returned for "${chunk.section}", skipping`);
+      logger.warn(`No embedding returned for "${chunk.section}", skipping`);
       continue;
     }
 
@@ -140,11 +141,11 @@ async function main(): Promise<void> {
     inserted++;
   }
 
-  console.log(`Seeded ${inserted} research chunks, skipped ${skipped} already present.`);
+  logger.info(`Seeded ${inserted} research chunks, skipped ${skipped} already present.`);
   await mongoose.disconnect();
 }
 
 main().catch(error => {
-  console.error(error);
+  logger.error(error);
   process.exit(1);
 });
