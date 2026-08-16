@@ -11,8 +11,8 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all users (id + email) for member picker' })
-  @ApiResponse({ status: 200, description: 'Array of { id, email }' })
+  @ApiOperation({ summary: 'List all users (id, email, name) for member picker and search' })
+  @ApiResponse({ status: 200, description: 'Array of { id, email, firstName, lastName }' })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   getAllUsers(@Req() req: { user: { id: string } }) {
     return this.usersService.getAllUsers();
