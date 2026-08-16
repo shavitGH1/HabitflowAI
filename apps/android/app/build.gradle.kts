@@ -39,6 +39,15 @@ android {
             "\"${localProps.getProperty("backend.base.url", "http://10.0.2.2:3000/")}\""
         )
 
+        // Web OAuth client ID (audience the backend verifies Google ID tokens against),
+        // not an Android-type client — Credential Manager's GetSignInWithGoogleOption
+        // needs this exact one. Matches backend/.env's GOOGLE_CLIENT_ID.
+        buildConfigField(
+            "String",
+            "GOOGLE_SERVER_CLIENT_ID",
+            "\"${localProps.getProperty("google.server.client.id", "")}\""
+        )
+
         manifestPlaceholders["googleMapsApiKey"] =
             localProps.getProperty("maps.api.key", "YOUR_API_KEY_HERE")
     }
@@ -107,6 +116,11 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.play.services.auth)
     implementation(libs.play.services.maps)
+
+    // Google Sign-In (Credential Manager)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.google.id)
     implementation(libs.maps.compose)
     implementation(libs.maps.compose.utils)
     implementation(libs.coil.compose)

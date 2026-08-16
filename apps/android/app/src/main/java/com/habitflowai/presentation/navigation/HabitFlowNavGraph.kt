@@ -58,6 +58,28 @@ fun HabitFlowNavGraph(
         }
     }
 
+    // Google Sign-In found no matching account — skip RegisterCredentials (no
+    // password to collect) and go straight to NameEntry, pre-filled from Google.
+    LaunchedEffect(uiState.navigateToNameEntry) {
+        if (uiState.navigateToNameEntry) {
+            onboardingViewModel.onNameEntryNavigated()
+            navController.navigate(NavRoute.NameEntry.route)
+        }
+    }
+
+    // Google Sign-In matched an existing account, from Login or RegisterCredentials
+    // (not from the onboarding quiz — that completion path uses navigateToHome,
+    // handled inside OnboardingRoute itself, so this stays a separate flag).
+    LaunchedEffect(uiState.googleLoginSuccess) {
+        if (uiState.googleLoginSuccess) {
+            onboardingViewModel.onGoogleLoginHandled()
+            onboardingViewModel.fetchProfile()
+            navController.navigate(NavRoute.Home.route) {
+                popUpTo(NavRoute.Login.route) { inclusive = true }
+            }
+        }
+    }
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -114,6 +136,7 @@ fun HabitFlowNavGraph(
                 composable(NavRoute.Login.route) {
                     LoginRoute(
                         viewModel = loginViewModel,
+                        onboardingViewModel = onboardingViewModel,
                         onLoginSuccess = {
                             onboardingViewModel.fetchProfile()
                             navController.navigate(NavRoute.Home.route) {
@@ -155,7 +178,11 @@ fun HabitFlowNavGraph(
                         onQuizAnswerChange = onboardingViewModel::onQuizAnswerChange,
                         onGoalSubmitted = onboardingViewModel::fetchOnboardingSuggestions,
                         onSubmit = {
-                            if (uiState.isRetakeMode) onboardingViewModel.reclassifyPersona() else onboardingViewModel.registerUser()
+                            when {
+                                uiState.isRetakeMode -> onboardingViewModel.reclassifyPersona()
+                                uiState.googleSignupToken != null -> onboardingViewModel.registerViaGoogle()
+                                else -> onboardingViewModel.registerUser()
+                            }
                         },
                         onPersonaClassified = {
                             if (uiState.isRetakeMode) {

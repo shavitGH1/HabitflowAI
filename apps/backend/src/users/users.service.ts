@@ -10,9 +10,9 @@ export class UsersService {
     private readonly ai: AiService,
   ) {}
 
-  async getAllUsers(): Promise<{ id: string; email: string }[]> {
+  async getAllUsers(): Promise<{ id: string; email: string; firstName: string; lastName: string }[]> {
     const users = await this.userRepository.findAllUsers();
-    return users.map(u => ({ id: u.id, email: u.email }));
+    return users.map(u => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName }));
   }
 
   async getHomePageData(userId: string) {
@@ -28,6 +28,8 @@ export class UsersService {
     }
 
     return {
+      firstName: user.firstName,
+      lastName: user.lastName,
       goal: user.goal,
       personaType: user.personaType,
       motivationalMessage: user.motivationalMessage,
