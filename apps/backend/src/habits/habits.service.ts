@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { HabitData, HabitRepository } from './habit.repository';
 import { GoalData, GoalRepository } from '../goals/goal.repository';
 import { AiService } from '../ai/ai.service';
+import { LeaderboardService } from '../leaderboard/leaderboard.service';
 import { CreateHabitDto } from './dto/create-habit.dto';
 import { UpdateHabitDto } from './dto/update-habit.dto';
 import { daysBetween } from './utils/consistency.utils';
@@ -27,6 +28,7 @@ export class HabitsService {
     private readonly habitRepository: HabitRepository,
     private readonly goalRepository: GoalRepository,
     private readonly ai: AiService,
+    private readonly leaderboardService: LeaderboardService,
   ) {}
 
   async createHabit(userId: string, dto: CreateHabitDto): Promise<HabitWithWarning> {
@@ -94,7 +96,18 @@ export class HabitsService {
     if (!habit) throw new NotFoundException('Habit not found');
     if (habit.userId !== userId) throw new ForbiddenException('You do not own this habit');
 
+    // completeHabit() only appends today's date if it isn't already there, but
+    // doesn't error on a repeat call for the same day — check first so
+    // leaderboard points aren't awarded twice for one day's completion.
+    const today = new Date().toISOString().split('T')[0];
+    const alreadyCompletedToday = habit.completionHistory.includes(today);
+
     const completed = (await this.habitRepository.completeHabit(id, note))!;
+
+    if (!alreadyCompletedToday) {
+      await this.leaderboardService.recordCompletion(userId);
+    }
+
     if (!note) return completed;
 
     const verification = await this.ai.checkTaskVerification({ habitTitle: habit.title, note });
