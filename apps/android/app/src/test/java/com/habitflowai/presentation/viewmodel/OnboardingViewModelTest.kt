@@ -9,6 +9,7 @@ import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.AuthRepository
 import com.habitflowai.domain.repository.PersonaRepository
+import com.habitflowai.domain.repository.UserRepository
 import com.habitflowai.util.Resource
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -34,6 +35,7 @@ class OnboardingViewModelTest {
 
     private val personaRepository: PersonaRepository = mockk()
     private val authRepository: AuthRepository = mockk()
+    private val userRepository: UserRepository = mockk()
     private val api: HabitFlowApi = mockk()
     private val authManager: AuthManager = mockk()
 
@@ -46,6 +48,7 @@ class OnboardingViewModelTest {
         viewModel = OnboardingViewModel(
             repository = personaRepository,
             authRepository = authRepository,
+            userRepository = userRepository,
             api = api,
             authManager = authManager
         )

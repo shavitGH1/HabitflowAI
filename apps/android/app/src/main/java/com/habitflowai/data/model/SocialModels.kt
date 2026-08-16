@@ -7,6 +7,8 @@ data class Post(
     val authorId: String,
     val authorEmail: String? = null,
     val authorName: String? = null,
+    @JsonAdapter(ProfilePictureDeserializer::class)
+    val authorProfilePicture: String? = null,
     val habitName: String,
     val completionNote: String,
     @JsonAdapter(ImageUrlDeserializer::class)
@@ -25,8 +27,14 @@ data class Comment(
     val userId: String,
     val userName: String? = null,
     val userEmail: String? = null,
+    @JsonAdapter(ProfilePictureDeserializer::class)
+    val userProfilePicture: String? = null,
     val text: String,
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    val likes: List<String> = emptyList(),
+    // UI-only properties for convenience
+    val isLiked: Boolean = false,
+    val likeCount: Int = 0
 )
 
 data class PostRequest(

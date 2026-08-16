@@ -68,6 +68,13 @@ interface HabitFlowApi {
     @GET("api/v1/users/me/home")
     suspend fun getHome(): HomeResponse
 
+    @PATCH("api/v1/users/me/profile")
+    suspend fun updateProfilePicture(@Body request: com.habitflowai.data.model.UpdateProfilePictureRequest): com.habitflowai.data.model.UpdateProfileResponse
+
+    @Multipart
+    @POST("api/v1/users/me/avatar")
+    suspend fun uploadAvatar(@Part image: MultipartBody.Part): com.habitflowai.data.model.UpdateProfileResponse
+
     @GET("api/v1/goals/active")
     suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse
 
@@ -256,5 +263,17 @@ interface HabitFlowApi {
     suspend fun addComment(
         @Path("id") id: String,
         @Body request: com.habitflowai.data.model.CommentRequest
+    ): com.habitflowai.data.model.Comment
+
+    @POST("api/v1/posts/{postId}/comments/{commentId}/like")
+    suspend fun toggleCommentLike(
+        @Path("postId") postId: String,
+        @Path("commentId") commentId: String
+    ): com.habitflowai.data.model.Comment
+
+    @DELETE("api/v1/posts/{postId}/comments/{commentId}/like")
+    suspend fun unlikeComment(
+        @Path("postId") postId: String,
+        @Path("commentId") commentId: String
     ): com.habitflowai.data.model.Comment
 }

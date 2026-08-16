@@ -346,6 +346,56 @@ if (alexId && mayaId && benId && saraId && db.posts.countDocuments() === 0) {
   commentDefs.forEach(def => db.comments.insertOne({ ...def, createdAt: new Date(), updatedAt: new Date() }));
 }
 
+// Backdated posts — separate, own-guarded block (the block above only fires once,
+// when `posts` is completely empty, so a shared dev DB that's already been seeded
+// needs its own trigger). Dates are chosen to exercise every tier of the relative-time
+// formatter (apps/android/.../util/RelativeTime.kt): >1yr falls back to a full date,
+// ~6mo hits the comment-only "Xmo" tier, ~3wk hits "Xd" for comments (posts cap "Xd" at
+// under a week, so both older posts show a full date instead — expected, not a bug).
+if (tomId && lenaId && danaId && ronId && db.posts.countDocuments({ authorId: ObjectId(tomId) }) === 0) {
+  const backdatedPostDefs = [
+    {
+      authorId: ObjectId(tomId),
+      habitName: 'Read 20 pages',
+      completionNote: 'Finished another chapter before bed — building the habit slowly.',
+      likes: [lenaId, danaId],
+      createdAt: new Date('2024-12-28T09:15:00Z'),
+    },
+    {
+      authorId: ObjectId(lenaId),
+      habitName: 'Try a new route or activity',
+      completionNote: 'Explored a trail on the other side of the city I had never been to.',
+      likes: [tomId, ronId],
+      createdAt: new Date('2026-02-13T18:40:00Z'),
+    },
+    {
+      authorId: ObjectId(danaId),
+      habitName: 'Volunteer or help someone today',
+      completionNote: 'Spent the afternoon helping out at the community shelter.',
+      likes: [lenaId, mayaId],
+      createdAt: new Date('2026-07-27T12:05:00Z'),
+    },
+  ];
+
+  const backdatedPostIds = backdatedPostDefs.map(def => db.posts.insertOne({
+    ...def,
+    updatedAt: def.createdAt,
+  }).insertedId);
+
+  const hoursAfter = (date, hours) => new Date(date.getTime() + hours * 60 * 60 * 1000);
+
+  const backdatedCommentDefs = [
+    { postId: backdatedPostIds[0], userId: ObjectId(lenaId), text: 'Love this — what are you reading?', createdAt: hoursAfter(backdatedPostDefs[0].createdAt, 3) },
+    { postId: backdatedPostIds[0], userId: ObjectId(ronId), text: 'Consistency is everything, keep it up.', createdAt: hoursAfter(backdatedPostDefs[0].createdAt, 26) },
+    { postId: backdatedPostIds[1], userId: ObjectId(tomId), text: 'That sounds amazing, where was it?', createdAt: hoursAfter(backdatedPostDefs[1].createdAt, 2) },
+    { postId: backdatedPostIds[1], userId: ObjectId(danaId), text: 'Adding this to my list!', createdAt: hoursAfter(backdatedPostDefs[1].createdAt, 20) },
+    { postId: backdatedPostIds[2], userId: ObjectId(lenaId), text: 'This is so inspiring.', createdAt: hoursAfter(backdatedPostDefs[2].createdAt, 4) },
+    { postId: backdatedPostIds[2], userId: ObjectId(ronId), text: 'Proud of you for doing this.', createdAt: hoursAfter(backdatedPostDefs[2].createdAt, 22) },
+    { postId: backdatedPostIds[2], userId: ObjectId(mayaId), text: 'Count me in next time!', createdAt: hoursAfter(backdatedPostDefs[2].createdAt, 30) },
+  ];
+  backdatedCommentDefs.forEach(def => db.comments.insertOne({ ...def, updatedAt: def.createdAt }));
+}
+
 if (alexId && mayaId && benId && saraId && db.follows.countDocuments() === 0) {
   const followDefs = [
     { followerId: mayaId, followingId: alexId },

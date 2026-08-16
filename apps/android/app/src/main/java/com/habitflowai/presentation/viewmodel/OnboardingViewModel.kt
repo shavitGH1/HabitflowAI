@@ -2,6 +2,7 @@ package com.habitflowai.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
 import com.google.firebase.messaging.FirebaseMessaging
 import com.habitflowai.data.model.CheckEmailRequest
 import com.habitflowai.data.model.ClassifyPersonaRequest
@@ -16,6 +17,7 @@ import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.AuthRepository
 import com.habitflowai.domain.repository.PersonaRepository
+import com.habitflowai.domain.repository.UserRepository
 import com.habitflowai.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.tasks.await
@@ -48,6 +50,7 @@ private fun extractErrorMessage(httpException: retrofit2.HttpException): String 
 class OnboardingViewModel @Inject constructor(
     private val repository: PersonaRepository,
     private val authRepository: AuthRepository,
+    private val userRepository: UserRepository,
     private val api: HabitFlowApi,
     private val authManager: AuthManager
 ) : ViewModel() {
@@ -229,6 +232,15 @@ class OnboardingViewModel @Inject constructor(
             try {
                 val homeData = api.getHome()
                 if (homeData.success) {
+                    authManager.currentUserId.value?.let { userId ->
+                        userRepository.cacheProfile(
+                            userId = userId,
+                            email = homeData.email,
+                            goal = homeData.goal,
+                            personaType = homeData.personaType,
+                            profilePicture = homeData.profilePicture
+                        )
+                    }
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         firstName = homeData.firstName ?: "",
@@ -238,7 +250,8 @@ class OnboardingViewModel @Inject constructor(
                             personaType = homeData.personaType ?: "Achiever",
                             motivationalMessage = homeData.motivationalMessage,
                             success = true
-                        )
+                        ),
+                        profilePicture = homeData.profilePicture
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(isLoading = false)
@@ -247,6 +260,36 @@ class OnboardingViewModel @Inject constructor(
                 val errorMsg = if (e is retrofit2.HttpException && e.code() == 429) {
                     "The server is a bit busy. Please wait a moment."
                 } else null
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = errorMsg)
+            }
+        }
+    }
+
+    /** Persists a bundled preset avatar (e.g. key "1" -> "preset:1") to the user profile. */
+    fun selectPresetAvatar(presetKey: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            try {
+                val profilePicture = userRepository.updateProfilePicture("preset:$presetKey")
+                _uiState.value = _uiState.value.copy(isLoading = false, profilePicture = profilePicture)
+            } catch (e: Exception) {
+                val errorMsg = if (e is retrofit2.HttpException) extractErrorMessage(e)
+                    else "Network error: ${e.message}"
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = errorMsg)
+            }
+        }
+    }
+
+    /** Uploads a camera/gallery image and persists the returned /uploads URL to the profile. */
+    fun uploadProfilePicture(uri: Uri) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            try {
+                val profilePicture = userRepository.uploadProfilePicture(uri)
+                _uiState.value = _uiState.value.copy(isLoading = false, profilePicture = profilePicture)
+            } catch (e: Exception) {
+                val errorMsg = if (e is retrofit2.HttpException) extractErrorMessage(e)
+                    else "Network error: ${e.message}"
                 _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = errorMsg)
             }
         }

@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,12 +28,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Context
@@ -44,7 +49,9 @@ import androidx.compose.ui.graphics.luminance
 import com.habitflowai.data.model.AppUser
 import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.data.model.ChatResponse
+import com.habitflowai.data.model.resolveProfilePicture
 import com.habitflowai.presentation.ui.persona.PersonaUiData
+import com.habitflowai.presentation.ui.profile.PresetAvatars
 import com.habitflowai.presentation.ui.theme.*
 import java.io.File
 
@@ -84,6 +91,16 @@ fun SocialGroupChatScreen(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        // A Dialog gets its own Android window, separate from the Activity's — it doesn't
+        // inherit enableEdgeToEdge() or resize-mode from MainActivity, and defaults to
+        // SOFT_INPUT_ADJUST_PAN. That's incompatible with imePadding() below (which expects
+        // a resized window, not a panned one), and is what stranded the input near the top
+        // with dead space underneath. Force this dialog's own window into resize mode.
+        val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        LaunchedEffect(dialogWindow) {
+            dialogWindow?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        }
+
         SocialGroupChatContent(
             chat = chat,
             messages = messages,
@@ -351,6 +368,7 @@ fun SocialMembersSheet(
                     SocialMemberRow(
                         userId = userId,
                         displayName = resolveDisplayName(userId, allUsers),
+                        profilePicture = allUsers.find { it.id == userId }?.profilePicture,
                         isAdmin = isAlreadyAdmin,
                         isOwner = isOwnerMark,
                         isSelf = userId == currentUserId,
@@ -371,6 +389,7 @@ fun SocialMembersSheet(
 fun SocialMemberRow(
     userId: String,
     displayName: String = userId,
+    profilePicture: String? = null,
     isAdmin: Boolean,
     isOwner: Boolean = false,
     isSelf: Boolean = false,
@@ -385,7 +404,7 @@ fun SocialMemberRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SocialUserAvatar(name = if (isSelf) "me" else displayName, personaColor = personaColor, size = 36)
+        SocialUserAvatar(name = if (isSelf) "me" else displayName, personaColor = personaColor, size = 36, profilePicture = profilePicture)
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -757,7 +776,14 @@ fun SocialMessageList(
         } else {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(messages, key = { it.id }) { message ->
-                    SocialMessageBubble(message = message, senderDisplayName = resolveDisplayName(message.senderId, allUsers), personaColor = personaColor, currentUserId = currentUserId, onLikeClick = { onLikeMessage(message.id) })
+                    SocialMessageBubble(
+                        message = message,
+                        senderDisplayName = resolveDisplayName(message.senderId, allUsers),
+                        senderProfilePicture = allUsers.find { it.id == message.senderId }?.profilePicture,
+                        personaColor = personaColor,
+                        currentUserId = currentUserId,
+                        onLikeClick = { onLikeMessage(message.id) }
+                    )
                 }
             }
         }
@@ -795,6 +821,7 @@ fun SocialTypingIndicator(typingUserIds: Set<String>, allUsers: List<AppUser> = 
 fun SocialMessageBubble(
     message: ChatMessage,
     senderDisplayName: String = message.senderId,
+    senderProfilePicture: String? = null,
     personaColor: Color,
     currentUserId: String = "me",
     onLikeClick: () -> Unit
@@ -808,7 +835,7 @@ fun SocialMessageBubble(
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start, verticalAlignment = Alignment.Bottom) {
         if (!isMe) {
-            SocialUserAvatar(name = senderDisplayName, personaColor = personaColor, size = 32)
+            SocialUserAvatar(name = senderDisplayName, personaColor = personaColor, size = 32, profilePicture = senderProfilePicture)
             Spacer(modifier = Modifier.width(8.dp))
         }
         Column(horizontalAlignment = if (isMe) Alignment.End else Alignment.Start, modifier = Modifier.widthIn(max = 280.dp)) {
@@ -843,7 +870,7 @@ fun SocialMessageBubble(
         }
         if (isMe) {
             Spacer(modifier = Modifier.width(8.dp))
-            SocialUserAvatar(name = "me", personaColor = MaterialTheme.colorScheme.outline, size = 32)
+            SocialUserAvatar(name = "me", personaColor = MaterialTheme.colorScheme.outline, size = 32, profilePicture = senderProfilePicture)
         }
     }
 }
@@ -888,10 +915,27 @@ fun SocialChatInput(
 }
 
 @Composable
-fun SocialUserAvatar(name: String, personaColor: Color, size: Int = 40) {
-    val displayInitial = if (name.equals("me", ignoreCase = true)) "M" else name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+fun SocialUserAvatar(name: String, personaColor: Color, size: Int = 40, profilePicture: String? = null) {
+    val presetDrawable = PresetAvatars.drawableFor(profilePicture)
     Box(modifier = Modifier.size(size.dp).clip(CircleShape).background(personaColor.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-        Text(text = displayInitial, fontSize = (size * 0.4f).sp, fontWeight = FontWeight.Bold, color = personaColor)
+        when {
+            presetDrawable != null -> Image(
+                painter = painterResource(presetDrawable),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            !profilePicture.isNullOrBlank() -> AsyncImage(
+                model = resolveProfilePicture(profilePicture),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            else -> {
+                val displayInitial = if (name.equals("me", ignoreCase = true)) "M" else name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+                Text(text = displayInitial, fontSize = (size * 0.4f).sp, fontWeight = FontWeight.Bold, color = personaColor)
+            }
+        }
     }
 }
 
@@ -900,6 +944,7 @@ fun SocialGroupChatListItem(
     chat: ChatResponse,
     personaColor: Color,
     currentUserId: String = "me",
+    allUsers: List<AppUser> = emptyList(),
     onClick: () -> Unit
 ) {
     val unreadCount = chat.unreadCount[currentUserId] ?: 0
@@ -913,7 +958,15 @@ fun SocialGroupChatListItem(
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = chat.name ?: "Unnamed Group", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+            // A direct chat never has its own name — a nameless *group* is the unusual
+            // case worth flagging as "Unnamed Group"; a nameless DM should just show
+            // the other participant (this is where the auto-created coach chat lands).
+            val displayName = chat.name ?: if (chat.isGroup) {
+                "Unnamed Group"
+            } else {
+                chat.participantIds.find { it != currentUserId }?.let { resolveDisplayName(it, allUsers) } ?: "Direct Message"
+            }
+            Text(text = displayName, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
             val subtitle = chat.lastMessage?.takeIf { it.isNotBlank() } ?: chat.description
             if (!subtitle.isNullOrBlank()) {
                 Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -1064,7 +1117,7 @@ fun MemberPickerSheet(
                         border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, personaColor.copy(alpha = 0.3f)) else null, modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            SocialUserAvatar(name = displayName, personaColor = personaColor, size = 44)
+                            SocialUserAvatar(name = displayName, personaColor = personaColor, size = 44, profilePicture = user.profilePicture)
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(displayName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1)
                                 Text(user.email, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1)

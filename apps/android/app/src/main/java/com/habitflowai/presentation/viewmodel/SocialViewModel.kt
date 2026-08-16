@@ -278,6 +278,32 @@ class SocialViewModel @Inject constructor(
         }
     }
 
+    fun toggleCommentLike(postId: String, commentId: String) {
+        val oldComments = _uiState.value.comments
+        val comment = oldComments[postId]?.find { it.id == commentId } ?: return
+        val isLiking = !comment.isLiked
+
+        val updatedComments = oldComments.toMutableMap().apply {
+            this[postId] = (this[postId] ?: emptyList()).map { c ->
+                if (c.id == commentId) {
+                    c.copy(
+                        isLiked = !c.isLiked,
+                        likeCount = if (c.isLiked) c.likeCount - 1 else c.likeCount + 1
+                    )
+                } else c
+            }
+        }
+        _uiState.value = _uiState.value.copy(comments = updatedComments)
+
+        viewModelScope.launch {
+            val success = if (isLiking) repository.likeComment(postId, commentId) else repository.unlikeComment(postId, commentId)
+            if (!success) {
+                // Revert on failure
+                _uiState.value = _uiState.value.copy(comments = oldComments)
+            }
+        }
+    }
+
     fun addPost(habitName: String, completionNote: String, imageUri: android.net.Uri?) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }

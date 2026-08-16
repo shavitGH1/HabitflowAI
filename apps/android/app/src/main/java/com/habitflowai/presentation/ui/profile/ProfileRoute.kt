@@ -8,7 +8,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,7 +44,9 @@ fun ProfileRoute(
         onRetakeAssessment = onRetakeAssessment,
         onNavigateToSuccessJournal = onNavigateToSuccessJournal,
         onLogout = onLogout,
-        onToggleChat = onToggleChat
+        onToggleChat = onToggleChat,
+        onSelectPresetAvatar = viewModel::selectPresetAvatar,
+        onUploadAvatar = viewModel::uploadProfilePicture
     )
 }
 
@@ -53,10 +57,13 @@ fun ProfileContent(
     onRetakeAssessment: () -> Unit,
     onNavigateToSuccessJournal: () -> Unit,
     onLogout: () -> Unit,
-    onToggleChat: () -> Unit
+    onToggleChat: () -> Unit,
+    onSelectPresetAvatar: (String) -> Unit = {},
+    onUploadAvatar: (android.net.Uri) -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     val personaResult = uiState.personaResult
+    var showAvatarEditor by remember { mutableStateOf(false) }
 
     if (personaResult == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -102,7 +109,11 @@ fun ProfileContent(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            PersonaBadge(details = details)
+            ProfileAvatar(
+                profilePicture = uiState.profilePicture,
+                details = details,
+                onClick = { showAvatarEditor = true }
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -195,6 +206,16 @@ fun ProfileContent(
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+
+    if (showAvatarEditor) {
+        ProfilePictureEditor(
+            personaColor = details.endColor,
+            currentPicture = uiState.profilePicture,
+            onDismiss = { showAvatarEditor = false },
+            onSelectPreset = onSelectPresetAvatar,
+            onImageSelected = onUploadAvatar
+        )
     }
 }
 

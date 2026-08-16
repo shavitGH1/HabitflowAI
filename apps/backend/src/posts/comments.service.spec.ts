@@ -10,6 +10,7 @@ const mockCommentRepository = {
   findById: jest.fn(),
   updateText: jest.fn(),
   delete: jest.fn(),
+  setLikes: jest.fn(),
 };
 
 const mockPostRepository = {
@@ -27,6 +28,7 @@ const makePost = (overrides: Partial<PostData> = {}): PostData => ({
   habitName: 'Morning Run',
   completionNote: 'Done!',
   likes: [],
+  commentCount: 0,
   createdAt: new Date().toISOString(),
   ...overrides,
 });
@@ -36,6 +38,7 @@ const makeComment = (overrides: Partial<CommentData> = {}): CommentData => ({
   postId: POST_ID,
   userId: USER_ID,
   text: 'Nice work!',
+  likes: [],
   createdAt: new Date().toISOString(),
   ...overrides,
 });
@@ -113,6 +116,54 @@ describe('CommentsService', () => {
       await service.deleteComment(USER_ID, COMMENT_ID);
 
       expect(mockCommentRepository.delete).toHaveBeenCalledWith(COMMENT_ID);
+    });
+  });
+
+  describe('likeComment()', () => {
+    it('throws NotFoundException when the comment does not exist', async () => {
+      mockCommentRepository.findById.mockResolvedValue(null);
+
+      await expect(service.likeComment(USER_ID, COMMENT_ID)).rejects.toThrow(NotFoundException);
+    });
+
+    it('adds the user to likes when not already liked', async () => {
+      mockCommentRepository.findById.mockResolvedValue(makeComment({ likes: [] }));
+      mockCommentRepository.setLikes.mockResolvedValue(makeComment({ likes: [USER_ID] }));
+
+      const result = await service.likeComment(USER_ID, COMMENT_ID);
+
+      expect(mockCommentRepository.setLikes).toHaveBeenCalledWith(COMMENT_ID, [USER_ID]);
+      expect(result.likes).toEqual([USER_ID]);
+    });
+
+    it('is idempotent — liking twice does not duplicate the userId', async () => {
+      mockCommentRepository.findById.mockResolvedValue(makeComment({ likes: [USER_ID] }));
+
+      const result = await service.likeComment(USER_ID, COMMENT_ID);
+
+      expect(mockCommentRepository.setLikes).not.toHaveBeenCalled();
+      expect(result.likes).toEqual([USER_ID]);
+    });
+  });
+
+  describe('unlikeComment()', () => {
+    it('removes the user from likes when present', async () => {
+      mockCommentRepository.findById.mockResolvedValue(makeComment({ likes: [USER_ID, OTHER_USER_ID] }));
+      mockCommentRepository.setLikes.mockResolvedValue(makeComment({ likes: [OTHER_USER_ID] }));
+
+      const result = await service.unlikeComment(USER_ID, COMMENT_ID);
+
+      expect(mockCommentRepository.setLikes).toHaveBeenCalledWith(COMMENT_ID, [OTHER_USER_ID]);
+      expect(result.likes).toEqual([OTHER_USER_ID]);
+    });
+
+    it('is idempotent — unliking a comment the user never liked is a no-op', async () => {
+      mockCommentRepository.findById.mockResolvedValue(makeComment({ likes: [] }));
+
+      const result = await service.unlikeComment(USER_ID, COMMENT_ID);
+
+      expect(mockCommentRepository.setLikes).not.toHaveBeenCalled();
+      expect(result.likes).toEqual([]);
     });
   });
 });

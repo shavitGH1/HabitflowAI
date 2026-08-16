@@ -36,4 +36,22 @@ export class CommentsService {
     if (comment.userId !== userId) throw new ForbiddenException();
     return comment;
   }
+
+  async likeComment(userId: string, id: string): Promise<CommentData> {
+    const comment = await this.getCommentOrThrow(id);
+    if (comment.likes.includes(userId)) return comment;
+    return (await this.commentRepository.setLikes(id, [...comment.likes, userId]))!;
+  }
+
+  async unlikeComment(userId: string, id: string): Promise<CommentData> {
+    const comment = await this.getCommentOrThrow(id);
+    if (!comment.likes.includes(userId)) return comment;
+    return (await this.commentRepository.setLikes(id, comment.likes.filter(likeId => likeId !== userId)))!;
+  }
+
+  private async getCommentOrThrow(id: string): Promise<CommentData> {
+    const comment = await this.commentRepository.findById(id);
+    if (!comment) throw new NotFoundException('Comment not found');
+    return comment;
+  }
 }

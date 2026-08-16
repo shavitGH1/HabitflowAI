@@ -81,7 +81,7 @@ class HomeViewModelTest {
         assertEquals("You're an Achiever", state.portfolioSummary)
         assertEquals(listOf("Tip 1", "Tip 2"), state.tips)
         assertEquals(listOf("Pattern 1"), state.failurePatterns)
-        assertEquals(0.85, state.confidenceScore, 0.001)
+        assertEquals(0.85, state.confidenceScore!!, 0.001)
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
     }

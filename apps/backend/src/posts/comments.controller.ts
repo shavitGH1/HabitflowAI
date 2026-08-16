@@ -52,4 +52,23 @@ export class CommentsController {
   remove(@Req() req: { user: { id: string } }, @Param('commentId') commentId: string) {
     return this.commentsService.deleteComment(req.user.id, commentId);
   }
+
+  @Post(':commentId/like')
+  @ApiOperation({ summary: 'Like a comment (idempotent)' })
+  @ApiResponse({ status: 201, description: 'Comment liked' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'Comment not found' })
+  like(@Req() req: { user: { id: string } }, @Param('commentId') commentId: string) {
+    return this.commentsService.likeComment(req.user.id, commentId);
+  }
+
+  @Delete(':commentId/like')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Unlike a comment (idempotent)' })
+  @ApiResponse({ status: 200, description: 'Comment unliked' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'Comment not found' })
+  unlike(@Req() req: { user: { id: string } }, @Param('commentId') commentId: string) {
+    return this.commentsService.unlikeComment(req.user.id, commentId);
+  }
 }

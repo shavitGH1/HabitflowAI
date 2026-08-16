@@ -9,7 +9,9 @@ export interface CommentData {
   userId: string;
   userEmail?: string;
   userName?: string;
+  userProfilePicture?: string;
   text: string;
+  likes: string[];
   createdAt: string;
 }
 
@@ -72,6 +74,11 @@ export class CommentRepository {
     return this.findById(id);
   }
 
+  async setLikes(id: string, likes: string[]): Promise<CommentData | null> {
+    await this.commentModel.findByIdAndUpdate(id, { likes }).exec();
+    return this.findById(id);
+  }
+
   async delete(id: string): Promise<void> {
     await this.commentModel.findByIdAndDelete(id).exec();
   }
@@ -84,7 +91,9 @@ export class CommentRepository {
       userEmail: doc.user?.email,
       userName: [doc.user?.firstName, doc.user?.lastName].filter(Boolean).join(' ')
         || doc.user?.email?.split('@')[0],
+      userProfilePicture: doc.user?.profilePicture,
       text: doc.text,
+      likes: doc.likes || [],
       createdAt: doc.createdAt.toISOString(),
     };
   }

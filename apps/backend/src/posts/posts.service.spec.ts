@@ -31,6 +31,7 @@ const makePost = (overrides: Partial<PostData> = {}): PostData => ({
   habitName: 'Morning Run',
   completionNote: 'Done!',
   likes: [],
+  commentCount: 0,
   createdAt: new Date().toISOString(),
   ...overrides,
 });
