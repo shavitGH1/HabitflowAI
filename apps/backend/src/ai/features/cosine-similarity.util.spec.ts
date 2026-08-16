@@ -22,4 +22,9 @@ describe('cosineSimilarity()', () => {
     expect(cosineSimilarity([0, 0, 0], [1, 2, 3])).toBe(0);
     expect(cosineSimilarity([1, 2, 3], [0, 0, 0])).toBe(0);
   });
+
+  it('returns 0 instead of a corrupted score when vectors have mismatched dimensions', () => {
+    expect(cosineSimilarity([1, 2, 3], [1, 2, 3, 4])).toBe(0);
+    expect(cosineSimilarity([1, 2, 3, 4], [1, 2, 3])).toBe(0);
+  });
 });
