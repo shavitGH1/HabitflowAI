@@ -32,15 +32,18 @@ class ChatViewModel @Inject constructor(
     private var botChatId: String? = null
 
     init {
-        // Setup will be triggered manually after login or on first need to avoid loops
-    }
-
-    fun initializeChat() {
-        if (botChatId != null) return
+        // The access token isn't necessarily valid yet when this ViewModel is first created
+        // (it's created once at the nav-graph root, before the user has logged in, or with a
+        // stale token from a previous session). Re-run setup every time a token becomes
+        // available rather than once at construction, so a fresh login always reconnects.
         viewModelScope.launch {
-            botChatId = repository.getCoachChatId()
-            setupSocket()
-            loadHistory()
+            authManager.accessToken.filterNotNull().distinctUntilChanged().collect {
+                socket?.disconnect()
+                socket?.off()
+                botChatId = repository.getCoachChatId()
+                setupSocket()
+                loadHistory()
+            }
         }
     }
 
