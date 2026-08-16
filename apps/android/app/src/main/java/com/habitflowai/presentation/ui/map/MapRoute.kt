@@ -1,15 +1,25 @@
 package com.habitflowai.presentation.ui.map
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -73,7 +83,7 @@ fun MapRoute(
     }
 }
 
-@OptIn(MapsComposeExperimentalApi::class)
+@OptIn(MapsComposeExperimentalApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MapContent(
     uiState: MapUiState,
@@ -101,6 +111,9 @@ fun MapContent(
     }
 
     var selectedCategory by remember { mutableStateOf("All") }
+    var searchExpanded by remember { mutableStateOf(true) }
+    var selectedMarker by remember { mutableStateOf<HabitMarker?>(null) }
+    var selectedCluster by remember { mutableStateOf<List<HabitMarker>?>(null) }
     val categories = listOf("All", "Habits", "Tasks")
 
     val filteredMarkers = remember(uiState.markers, selectedCategory) {
@@ -124,12 +137,22 @@ fun MapContent(
             uiSettings = MapUiSettings(
                 zoomControlsEnabled = false,
                 tiltGesturesEnabled = false
-            )
+            ),
+            onMapClick = { selectedMarker = null }
         ) {
             Clustering(
                 items = filteredMarkers,
-                onClusterItemClick = {
-                    false // Return false to show default info window
+                onClusterClick = { cluster ->
+                    // Markers recorded at (near-)identical coordinates stay a single
+                    // cluster bubble no matter how far you zoom in — the default
+                    // "zoom to bounds" behavior can never separate them. Show a list
+                    // of everything in the cluster instead.
+                    selectedCluster = cluster.items.toList()
+                    true
+                },
+                onClusterItemClick = { marker ->
+                    selectedMarker = marker
+                    true // Consume the click — show our own detail card instead of the default info window
                 }
             )
         }
@@ -157,13 +180,18 @@ fun MapContent(
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                Icons.Rounded.Search,
+                                Icons.Rounded.SmartToy,
                                 contentDescription = "AI Assistant",
                                 tint = personaDetails.endColor
                             )
                         }
-                        
-                        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 12.dp)
+                                .clickable { searchExpanded = !searchExpanded }
+                        ) {
                             Text(
                                 text = "Habit Flow Map",
                                 style = MaterialTheme.typography.headlineSmall,
@@ -176,92 +204,209 @@ fun MapContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
 
-                    TextField(
-                        value = uiState.searchQuery,
-                        onValueChange = onSearchQueryChange,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        placeholder = { Text("Search location...") },
-                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = personaDetails.endColor) },
-                        trailingIcon = {
-                            if (uiState.searchQuery.isNotEmpty()) {
-                                IconButton(onClick = onSearch) {
-                                    Text("Go", color = personaDetails.endColor, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent,
-                            focusedContainerColor = personaDetails.startColor.copy(alpha = 0.1f),
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                        ),
-                        singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            imeAction = ImeAction.Search
-                        ),
-                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                            onSearch = { onSearch() }
-                        )
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        item {
+                        IconButton(
+                            onClick = { searchExpanded = !searchExpanded },
+                            modifier = Modifier.size(32.dp)
+                        ) {
                             Icon(
-                                Icons.Rounded.FilterList,
-                                contentDescription = null,
-                                tint = Color.Gray,
-                                modifier = Modifier.size(20.dp).padding(end = 4.dp)
+                                if (searchExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                contentDescription = if (searchExpanded) "Collapse search" else "Expand search",
+                                tint = personaDetails.endColor
                             )
                         }
-                        items(categories) { category ->
-                            val isSelected = selectedCategory == category
-                            FilterChip(
-                                isSelected = isSelected,
-                                text = category,
-                                personaColor = personaDetails.endColor,
-                                onClick = { selectedCategory = category }
+                    }
+
+                    AnimatedVisibility(
+                        visible = searchExpanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            TextField(
+                                value = uiState.searchQuery,
+                                onValueChange = onSearchQueryChange,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp),
+                                placeholder = { Text("Search location...") },
+                                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = personaDetails.endColor) },
+                                trailingIcon = {
+                                    if (uiState.searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = onSearch) {
+                                            Text("Go", color = personaDetails.endColor, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = TextFieldDefaults.colors(
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent,
+                                    focusedContainerColor = personaDetails.startColor.copy(alpha = 0.1f),
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                ),
+                                singleLine = true,
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                    imeAction = ImeAction.Search
+                                ),
+                                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                                    onSearch = { onSearch() }
+                                )
                             )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                item {
+                                    Icon(
+                                        Icons.Rounded.FilterList,
+                                        contentDescription = null,
+                                        tint = Color.Gray,
+                                        modifier = Modifier.size(20.dp).padding(end = 4.dp)
+                                    )
+                                }
+                                items(categories) { category ->
+                                    val isSelected = selectedCategory == category
+                                    FilterChip(
+                                        isSelected = isSelected,
+                                        text = category,
+                                        personaColor = personaDetails.endColor,
+                                        onClick = { selectedCategory = category }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
         
-        // Stats overlay at bottom
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp, start = 24.dp, end = 24.dp)
+        // Marker detail card — shown instead of the stock Google Maps info window,
+        // which is small and doesn't reliably read as "here's the completed task".
+        AnimatedVisibility(
+            visible = selectedMarker != null,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
         ) {
-            Surface(
-                shape = RoundedCornerShape(32.dp),
-                color = personaDetails.endColor,
-                shadowElevation = 6.dp
-            ) {
-                val statsContentColor = if (personaDetails.endColor.luminance() > 0.5f) Color.Black else Color.White
-                Row(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            val marker = selectedMarker
+            if (marker != null) {
+                Surface(
+                    modifier = Modifier
+                        .padding(bottom = 32.dp, start = 24.dp, end = 24.dp)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = if (isDark) Color(0xFF1E1E1E).copy(alpha = 0.95f) else MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp
                 ) {
-                    Text(
-                        text = "✨ ${filteredMarkers.size} tasks completed here",
-                        color = statsContentColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = marker.personaEmoji, fontSize = 28.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = marker.habitName,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = marker.username?.takeIf { it.isNotBlank() } ?: marker.habitType,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = { selectedMarker = null }) {
+                            Icon(Icons.Rounded.Close, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Stats overlay at bottom
+        AnimatedVisibility(
+            visible = selectedMarker == null,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(bottom = 32.dp, start = 24.dp, end = 24.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(32.dp),
+                    color = personaDetails.endColor,
+                    shadowElevation = 6.dp
+                ) {
+                    val statsContentColor = if (personaDetails.endColor.luminance() > 0.5f) Color.Black else Color.White
+                    Row(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "✨ ${filteredMarkers.size} tasks completed here",
+                            color = statsContentColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    val cluster = selectedCluster
+    if (cluster != null) {
+        ModalBottomSheet(
+            onDismissRequest = { selectedCluster = null },
+            dragHandle = { BottomSheetDefaults.DragHandle() }
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                Text(
+                    text = "${cluster.size} tasks here",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = personaDetails.endColor,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                    items(cluster) { marker ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedMarker = marker
+                                    selectedCluster = null
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = marker.personaEmoji, fontSize = 24.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = marker.habitName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = marker.username?.takeIf { it.isNotBlank() } ?: marker.habitType,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

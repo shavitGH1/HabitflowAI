@@ -505,12 +505,12 @@ if (alexId && mayaId && benId && saraId && db.locationrecords.countDocuments() =
   const saraChallengeHabitId = saraChallengeHabit ? saraChallengeHabit._id.toString() : undefined;
 
   const locationDefs = [
-    { userId: alexId, habitId: alexRunHabitId, latitude: 32.0880, longitude: 34.7801, daysAgo: 0, personaType: 'Achiever' },
-    { userId: alexId, habitId: alexRunHabitId, latitude: 32.0902, longitude: 34.7838, daysAgo: 1, personaType: 'Achiever' },
-    { userId: mayaId, habitId: mayaMeditationHabitId, latitude: 32.0838, longitude: 34.7679, daysAgo: 1, personaType: 'Achiever' },
+    { userId: alexId, habitId: alexRunHabitId, taskDescription: '5km morning run', latitude: 32.0880, longitude: 34.7801, daysAgo: 0, personaType: 'Achiever' },
+    { userId: alexId, habitId: alexRunHabitId, taskDescription: '5km morning run', latitude: 32.0902, longitude: 34.7838, daysAgo: 1, personaType: 'Achiever' },
+    { userId: mayaId, habitId: mayaMeditationHabitId, taskDescription: 'Daily meditation (15 min)', latitude: 32.0838, longitude: 34.7679, daysAgo: 1, personaType: 'Achiever' },
     // Matches the completion gap above, not a fresh visit.
-    { userId: benId, habitId: benWorkoutHabitId, latitude: 32.0925, longitude: 34.7845, daysAgo: 10, personaType: 'Socializer' },
-    { userId: saraId, habitId: saraChallengeHabitId, latitude: 32.0797, longitude: 34.7746, daysAgo: 0, personaType: 'Socializer' },
+    { userId: benId, habitId: benWorkoutHabitId, taskDescription: 'Group workout session', latitude: 32.0925, longitude: 34.7845, daysAgo: 10, personaType: 'Socializer' },
+    { userId: saraId, habitId: saraChallengeHabitId, taskDescription: 'Join a community challenge', latitude: 32.0797, longitude: 34.7746, daysAgo: 0, personaType: 'Socializer' },
   ];
 
   locationDefs.forEach(def => {
@@ -518,6 +518,7 @@ if (alexId && mayaId && benId && saraId && db.locationrecords.countDocuments() =
     db.locationrecords.insertOne({
       userId: def.userId,
       habitId: def.habitId,
+      taskDescription: def.taskDescription,
       latitude: def.latitude,
       longitude: def.longitude,
       timestamp,

@@ -4,6 +4,7 @@ import { LocationDto } from './dto/location.dto';
 import { LocationData, LocationRepository } from './location.repository';
 import { GeocodingService } from './geocoding.service';
 import { UserRepository } from '../users/user.repository';
+import { HabitRepository } from '../habits/habit.repository';
 
 @Injectable()
 export class LocationsService {
@@ -11,6 +12,7 @@ export class LocationsService {
     private readonly locationRepository: LocationRepository,
     private readonly geocoding: GeocodingService,
     private readonly userRepository: UserRepository,
+    private readonly habitRepository: HabitRepository,
   ) {}
 
   async recordLocation(userId: string, dto: LocationDto): Promise<{ success: boolean }> {
@@ -75,7 +77,15 @@ export class LocationsService {
       if (!user) return '';
       const task =
         user.coreGoals.find(t => t.id === taskId) ?? user.dailyVariations.find(t => t.id === taskId);
-      return task?.description ?? '';
+      if (task) return task.description;
+
+      // taskId can also be a real Habit id (Habits tab) rather than an
+      // onboarding-generated coreGoals/dailyVariations task — those live in
+      // a separate collection, not on the User document.
+      const habit = await this.habitRepository.findById(taskId);
+      if (habit && habit.userId === userId) return habit.title;
+
+      return '';
     } catch {
       return '';
     }
