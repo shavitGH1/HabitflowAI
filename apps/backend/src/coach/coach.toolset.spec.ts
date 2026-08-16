@@ -41,22 +41,48 @@ const toolNamed = (tools: AgentTool[], name: string): AgentTool =>
 describe('CoachToolset', () => {
   beforeEach(() => {
     jest.resetAllMocks();
-    mockUserRepository.findUserById.mockResolvedValue({ personaType: 'Achiever', goal: 'Run a 10k' });
+    mockUserRepository.findUserById.mockResolvedValue({
+      personaType: 'Achiever',
+      goal: 'Run a 10k',
+      coreGoals: [],
+      dailyVariations: [],
+    });
     mockHabitRepository.findByUserId.mockResolvedValue([]);
     mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
   });
 
-  it('exposes six tools with disjoint responsibilities', () => {
+  it('exposes seven tools with disjoint responsibilities', () => {
     const { tools } = makeToolset().open(USER_ID);
 
     expect(tools.map((tool) => tool.name)).toEqual([
       'get_progress_summary',
       'get_habit_list',
+      'get_daily_tasks',
       'get_persona_profile',
       'get_active_goal',
       'check_persona_drift',
       'propose_change',
     ]);
+  });
+
+  it('get_daily_tasks surfaces the onboarding-generated goals and today\'s variations', async () => {
+    mockUserRepository.findUserById.mockResolvedValue({
+      personaType: 'Achiever',
+      goal: 'Run a 10k',
+      coreGoals: [
+        { id: 'core-1', description: 'Run three times a week', points: 30, completed: true, genre: 'goal' },
+      ],
+      dailyVariations: [
+        { id: 'daily-1', description: 'Stretch for 10 minutes', points: 10, completed: false, genre: 'persona' },
+      ],
+    });
+
+    const { tools } = makeToolset().open(USER_ID);
+
+    expect(await toolNamed(tools, 'get_daily_tasks').run({})).toEqual({
+      coreGoals: [{ id: 'core-1', description: 'Run three times a week', points: 30, completed: true }],
+      dailyTasks: [{ id: 'daily-1', description: 'Stretch for 10 minutes', points: 10, completed: false }],
+    });
   });
 
   it('get_progress_summary hands the model a band and a verdict it did not compute', async () => {
