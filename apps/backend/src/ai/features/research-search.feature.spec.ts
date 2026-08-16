@@ -67,11 +67,11 @@ describe('ResearchSearchFeature', () => {
     expect(gemini.embedContent).not.toHaveBeenCalled();
   });
 
-  it('fails open to an empty array when the embedding call fails', async () => {
+  it('propagates the error when the embedding call fails', async () => {
     gemini.embedContent.mockRejectedValue(new Error('Gemini overloaded'));
 
-    const result = await feature.search({ query: 'staying motivated', chunks });
-
-    expect(result).toEqual([]);
+    await expect(feature.search({ query: 'staying motivated', chunks })).rejects.toThrow(
+      'Gemini overloaded',
+    );
   });
 });

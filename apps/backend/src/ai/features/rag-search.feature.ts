@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { GeminiClient } from '../gemini.client';
-import { logger } from '../../logger';
 import { cosineSimilarity } from './cosine-similarity.util';
 
 export interface ArticleCandidate {
@@ -32,20 +31,15 @@ export class RagSearchFeature {
   async search(input: RagSearchInput): Promise<RankedArticle[]> {
     if (!input.articles.length) return [];
 
-    try {
-      const queryEmbedding = await this.gemini.embedContent(input.query);
-      return input.articles
-        .map(article => ({
-          id: article.id,
-          title: article.title,
-          url: article.url,
-          score: cosineSimilarity(queryEmbedding, article.embedding),
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, input.topK ?? DEFAULT_TOP_K);
-    } catch (error) {
-      logger.warn({ err: error }, 'article search embedding failed, returning no results');
-      return [];
-    }
+    const queryEmbedding = await this.gemini.embedContent(input.query);
+    return input.articles
+      .map(article => ({
+        id: article.id,
+        title: article.title,
+        url: article.url,
+        score: cosineSimilarity(queryEmbedding, article.embedding),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, input.topK ?? DEFAULT_TOP_K);
   }
 }
