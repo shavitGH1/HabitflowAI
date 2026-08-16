@@ -120,10 +120,10 @@ class OnboardingViewModel @Inject constructor(
                 if (result.available) {
                     _uiState.value = _uiState.value.copy(isLoading = false, proceedToOnboarding = true)
                 } else {
-                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "An account with this email already exists")
+                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "This email is already in use. Try logging in instead.")
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "Network error. Please try again.")
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "Couldn't check email. Please check your connection.")
             }
         }
     }
@@ -215,7 +215,7 @@ class OnboardingViewModel @Inject constructor(
                 val errorMsg = if (e is retrofit2.HttpException) {
                     extractErrorMessage(e)
                 } else {
-                    "Network error: ${e.message}"
+                    "We couldn't complete your registration. Please check your connection."
                 }
                 _uiState.value = currentState.copy(isLoading = false, errorMessage = errorMsg)
             }
@@ -245,7 +245,7 @@ class OnboardingViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 val errorMsg = if (e is retrofit2.HttpException && e.code() == 429) {
-                    "Taking a short break... the server is busy. Please wait a moment."
+                    "The server is a bit busy. Please wait a moment."
                 } else null
                 _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = errorMsg)
             }
@@ -310,7 +310,7 @@ class OnboardingViewModel @Inject constructor(
                 val errorMsg = if (e is retrofit2.HttpException) {
                     extractErrorMessage(e)
                 } else {
-                    "Network error: ${e.message}"
+                    "Something went wrong. Please check your connection and try again."
                 }
                 _uiState.value = currentState.copy(
                     isLoading = false,
@@ -354,7 +354,7 @@ class OnboardingViewModel @Inject constructor(
                 val errorMsg = if (e is retrofit2.HttpException) {
                     extractErrorMessage(e)
                 } else {
-                    "Network error: ${e.message}"
+                    "Something went wrong. Please check your connection and try again."
                 }
                 _uiState.value = currentState.copy(
                     isLoading = false,
@@ -404,7 +404,7 @@ class OnboardingViewModel @Inject constructor(
                 val errorMsg = if (e is retrofit2.HttpException) {
                     extractErrorMessage(e)
                 } else {
-                    "Network error: ${e.message}"
+                    "Something went wrong. Please check your connection and try again."
                 }
                 _uiState.value = currentState.copy(
                     isLoading = false,

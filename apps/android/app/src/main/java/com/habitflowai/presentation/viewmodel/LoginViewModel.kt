@@ -43,7 +43,7 @@ class LoginViewModel @Inject constructor(
     fun login() {
         val current = _uiState.value
         if (current.email.isBlank() || current.password.isBlank()) {
-            _uiState.value = current.copy(errorMessage = "Email and password are required")
+            _uiState.value = current.copy(errorMessage = "Please enter your email and password")
             return
         }
 
@@ -60,7 +60,14 @@ class LoginViewModel @Inject constructor(
                 }
                 _uiState.value = _uiState.value.copy(isLoading = false, navigateToHome = true)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message ?: "Login failed")
+                val errorMsg = when {
+                    e is retrofit2.HttpException && e.code() == 429 -> 
+                        "Too many attempts. Please wait a moment before trying again."
+                    e is retrofit2.HttpException && e.code() == 401 -> 
+                        "Invalid email or password. Please try again."
+                    else -> "We couldn't log you in. Please check your connection."
+                }
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = errorMsg)
             }
         }
     }

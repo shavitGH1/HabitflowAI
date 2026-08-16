@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.habitflowai.presentation.viewmodel.LoginViewModel
 import com.habitflowai.presentation.viewmodel.LoginUiState
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
+import com.habitflowai.presentation.ui.social.AuthErrorBanner
 import com.habitflowai.util.GoogleSignInOutcome
 import com.habitflowai.util.requestGoogleIdToken
 import kotlinx.coroutines.launch
@@ -96,7 +97,7 @@ fun LoginContent(
         OutlinedTextField(
             value = uiState.email,
             onValueChange = onEmailChange,
-            label = { Text("Email") },
+            label = { Text("Email Address") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(12.dp)
@@ -114,16 +115,17 @@ fun LoginContent(
             shape = RoundedCornerShape(12.dp)
         )
 
-        if (uiState.errorMessage != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = uiState.errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
+        androidx.compose.animation.AnimatedVisibility(
+            visible = uiState.errorMessage != null,
+            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
+        ) {
+            uiState.errorMessage?.let { msg ->
+                Column {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    AuthErrorBanner(message = msg)
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -151,7 +153,7 @@ fun LoginContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "Login",
+                        "Log In",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -183,7 +185,7 @@ fun LoginContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(onClick = onNavigateToRegister) {
-            Text("Don't have an account? Register", color = Color(0xFF1E88E5))
+            Text("New here? Create an account", color = Color(0xFF1E88E5))
         }
     }
 }

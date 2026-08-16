@@ -41,35 +41,51 @@ object NetworkModule {
     @Singleton
     fun provideAuthenticator(
         authManager: AuthManager,
-        apiProvider: Provider<HabitFlowApi> // Use Provider to avoid circular dependency
+        apiProvider: Provider<HabitFlowApi>
     ): Authenticator {
         return object : Authenticator {
+            private var isRefreshing = false
+
             override fun authenticate(route: Route?, response: Response): Request? {
                 if (response.request.url.encodedPath.contains("/api/v1/auth/refresh")) {
                     return null
                 }
 
-                val currentRefreshToken = authManager.refreshToken.value ?: return null
+                // If we've already tried to refresh for this specific request and failed, stop.
+                if (response.priorResponse != null && response.priorResponse?.code == 401) {
+                    return null
+                }
 
-                return try {
-                    val refreshCall = apiProvider.get().refresh(TokenRefreshRequest(currentRefreshToken))
-                    val refreshResponse = refreshCall.execute()
-
-                    if (refreshResponse.isSuccessful && refreshResponse.body() != null) {
-                        val newAccessToken = refreshResponse.body()!!.accessToken
-                        // Note: If the backend returns a new refresh token, we should update both.
-                        // Assuming it just returns a new access token here based on original code.
-                        authManager.updateTokens(newAccessToken, currentRefreshToken)
-
-                        response.request.newBuilder()
-                            .header("Authorization", "Bearer $newAccessToken")
+                synchronized(this) {
+                    val currentRefreshToken = authManager.refreshToken.value ?: return null
+                    
+                    // If another thread already updated the token, just retry with the new one
+                    val tokenAtRequest = response.request.header("Authorization")
+                    val currentAccessToken = authManager.accessToken.value
+                    if (currentAccessToken != null && "Bearer $currentAccessToken" != tokenAtRequest) {
+                        return response.request.newBuilder()
+                            .header("Authorization", "Bearer $currentAccessToken")
                             .build()
-                    } else {
-                        authManager.clearTokens()
+                    }
+
+                    return try {
+                        val refreshCall = apiProvider.get().refresh(TokenRefreshRequest(currentRefreshToken))
+                        val refreshResponse = refreshCall.execute()
+
+                        if (refreshResponse.isSuccessful && refreshResponse.body() != null) {
+                            val newAccessToken = refreshResponse.body()!!.accessToken
+                            authManager.updateTokens(newAccessToken, currentRefreshToken)
+
+                            response.request.newBuilder()
+                                .header("Authorization", "Bearer $newAccessToken")
+                                .build()
+                        } else {
+                            authManager.clearTokens()
+                            null
+                        }
+                    } catch (e: Exception) {
                         null
                     }
-                } catch (e: Exception) {
-                    null
                 }
             }
         }
