@@ -16,6 +16,7 @@ export interface UserData {
   email: string;
   firstName: string;
   lastName: string;
+  profilePicture?: string;
   password: string;
   goal: string;
   personaType: string;
@@ -111,6 +112,15 @@ export class UserRepository {
     return doc ? this.toUserData(doc) : null;
   }
 
+  async updateProfilePicture(userId: string, profilePicture: string): Promise<UserData | null> {
+    const doc = await this.userModel.findByIdAndUpdate(
+      userId,
+      { profilePicture },
+      { new: true },
+    );
+    return doc ? this.toUserData(doc) : null;
+  }
+
   async updateUserPersona(
     userId: string,
     updates: Partial<Pick<UserData, 'goal' | 'personaType' | 'motivationalMessage' | 'coreGoals' | 'dailyVariations' | 'tasksLastGeneratedDate' | 'personaBreakdown' | 'weightedScores'>>,
@@ -148,6 +158,7 @@ export class UserRepository {
       email: doc.email,
       firstName: doc.firstName,
       lastName: doc.lastName,
+      profilePicture: doc.profilePicture,
       password: doc.password,
       goal: doc.goal,
       personaType: doc.personaType,

@@ -215,6 +215,7 @@ fun HabitFlowNavGraph(
                     HomeRoute(
                         personaResult = uiState.personaResult,
                         userId = uiState.personaResult?.userId ?: uiState.personaResult?.id ?: "",
+                        profilePicture = uiState.profilePicture,
                         onNavigateToReassessment = {
                             navController.navigate(NavRoute.DriftReassessment.route)
                         },

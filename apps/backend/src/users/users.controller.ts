@@ -1,6 +1,25 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('users')
@@ -12,7 +31,7 @@ export class UsersController {
 
   @Get()
   @ApiOperation({ summary: 'List all users (id, email, name) for member picker and search' })
-  @ApiResponse({ status: 200, description: 'Array of { id, email, firstName, lastName }' })
+  @ApiResponse({ status: 200, description: 'Array of { id, email, firstName, lastName, profilePicture }' })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   getAllUsers(@Req() req: { user: { id: string } }) {
     return this.usersService.getAllUsers();
@@ -25,5 +44,40 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   getHome(@Req() req: { user: { id: string } }) {
     return this.usersService.getHomePageData(req.user.id);
+  }
+
+  @Patch('me/profile')
+  @ApiOperation({ summary: 'Update the authenticated user profile picture (preset key or uploaded URL)' })
+  @ApiResponse({ status: 200, description: '{ profilePicture, success }' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  updateProfile(
+    @Req() req: { user: { id: string } },
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.usersService.updateProfilePicture(req.user.id, dto.profilePicture ?? '');
+  }
+
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload a profile picture for the authenticated user' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['image'],
+      properties: {
+        image: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: '{ profilePicture, success }' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  uploadAvatar(
+    @Req() req: { user: { id: string } },
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.usersService.uploadAvatar(req.user.id, file);
   }
 }

@@ -1,5 +1,6 @@
 package com.habitflowai.presentation.ui.profile
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,9 +17,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.habitflowai.data.model.resolveProfilePicture
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.social.PostCard
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
@@ -62,6 +67,7 @@ fun PublicProfileRoute(
             item {
                 ProfileHeader(
                     username = uiState.username,
+                    profilePicture = uiState.profilePicture,
                     isMe = uiState.isMe,
                     isLoading = uiState.isCreatingChat,
                     isFollowing = uiState.isFollowing,
@@ -117,6 +123,7 @@ fun PublicProfileRoute(
 @Composable
 fun ProfileHeader(
     username: String,
+    profilePicture: String? = null,
     isMe: Boolean,
     isLoading: Boolean,
     isFollowing: Boolean,
@@ -144,12 +151,27 @@ fun ProfileHeader(
                     .background(personaColor.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Rounded.Person,
-                    contentDescription = null,
-                    tint = personaColor,
-                    modifier = Modifier.size(60.dp)
-                )
+                val presetDrawable = PresetAvatars.drawableFor(profilePicture)
+                when {
+                    presetDrawable != null -> Image(
+                        painter = painterResource(presetDrawable),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    !profilePicture.isNullOrBlank() -> AsyncImage(
+                        model = resolveProfilePicture(profilePicture),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    else -> Icon(
+                        Icons.Rounded.Person,
+                        contentDescription = null,
+                        tint = personaColor,
+                        modifier = Modifier.size(60.dp)
+                    )
+                }
             }
 
             Spacer(Modifier.height(16.dp))
