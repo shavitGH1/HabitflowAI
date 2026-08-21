@@ -22,11 +22,13 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Face
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -89,7 +91,8 @@ fun ProfileAvatar(
     profilePicture: String?,
     details: PersonaDetails,
     modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    showEditOverlay: Boolean = true
 ) {
     val presetDrawable = PresetAvatars.drawableFor(profilePicture)
     Box(
@@ -115,7 +118,7 @@ fun ProfileAvatar(
             else -> PersonaBadge(details = details, modifier = Modifier.size(120.dp))
         }
 
-        if (onClick != null) {
+        if (onClick != null && showEditOverlay) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -129,6 +132,56 @@ fun ProfileAvatar(
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Full-screen viewer for the current profile picture ("a window in a window") — opened by
+ * tapping the avatar on the main Profile screen, where tapping should preview the picture,
+ * not jump straight into editing (that lives in Edit Profile instead).
+ */
+@Composable
+fun FullScreenAvatarViewer(
+    profilePicture: String?,
+    details: PersonaDetails,
+    onDismiss: () -> Unit
+) {
+    val presetDrawable = PresetAvatars.drawableFor(profilePicture)
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.surface),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                presetDrawable != null -> Image(
+                    painter = painterResource(presetDrawable),
+                    contentDescription = "Profile picture",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+                !profilePicture.isNullOrBlank() -> AsyncImage(
+                    model = resolveProfilePicture(profilePicture),
+                    contentDescription = "Profile picture",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+                else -> PersonaBadge(details = details, modifier = Modifier.size(200.dp))
+            }
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+            ) {
+                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = Color.White)
             }
         }
     }

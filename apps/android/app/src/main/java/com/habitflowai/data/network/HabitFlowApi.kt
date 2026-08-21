@@ -75,6 +75,12 @@ interface HabitFlowApi {
     @POST("api/v1/users/me/avatar")
     suspend fun uploadAvatar(@Part image: MultipartBody.Part): com.habitflowai.data.model.UpdateProfileResponse
 
+    @PATCH("api/v1/users/me/name")
+    suspend fun updateName(@Body request: com.habitflowai.data.model.UpdateNameRequest): com.habitflowai.data.model.UpdateNameResponse
+
+    @PATCH("api/v1/users/me/password")
+    suspend fun changePassword(@Body request: com.habitflowai.data.model.ChangePasswordRequest): com.habitflowai.data.model.ChangePasswordResponse
+
     @GET("api/v1/goals/active")
     suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse
 

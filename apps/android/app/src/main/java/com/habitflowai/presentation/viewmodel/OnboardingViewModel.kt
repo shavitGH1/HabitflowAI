@@ -251,7 +251,9 @@ class OnboardingViewModel @Inject constructor(
                             motivationalMessage = homeData.motivationalMessage,
                             success = true
                         ),
-                        profilePicture = homeData.profilePicture
+                        profilePicture = homeData.profilePicture,
+                        nameChangedAt = homeData.nameChangedAt,
+                        authProvider = homeData.authProvider
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(isLoading = false)
@@ -293,6 +295,45 @@ class OnboardingViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = errorMsg)
             }
         }
+    }
+
+    /** Updates first/last name. Server rejects with a 400 if still within the 3-month cooldown. */
+    fun updateName(firstName: String, lastName: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            try {
+                val nameChangedAt = userRepository.updateName(firstName, lastName)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    firstName = firstName,
+                    lastName = lastName,
+                    nameChangedAt = nameChangedAt
+                )
+            } catch (e: Exception) {
+                val errorMsg = if (e is retrofit2.HttpException) extractErrorMessage(e)
+                    else "Network error: ${e.message}"
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = errorMsg)
+            }
+        }
+    }
+
+    /** Changes the password after the server verifies [currentPassword] matches. */
+    fun changePassword(currentPassword: String, newPassword: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            try {
+                userRepository.changePassword(currentPassword, newPassword)
+                _uiState.value = _uiState.value.copy(isLoading = false, passwordChangeSuccess = true)
+            } catch (e: Exception) {
+                val errorMsg = if (e is retrofit2.HttpException) extractErrorMessage(e)
+                    else "Network error: ${e.message}"
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = errorMsg)
+            }
+        }
+    }
+
+    fun onPasswordChangeHandled() {
+        _uiState.value = _uiState.value.copy(passwordChangeSuccess = false)
     }
 
     fun logout() {

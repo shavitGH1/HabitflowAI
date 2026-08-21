@@ -27,6 +27,7 @@ import com.habitflowai.presentation.ui.theme.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.SmartToy
 
 @Composable
@@ -46,7 +47,10 @@ fun ProfileRoute(
         onLogout = onLogout,
         onToggleChat = onToggleChat,
         onSelectPresetAvatar = viewModel::selectPresetAvatar,
-        onUploadAvatar = viewModel::uploadProfilePicture
+        onUploadAvatar = viewModel::uploadProfilePicture,
+        onUpdateName = viewModel::updateName,
+        onChangePassword = viewModel::changePassword,
+        onPasswordChangeHandled = viewModel::onPasswordChangeHandled
     )
 }
 
@@ -59,11 +63,16 @@ fun ProfileContent(
     onLogout: () -> Unit,
     onToggleChat: () -> Unit,
     onSelectPresetAvatar: (String) -> Unit = {},
-    onUploadAvatar: (android.net.Uri) -> Unit = {}
+    onUploadAvatar: (android.net.Uri) -> Unit = {},
+    onUpdateName: (String, String) -> Unit = { _, _ -> },
+    onChangePassword: (String, String) -> Unit = { _, _ -> },
+    onPasswordChangeHandled: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     val personaResult = uiState.personaResult
     var showAvatarEditor by remember { mutableStateOf(false) }
+    var showEditProfile by remember { mutableStateOf(false) }
+    var showAvatarViewer by remember { mutableStateOf(false) }
 
     if (personaResult == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -94,6 +103,15 @@ fun ProfileContent(
                         )
                     }
                 },
+                actions = {
+                    IconButton(onClick = { showEditProfile = true }) {
+                        Icon(
+                            imageVector = Icons.Rounded.Edit,
+                            contentDescription = "Edit Profile",
+                            tint = details.endColor
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.Transparent
                 )
@@ -112,7 +130,8 @@ fun ProfileContent(
             ProfileAvatar(
                 profilePicture = uiState.profilePicture,
                 details = details,
-                onClick = { showAvatarEditor = true }
+                onClick = { showAvatarViewer = true },
+                showEditOverlay = false
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -208,6 +227,14 @@ fun ProfileContent(
         }
     }
 
+    if (showAvatarViewer) {
+        FullScreenAvatarViewer(
+            profilePicture = uiState.profilePicture,
+            details = details,
+            onDismiss = { showAvatarViewer = false }
+        )
+    }
+
     if (showAvatarEditor) {
         ProfilePictureEditor(
             personaColor = details.endColor,
@@ -215,6 +242,18 @@ fun ProfileContent(
             onDismiss = { showAvatarEditor = false },
             onSelectPreset = onSelectPresetAvatar,
             onImageSelected = onUploadAvatar
+        )
+    }
+
+    if (showEditProfile) {
+        EditProfileSheet(
+            uiState = uiState,
+            personaColor = details.endColor,
+            onDismiss = { showEditProfile = false },
+            onEditPictureClick = { showAvatarEditor = true },
+            onUpdateName = onUpdateName,
+            onChangePassword = onChangePassword,
+            onPasswordChangeHandled = onPasswordChangeHandled
         )
     }
 }

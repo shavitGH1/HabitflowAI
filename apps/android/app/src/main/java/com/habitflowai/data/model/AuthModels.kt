@@ -123,5 +123,28 @@ data class HomeResponse(
     val lastName: String? = null,
     @SerializedName("profilePicture")
     @JsonAdapter(ProfilePictureDeserializer::class)
-    val profilePicture: String? = null
+    val profilePicture: String? = null,
+    val nameChangedAt: String? = null,
+    val authProvider: String? = null
+)
+
+data class UpdateNameRequest(
+    val firstName: String,
+    val lastName: String
+)
+
+data class UpdateNameResponse(
+    val firstName: String,
+    val lastName: String,
+    val nameChangedAt: String?,
+    val success: Boolean = true
+)
+
+data class ChangePasswordRequest(
+    val currentPassword: String,
+    val newPassword: String
+)
+
+data class ChangePasswordResponse(
+    val success: Boolean = true
 )
