@@ -148,7 +148,7 @@ export class CoachService {
   private async alreadyPostedToday(chatId: string): Promise<boolean> {
     const [latest] = await this.chatService.getMessages(chatId, 1, 1);
     if (!latest || latest.senderId !== COACH_USER_ID) return false;
-    return latest.sentAt.split('T')[0] === toDateKey(new Date());
+    return latest.createdAt.split('T')[0] === toDateKey(new Date());
   }
 
   private async loadHistory(chatId: string): Promise<AgentMessage[]> {

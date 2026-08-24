@@ -18,6 +18,7 @@ import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.data.local.ChatLocalStorage
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.SocialRepository
+import com.habitflowai.util.parseIsoToMillis
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -269,6 +270,21 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun uploadMessageImage(chatId: String, imageUri: Uri): String {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val mimeType = context.contentResolver.getType(imageUri) ?: "image/jpeg"
+            val inputStream = context.contentResolver.openInputStream(imageUri)
+                ?: throw java.io.IOException("Cannot open input stream for URI: $imageUri")
+            val bytes = inputStream.readBytes()
+            inputStream.close()
+
+            val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+            val part = MultipartBody.Part.createFormData("image", "message_${System.currentTimeMillis()}.jpg", requestBody)
+
+            api.uploadMessageImage(chatId, part).imageUrl
+        }
+    }
+
     override suspend fun joinGroup(chatId: String): Boolean {
         return try {
             api.addMembers(chatId, AddMembersRequest(listOf(myId)))
@@ -289,17 +305,22 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun getMessages(chatId: String): List<ChatMessage> {
         return try {
+            // The backend returns newest-first (it's paginated for infinite-scroll-up,
+            // page 1 = most recent), but a chat list displays oldest-at-top/newest-at-
+            // bottom, and handleNewMessage() appends live messages to the end of this
+            // list — so it must be re-sorted ascending here to match, or newly arrived
+            // messages land below a reverse-chronological history instead of after it.
             val messages = api.getMessages(chatId).map { response ->
                 ChatMessage(
                     id = response.id,
                     text = response.text ?: "",
                     senderId = response.senderId,
                     isFromBot = response.senderId == "bot",
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = parseIsoToMillis(response.createdAt),
                     likedBy = response.likes ?: emptyList(),
                     imageUrl = response.imageUrl
                 )
-            }
+            }.sortedBy { it.timestamp }
             if (messages.isNotEmpty()) {
                 try { chatLocalStorage.saveMessages(chatId, messages) } catch (_: Exception) {}
             }
@@ -318,7 +339,7 @@ class SocialRepositoryImpl @Inject constructor(
                 text = response.text ?: "",
                 senderId = response.senderId,
                 isFromBot = response.senderId == "bot",
-                timestamp = System.currentTimeMillis(),
+                timestamp = parseIsoToMillis(response.createdAt),
                 likedBy = response.likes ?: emptyList(),
                 imageUrl = response.imageUrl
             )
@@ -330,6 +351,10 @@ class SocialRepositoryImpl @Inject constructor(
     override suspend fun markAsRead(chatId: String) {
         try { api.markAsRead(chatId) } catch (_: Exception) {}
     }
+
+    override suspend fun togglePin(chatId: String): ChatResponse = api.togglePin(chatId)
+
+    override suspend fun toggleMute(chatId: String): ChatResponse = api.toggleMute(chatId)
 
     override suspend fun removeMember(chatId: String, userId: String): Boolean {
         return try {

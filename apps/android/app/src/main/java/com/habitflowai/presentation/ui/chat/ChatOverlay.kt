@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,7 +31,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.data.model.ChatUiState
 import com.habitflowai.presentation.ui.persona.PersonaUiData
+import com.habitflowai.presentation.ui.social.ChatDateSeparator
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
+import com.habitflowai.util.formatChatDateSeparator
+import com.habitflowai.util.formatMessageTime
+import com.habitflowai.util.isDifferentDay
 
 @Composable
 fun ChatOverlay(
@@ -163,7 +168,10 @@ fun ChatCard(
                 contentPadding = PaddingValues(vertical = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(uiState.messages) { message ->
+                itemsIndexed(uiState.messages) { index, message ->
+                    if (index == 0 || isDifferentDay(uiState.messages[index - 1].timestamp, message.timestamp)) {
+                        ChatDateSeparator(formatChatDateSeparator(message.timestamp))
+                    }
                     MessageBubble(message, uiState.personaType)
                 }
                 if (uiState.isTyping) {
@@ -262,6 +270,12 @@ fun MessageBubble(message: ChatMessage, personaType: String = "Regulator") {
                     )
                 }
             }
+            Text(
+                text = formatMessageTime(message.timestamp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(top = 2.dp, start = 32.dp)
+            )
         } else {
             Surface(
                 color = color,
@@ -275,6 +289,12 @@ fun MessageBubble(message: ChatMessage, personaType: String = "Regulator") {
                     color = contentColor
                 )
             }
+            Text(
+                text = formatMessageTime(message.timestamp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(top = 2.dp, end = 4.dp)
+            )
         }
     }
 }

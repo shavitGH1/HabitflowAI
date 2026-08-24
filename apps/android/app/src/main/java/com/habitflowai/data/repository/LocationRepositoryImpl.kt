@@ -3,6 +3,7 @@ package com.habitflowai.data.repository
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Geocoder
 import android.location.Location
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -21,6 +22,7 @@ import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.data.model.LocationResponse
 import com.habitflowai.data.model.LocationSyncRequest
 import com.habitflowai.data.network.HabitFlowApi
+import com.habitflowai.domain.repository.GeocodedAddress
 import com.habitflowai.domain.repository.LocationRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
@@ -101,6 +103,25 @@ class LocationRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getCurrentDeviceLocation(): Location? = getCurrentLocation()
+
+    @Suppress("DEPRECATION") // The synchronous overload works on every minSdk 26+ device;
+    // the newer async-callback overload only exists from API 33, so supporting it too
+    // would mean branching on Build.VERSION for no real benefit here — this call is
+    // already off the main thread via withContext(Dispatchers.IO).
+    override suspend fun geocodeAddress(address: String): GeocodedAddress? {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val geocoder = Geocoder(context)
+                val results = geocoder.getFromLocationName(address, 1)
+                results?.firstOrNull()?.let {
+                    GeocodedAddress(it.latitude, it.longitude, it.getAddressLine(0))
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "geocodeAddress failed for '$address': ${e.message}")
+                null
+            }
+        }
+    }
 
     override fun getLastLocation(): LocationEntity? {
         return kotlinx.coroutines.runBlocking {

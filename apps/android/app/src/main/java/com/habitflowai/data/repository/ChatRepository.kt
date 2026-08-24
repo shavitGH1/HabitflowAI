@@ -4,6 +4,7 @@ import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.data.model.CoachChatApiResponse
 import com.habitflowai.data.model.CoachChatRequest
 import com.habitflowai.data.network.HabitFlowApi
+import com.habitflowai.util.parseIsoToMillis
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import javax.inject.Inject
@@ -34,14 +35,17 @@ class ChatRepository @Inject constructor(
 
     suspend fun getHistory(chatId: String, currentUserId: String?): List<ChatMessage> {
         return try {
+            // Backend returns newest-first (paginated for infinite-scroll-up); reverse
+            // to chronological ascending for display, same fix as SocialRepositoryImpl.
             api.getMessages(chatId).map {
                 ChatMessage(
                     id = it.id,
                     text = it.text ?: "",
                     senderId = it.senderId,
-                    isFromBot = it.senderId != currentUserId
+                    isFromBot = it.senderId != currentUserId,
+                    timestamp = parseIsoToMillis(it.createdAt)
                 )
-            }
+            }.sortedBy { it.timestamp }
         } catch (e: Exception) {
             emptyList()
         }

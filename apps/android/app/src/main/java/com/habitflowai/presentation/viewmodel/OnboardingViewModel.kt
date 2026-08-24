@@ -19,6 +19,7 @@ import com.habitflowai.domain.repository.AuthRepository
 import com.habitflowai.domain.repository.PersonaRepository
 import com.habitflowai.domain.repository.UserRepository
 import com.habitflowai.util.Resource
+import com.habitflowai.util.extractErrorMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,21 +27,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-private fun extractErrorMessage(httpException: retrofit2.HttpException): String {
-    val fallback = "Server error: ${httpException.code()}"
-    val errorBody = httpException.response()?.errorBody()?.string() ?: return fallback
-    return try {
-        val messageElement = com.google.gson.JsonParser.parseString(errorBody).asJsonObject.get("message")
-        when {
-            messageElement == null || messageElement.isJsonNull -> fallback
-            messageElement.isJsonArray -> messageElement.asJsonArray.joinToString("\n") { it.asString }
-            else -> messageElement.asString
-        }
-    } catch (_: Exception) {
-        fallback
-    }
-}
 
 /**
  * ViewModel for the onboarding process, handling user goals, quiz answers,

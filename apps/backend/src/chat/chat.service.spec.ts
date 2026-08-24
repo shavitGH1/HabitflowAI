@@ -41,6 +41,8 @@ const makeChat = (overrides: Partial<ChatData> = {}): ChatData => ({
   isPublic: false,
   admins: [],
   unreadCount: {},
+  pinnedBy: [],
+  mutedBy: [],
   createdAt: new Date().toISOString(),
   ...overrides,
 });
@@ -54,6 +56,8 @@ const makeGroupChat = (overrides: Partial<ChatData> = {}): ChatData => ({
   owner: USER_ID,
   admins: [USER_ID],
   unreadCount: {},
+  pinnedBy: [],
+  mutedBy: [],
   createdAt: new Date().toISOString(),
   ...overrides,
 });
@@ -181,7 +185,7 @@ describe('ChatService', () => {
   describe('getMessages()', () => {
     it('delegates pagination straight to the repository (authorization is ChatMemberGuard\'s job)', async () => {
       const messages: MessageData[] = [
-        { id: 'm1', chatId: CHAT_ID, senderId: USER_ID, text: 'hey', likes: [], sentAt: new Date().toISOString() },
+        { id: 'm1', chatId: CHAT_ID, senderId: USER_ID, text: 'hey', likes: [], createdAt: new Date().toISOString() },
       ];
       mockChatRepository.findMessagesPaginated.mockResolvedValue(messages);
 
@@ -208,7 +212,7 @@ describe('ChatService', () => {
         senderId: USER_ID,
         text: 'hello',
         likes: [],
-        sentAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       };
       mockChatRepository.addMessage.mockResolvedValue(saved);
 
@@ -232,15 +236,38 @@ describe('ChatService', () => {
         senderId: USER_ID,
         text: 'hi all',
         likes: [],
-        sentAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       };
       mockChatRepository.addMessage.mockResolvedValue(saved);
 
       await service.postMessage(USER_ID, GROUP_CHAT_ID, 'hi all');
 
       expect(mockChatRepository.updateChat).toHaveBeenCalledWith(GROUP_CHAT_ID, {
-        lastMessage: 'm2',
+        lastMessage: 'hi all',
+        lastMessageAt: expect.any(Date),
         unreadCount: { [OTHER_USER_ID]: 3, [THIRD_USER_ID]: 1 },
+      });
+    });
+
+    it('sets a photo placeholder as lastMessage when the message has no text', async () => {
+      const chat = makeGroupChat({ unreadCount: {} });
+      mockChatRepository.findById.mockResolvedValue(chat);
+      const saved: MessageData = {
+        id: 'm3',
+        chatId: GROUP_CHAT_ID,
+        senderId: USER_ID,
+        imageUrl: '/uploads/photo.jpg',
+        likes: [],
+        createdAt: new Date().toISOString(),
+      };
+      mockChatRepository.addMessage.mockResolvedValue(saved);
+
+      await service.postMessage(USER_ID, GROUP_CHAT_ID, undefined, '/uploads/photo.jpg');
+
+      expect(mockChatRepository.updateChat).toHaveBeenCalledWith(GROUP_CHAT_ID, {
+        lastMessage: '📷 Photo',
+        lastMessageAt: expect.any(Date),
+        unreadCount: { [OTHER_USER_ID]: 1, [THIRD_USER_ID]: 1 },
       });
     });
   });
@@ -255,6 +282,63 @@ describe('ChatService', () => {
       expect(mockChatRepository.updateChat).toHaveBeenCalledWith(GROUP_CHAT_ID, {
         unreadCount: { [USER_ID]: 0, [OTHER_USER_ID]: 2 },
       });
+    });
+  });
+
+  describe('togglePin()', () => {
+    it('pins a chat that is not yet pinned', async () => {
+      const chat = makeChat({ pinnedBy: [] });
+      mockChatRepository.findByParticipantId.mockResolvedValue([chat]);
+      mockChatRepository.updateChat.mockResolvedValue(makeChat({ pinnedBy: [USER_ID] }));
+
+      const result = await service.togglePin(USER_ID, chat);
+
+      expect(mockChatRepository.updateChat).toHaveBeenCalledWith(CHAT_ID, { pinnedBy: [USER_ID] });
+      expect(result.pinnedBy).toEqual([USER_ID]);
+    });
+
+    it('unpins an already-pinned chat without checking the limit', async () => {
+      const chat = makeChat({ pinnedBy: [USER_ID] });
+      mockChatRepository.updateChat.mockResolvedValue(makeChat({ pinnedBy: [] }));
+
+      await service.togglePin(USER_ID, chat);
+
+      expect(mockChatRepository.findByParticipantId).not.toHaveBeenCalled();
+      expect(mockChatRepository.updateChat).toHaveBeenCalledWith(CHAT_ID, { pinnedBy: [] });
+    });
+
+    it('rejects pinning a 4th chat once already at the 3-chat limit', async () => {
+      const chat = makeChat({ id: 'chat-4', pinnedBy: [] });
+      const alreadyPinned = [
+        makeChat({ id: 'chat-1', pinnedBy: [USER_ID] }),
+        makeChat({ id: 'chat-2', pinnedBy: [USER_ID] }),
+        makeChat({ id: 'chat-3', pinnedBy: [USER_ID] }),
+      ];
+      mockChatRepository.findByParticipantId.mockResolvedValue([...alreadyPinned, chat]);
+
+      await expect(service.togglePin(USER_ID, chat)).rejects.toThrow(BadRequestException);
+      expect(mockChatRepository.updateChat).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('toggleMute()', () => {
+    it('mutes a chat that is not yet muted', async () => {
+      const chat = makeChat({ mutedBy: [] });
+      mockChatRepository.updateChat.mockResolvedValue(makeChat({ mutedBy: [USER_ID] }));
+
+      const result = await service.toggleMute(USER_ID, chat);
+
+      expect(mockChatRepository.updateChat).toHaveBeenCalledWith(CHAT_ID, { mutedBy: [USER_ID] });
+      expect(result.mutedBy).toEqual([USER_ID]);
+    });
+
+    it('unmutes an already-muted chat', async () => {
+      const chat = makeChat({ mutedBy: [USER_ID] });
+      mockChatRepository.updateChat.mockResolvedValue(makeChat({ mutedBy: [] }));
+
+      await service.toggleMute(USER_ID, chat);
+
+      expect(mockChatRepository.updateChat).toHaveBeenCalledWith(CHAT_ID, { mutedBy: [] });
     });
   });
 
@@ -274,7 +358,7 @@ describe('ChatService', () => {
         senderId: OTHER_USER_ID,
         text: 'hey',
         likes: [],
-        sentAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       });
 
       await service.toggleMessageLike(USER_ID, CHAT_ID, MESSAGE_ID);
@@ -289,7 +373,7 @@ describe('ChatService', () => {
         senderId: OTHER_USER_ID,
         text: 'hey',
         likes: [USER_ID, OTHER_USER_ID],
-        sentAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       });
 
       await service.toggleMessageLike(USER_ID, CHAT_ID, MESSAGE_ID);
@@ -455,6 +539,19 @@ describe('ChatService', () => {
         imageUrl: '/uploads/group-123.jpg',
       });
       expect(result.imageUrl).toBe('/uploads/group-123.jpg');
+    });
+  });
+
+  describe('uploadMessageImage()', () => {
+    it('uploads via the storage adapter and returns the URL without persisting anything', async () => {
+      mockStorage.upload.mockResolvedValue('/uploads/msg-123.jpg');
+      const file = {} as Express.Multer.File;
+
+      const result = await service.uploadMessageImage(file);
+
+      expect(mockStorage.upload).toHaveBeenCalledWith(file);
+      expect(mockChatRepository.updateChat).not.toHaveBeenCalled();
+      expect(result).toBe('/uploads/msg-123.jpg');
     });
   });
 

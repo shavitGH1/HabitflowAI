@@ -16,7 +16,10 @@ export interface ChatData {
   description?: string;
   imageUrl?: string;
   lastMessage?: string;
+  lastMessageAt?: string;
   unreadCount: Record<string, number>;
+  pinnedBy: string[];
+  mutedBy: string[];
   createdAt: string;
 }
 
@@ -27,7 +30,7 @@ export interface MessageData {
   text?: string;
   imageUrl?: string;
   likes: string[];
-  sentAt: string;
+  createdAt: string;
 }
 
 export interface CreateChatInput {
@@ -48,7 +51,10 @@ export interface UpdateChatInput {
   admins?: string[];
   owner?: string;
   lastMessage?: string;
+  lastMessageAt?: Date;
   unreadCount?: Record<string, number>;
+  pinnedBy?: string[];
+  mutedBy?: string[];
 }
 
 export interface CreateMessageInput {
@@ -90,7 +96,11 @@ export class ChatRepository {
   }
 
   async findByParticipantId(userId: string): Promise<ChatData[]> {
-    const docs = await this.chatModel.find({ participantIds: userId }).sort({ updatedAt: -1 });
+    // Sorts by lastMessageAt (actual message activity), not updatedAt — updatedAt is
+    // bumped by Mongoose on every write (marking read, pinning, muting), which would
+    // otherwise reorder the list just from opening a chat. Chats with no messages yet
+    // have no lastMessageAt and sort last, which is the desired behavior.
+    const docs = await this.chatModel.find({ participantIds: userId }).sort({ lastMessageAt: -1, createdAt: -1 });
     return docs.map(d => this.toChatData(d));
   }
 
@@ -151,7 +161,10 @@ export class ChatRepository {
       description: doc.description,
       imageUrl: doc.imageUrl,
       lastMessage: doc.lastMessage,
+      lastMessageAt: doc.lastMessageAt?.toISOString(),
       unreadCount: Object.fromEntries(doc.unreadCount ?? new Map()),
+      pinnedBy: doc.pinnedBy ?? [],
+      mutedBy: doc.mutedBy ?? [],
       createdAt: (doc as unknown as { createdAt: Date }).createdAt?.toISOString() ?? '',
     };
   }
@@ -164,7 +177,7 @@ export class ChatRepository {
       text: doc.text,
       imageUrl: doc.imageUrl,
       likes: doc.likes,
-      sentAt: (doc as unknown as { createdAt: Date }).createdAt?.toISOString() ?? '',
+      createdAt: (doc as unknown as { createdAt: Date }).createdAt?.toISOString() ?? '',
     };
   }
 }

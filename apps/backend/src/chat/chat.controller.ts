@@ -89,6 +89,41 @@ export class ChatController {
     return this.chatService.markAsRead(req.user.id, req.chat);
   }
 
+  @Post(':chatId/pin')
+  @UseGuards(ChatMemberGuard)
+  @ApiOperation({ summary: 'Toggle pinning this chat to the top of the caller\'s own chat list (max 3 pinned)' })
+  @ApiResponse({ status: 201, description: 'Pin toggled' })
+  @ApiResponse({ status: 400, description: 'Already at the 3-chat pin limit' })
+  @ApiResponse({ status: 403, description: 'Not a participant in this chat' })
+  togglePin(@Req() req: ChatMemberRequest) {
+    return this.chatService.togglePin(req.user.id, req.chat);
+  }
+
+  @Post(':chatId/mute')
+  @UseGuards(ChatMemberGuard)
+  @ApiOperation({ summary: "Toggle muting notifications for this chat, for the caller only" })
+  @ApiResponse({ status: 201, description: 'Mute toggled' })
+  @ApiResponse({ status: 403, description: 'Not a participant in this chat' })
+  toggleMute(@Req() req: ChatMemberRequest) {
+    return this.chatService.toggleMute(req.user.id, req.chat);
+  }
+
+  @Post(':chatId/messages/image')
+  @UseGuards(ChatMemberGuard)
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { image: { type: 'string', format: 'binary' } } } })
+  @ApiOperation({
+    summary: 'Upload an image to attach to a chat message',
+    description: 'Returns the URL only — send it via the sendMessage WebSocket event\'s imageUrl field to actually post the message',
+  })
+  @ApiResponse({ status: 201, description: '{ imageUrl, success }' })
+  @ApiResponse({ status: 403, description: 'Not a participant in this chat' })
+  async uploadMessageImage(@UploadedFile() file: Express.Multer.File) {
+    const imageUrl = await this.chatService.uploadMessageImage(file);
+    return { imageUrl, success: true };
+  }
+
   @Post(':chatId/messages/:messageId/like')
   @UseGuards(ChatMemberGuard)
   @ApiOperation({ summary: 'Toggle a like on a message' })
