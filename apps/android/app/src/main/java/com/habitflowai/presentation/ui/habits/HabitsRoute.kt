@@ -4,18 +4,21 @@ package com.habitflowai.presentation.ui.habits
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
@@ -25,13 +28,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.ui.graphics.luminance
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.model.ActiveGoalResponse
 import com.habitflowai.presentation.ui.persona.PersonaDetails
@@ -39,7 +41,9 @@ import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.HabitsUiState
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
-import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 
 @Composable
 fun HabitsRoute(
@@ -74,7 +78,6 @@ fun HabitsContent(
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
     val isDark = isSystemInDarkTheme()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(uiState.congratulationMessage) {
         uiState.congratulationMessage?.let { message ->
@@ -133,72 +136,83 @@ fun HabitsContent(
             },
             containerColor = Color.Transparent
         ) { paddingValues ->
-            Column(
+            val habitsToDisplay = remember(uiState.habits) { uiState.habits.filter { !it.completed } }
+
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.Start
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                if (uiState.activeGoal != null) {
-                    GoalHighlightCard(
-                        goal = uiState.activeGoal,
-                        personaColor = details.endColor
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                } else if (!uiState.onboardingGoal.isNullOrEmpty()) {
-                    OnboardingGoalCard(
-                        goalText = uiState.onboardingGoal,
-                        personaColor = details.endColor
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                item {
+                    if (uiState.activeGoal != null) {
+                        GoalHighlightCard(
+                            goal = uiState.activeGoal,
+                            personaColor = details.endColor
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    } else if (!uiState.onboardingGoal.isNullOrEmpty()) {
+                        OnboardingGoalCard(
+                            goalText = uiState.onboardingGoal,
+                            personaColor = details.endColor
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
                 }
 
-                Text(
-                    text = "Master your routine, one day at a time.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Your own custom habits — separate from the AI-generated goals on Home.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
+                item {
+                    val allCompletions = remember(uiState.habits) {
+                        uiState.habits.flatMap { it.completionHistory }.distinct()
+                    }
+                    ConsistencyCalendar(
+                        personaColor = details.endColor,
+                        completionHistory = allCompletions
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Master your routine, one day at a time.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
                 if (uiState.isLoading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = details.endColor)
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = details.endColor)
+                        }
                     }
-                } else if (uiState.habits.none { !it.completed }) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = if (uiState.habits.isEmpty()) "No habits yet. Tap + to start!" else "All habits completed for today! 🎉",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp)
-                    ) {
-                        items(
-                            items = uiState.habits.filter { !it.completed },
-                            key = { habit: HabitEntity -> habit.id }
-                        ) { habit: HabitEntity ->
-                            HabitItem(
-                                habit = habit,
-                                personaColor = details.endColor,
-                                onDelete = { onDeleteHabit(habit.id) },
-                                onClick = { onHabitClick(habit.id) }
+                } else if (habitsToDisplay.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = if (uiState.habits.isEmpty()) "No habits yet. Tap + to start!" else "All habits completed for today! 🎉",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
+                } else {
+                    items(
+                        items = habitsToDisplay,
+                        key = { habit: HabitEntity -> habit.id }
+                    ) { habit: HabitEntity ->
+                        HabitItem(
+                            habit = habit,
+                            personaColor = details.endColor,
+                            onDelete = { onDeleteHabit(habit.id) },
+                            onClick = { onHabitClick(habit.id) }
+                        )
+                    }
+                }
+                
+                // Extra padding at bottom for FAB
+                item {
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
 
@@ -211,6 +225,106 @@ fun HabitsContent(
                         showCreateSheet = false
                     }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun ConsistencyCalendar(
+    personaColor: Color,
+    completionHistory: List<String> = emptyList()
+) {
+    val today = LocalDate.now()
+    val days = remember {
+        (0 until 28).map { today.minusDays(it.toLong()) }.reversed()
+    }
+    
+    val completionDates = remember(completionHistory) {
+        completionHistory.mapNotNull {
+            try {
+                if (it.length == 10 && it.count { c -> c == '-' } == 2) {
+                    LocalDate.parse(it)
+                } else {
+                    java.time.OffsetDateTime.parse(it).toLocalDate()
+                }
+            } catch (_: Exception) {
+                try {
+                    java.time.LocalDateTime.parse(it).toLocalDate()
+                } catch (_: Exception) {
+                    try {
+                        java.time.Instant.parse(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            }
+        }.toSet()
+    }
+
+    val completionMap = remember(days, completionDates) {
+        days.associateWith { it in completionDates }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Consistency (Last 28 Days)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "${completionMap.values.count { it }} Days Active",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = personaColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(7),
+                modifier = Modifier.height(240.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                userScrollEnabled = false
+            ) {
+                items(days) { day ->
+                    val isCompleted = completionMap[day] ?: false
+                    val isToday = day == today
+                    
+                    Box(
+                        modifier = Modifier
+                            .aspectRatio(1f)
+                            .clip(CircleShape)
+                            .background(
+                                when {
+                                    isCompleted -> personaColor
+                                    isToday -> personaColor.copy(alpha = 0.2f)
+                                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = day.dayOfMonth.toString(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isCompleted) Color.White else if (isToday) personaColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isToday || isCompleted) FontWeight.ExtraBold else FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }
@@ -382,9 +496,6 @@ fun HabitCreateBottomSheet(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var frequency by remember { mutableStateOf("daily") }
-    // Prevent Material3's ModalBottomSheet from auto-collapsing to Hidden when the
-    // IME closes and its content remeasures (a known Compose bug) — an explicit
-    // close button below remains the guaranteed way to dismiss.
     val sheetState = rememberModalBottomSheetState(
         confirmValueChange = { it != SheetValue.Hidden },
     )
@@ -393,14 +504,8 @@ fun HabitCreateBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         dragHandle = { BottomSheetDefaults.DragHandle() },
-        // Material3's own back-press dismissal fires *before* any BackHandler we
-        // add inside content can reliably win priority over it (confirmed on
-        // device — inconsistent across sheets). Disable it at the source and let
-        // our own BackHandler below be the only thing back presses reach.
         properties = ModalBottomSheetDefaults.properties(shouldDismissOnBackPress = false)
     ) {
-        // First back press should only dismiss the keyboard; only close the
-        // sheet on a second press once the IME is already hidden.
         val keyboardController = LocalSoftwareKeyboardController.current
         val imeVisible = WindowInsets.isImeVisible
         BackHandler {
@@ -457,29 +562,6 @@ fun HabitCreateBottomSheet(
             ) {
                 Text("Create Habit", fontWeight = FontWeight.Bold)
             }
-        }
-    }
-}
-
-@Preview(showBackground = true, name = "Light Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
-@Preview(showBackground = true, name = "Dark Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun HabitsWithChatPreview() {
-    HabitFlowTheme {
-        Surface(color = MaterialTheme.colorScheme.background) {
-            HabitsContent(
-                uiState = HabitsUiState(
-                    habits = listOf(
-                        HabitEntity("1", "Drink Water", "2L daily", "DAILY", "user1", false),
-                        HabitEntity("2", "Read Book", "10 pages", "DAILY", "user1", false)
-                    )
-                ),
-                personaType = "Grower",
-                onHabitClick = {},
-                onAddHabit = { _, _, _ -> },
-                onDeleteHabit = {},
-                onToggleChat = {}
-            )
         }
     }
 }

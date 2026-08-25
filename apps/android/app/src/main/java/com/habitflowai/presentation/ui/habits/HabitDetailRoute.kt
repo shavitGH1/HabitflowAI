@@ -258,25 +258,6 @@ fun HabitDetailContent(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Completion History",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        CompletionCalendar(
-                            personaColor = details.endColor,
-                            completionHistory = habit.completionHistory
-                        )
-                    }
-                }
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
                             text = "Frequency",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
@@ -287,95 +268,6 @@ fun HabitDetailContent(
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CompletionCalendar(
-    personaColor: Color,
-    completionHistory: List<String> = emptyList()
-) {
-    val today = LocalDate.now()
-    val days = remember {
-        (0 until 28).map { today.minusDays(it.toLong()) }.reversed()
-    }
-    
-    // Parse completion history dates
-    val completionDates = remember(completionHistory) {
-        completionHistory.mapNotNull {
-            try {
-                // Try to parse typical ISO formats
-                if (it.contains("T")) {
-                    java.time.ZonedDateTime.parse(it).toLocalDate()
-                } else {
-                    LocalDate.parse(it)
-                }
-            } catch (_: Exception) {
-                null
-            }
-        }.toSet()
-    }
-
-    val completionMap = remember(days, completionDates) {
-        days.associateWith { it in completionDates }
-    }
-
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Last 28 Days",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.Gray
-            )
-            Text(
-                text = "${completionMap.values.count { it }}/${days.size} Completed",
-                style = MaterialTheme.typography.labelMedium,
-                color = personaColor,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(7),
-            modifier = Modifier.height(180.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            userScrollEnabled = false
-        ) {
-            items(days) { day ->
-                val isCompleted = completionMap[day] ?: false
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isCompleted) personaColor else personaColor.copy(alpha = 0.1f)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = day.dayOfMonth.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isCompleted) Color.White else personaColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Text(
-                        text = day.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(1),
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                        color = Color.Gray
-                    )
                 }
             }
         }
