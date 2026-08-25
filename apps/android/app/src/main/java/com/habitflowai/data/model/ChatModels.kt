@@ -56,7 +56,9 @@ data class ChatResponse(
     @JsonAdapter(ImageUrlDeserializer::class)
     val imageUrl: String? = null,
     val unreadCount: Map<String, Int> = emptyMap(),
-    val isPublic: Boolean = false
+    val isPublic: Boolean = false,
+    val pinnedBy: List<String> = emptyList(),
+    val mutedBy: List<String> = emptyList()
 )
 
 data class CreateChatRequest(
@@ -77,6 +79,11 @@ data class UpdateGroupDescriptionRequest(val description: String)
 data class UpdateGroupVisibilityRequest(val isPublic: Boolean)
 
 data class UpdateAdminsRequest(val userIds: List<String>)
+
+data class UploadChatImageResponse(
+    val imageUrl: String,
+    val success: Boolean = true
+)
 
 data class MessageResponse(
     val id: String,

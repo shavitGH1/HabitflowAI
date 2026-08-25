@@ -10,10 +10,13 @@ import com.habitflowai.data.model.ChatMessage
 import com.habitflowai.data.model.AppUser
 import com.habitflowai.data.repository.SocialChatSocketEvent
 import com.habitflowai.data.repository.SocialChatSocketService
+import com.habitflowai.data.repository.UnreadChatsTracker
 import com.habitflowai.data.local.ChatLocalStorage
 import com.habitflowai.di.AuthManager
+import com.habitflowai.domain.repository.LocationRepository
 import com.habitflowai.domain.repository.SocialRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +44,16 @@ enum class FeedFilter {
     ALL, FRIENDS, MINE
 }
 
+/** A resolved-but-not-yet-sent location share, staged so the chat can show a map preview
+ *  (and the Geocoder's own formatted address match) before it actually goes into a message —
+ *  street-level geocoding can land in the wrong city for an ambiguous address. */
+data class LocationSharePreview(
+    val chatId: String,
+    val latitude: Double,
+    val longitude: Double,
+    val displayAddress: String?
+)
+
 data class SocialUiState(
     val posts: List<Post> = emptyList(),
     val comments: Map<String, List<Comment>> = emptyMap(),
@@ -61,7 +74,8 @@ data class SocialUiState(
     val isRefreshing: Boolean = false,
     val canLoadMore: Boolean = true,
     val page: Int = 0,
-    val error: SocialUiError? = null
+    val error: SocialUiError? = null,
+    val locationSharePreview: LocationSharePreview? = null
 )
 
 @HiltViewModel
@@ -70,6 +84,8 @@ class SocialViewModel @Inject constructor(
     private val socketService: SocialChatSocketService,
     private val authManager: AuthManager,
     private val chatLocalStorage: ChatLocalStorage,
+    private val locationRepository: LocationRepository,
+    private val unreadChatsTracker: UnreadChatsTracker,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -366,22 +382,28 @@ class SocialViewModel @Inject constructor(
                 }
             } catch (_: Exception) {}
             
-            // 2. Refresh from network (Single call to get everything)
+            // 2. Refresh from network. Chats and users are fetched in parallel, and both
+            // are awaited BEFORE either touches _uiState — publishing groupChats/
+            // directChats first and letting allUsers arrive afterward (even a moment
+            // later) would still render the list once with names unresolved, since
+            // that first _uiState update is a real recomposition, not just an
+            // intermediate value. This always refreshes now (previously gated behind
+            // `allUsers.size <= 5`, which meant any name/photo change was cached
+            // forever the moment the app had seen more than 5 users).
             _uiState.update { it.copy(isLoadingChats = true) }
             try {
-                val allChats = repository.getAllChats()
+                val allChatsDeferred = async { repository.getAllChats() }
+                val usersDeferred = async { loadKnownUsers() }
+                val allChats = allChatsDeferred.await()
+                usersDeferred.await()
+
                 val groups = allChats.filter { it.isGroup }
                 val dms = allChats.filter { !it.isGroup }
-                
                 _uiState.update { it.copy(
                     groupChats = groups,
                     directChats = dms
                 ) }
-                
-                // Only load users if the list is nearly empty (avoid heavy call every startup)
-                if (_uiState.value.allUsers.size <= 5) {
-                    loadKnownUsers(allChats)
-                }
+                unreadChatsTracker.update(allChats, uid)
             } catch (e: Exception) {
                 // If it's a 429, we just log it and rely on cache. 
                 // Don't crash or loop.
@@ -732,33 +754,129 @@ class SocialViewModel @Inject constructor(
             socketService.joinChat(chatId)
             repository.markAsRead(chatId)
             _uiState.update { state ->
-                state.copy(groupChats = state.groupChats.map { chat ->
-                    if (chat.id == chatId) chat.copy(unreadCount = chat.unreadCount - currentUserId) else chat
-                })
+                state.copy(
+                    groupChats = state.groupChats.map { chat ->
+                        if (chat.id == chatId) chat.copy(unreadCount = chat.unreadCount - currentUserId) else chat
+                    },
+                    directChats = state.directChats.map { chat ->
+                        if (chat.id == chatId) chat.copy(unreadCount = chat.unreadCount - currentUserId) else chat
+                    }
+                )
+            }
+            unreadChatsTracker.update(_uiState.value.groupChats + _uiState.value.directChats, currentUserId)
+        }
+    }
+
+    fun sendMessage(chatId: String, content: String, imageUrl: String? = null) {
+        // Deliberately no optimistic local echo of the message itself here. The backend
+        // broadcasts "newMessage" back to the whole room including the sender
+        // (chat.gateway.ts uses server.to(), not client.to()), so handleNewMessage()
+        // below adds this message exactly once, with its real server-assigned id (needed
+        // for anything keyed by message id, e.g. liking your own message) and its real
+        // timestamp. Adding a second, locally-faked copy here was the actual cause of
+        // messages visibly appearing twice.
+        val previewText = if (content.isNotBlank()) content else "📷 Photo"
+        _uiState.update { state ->
+            state.copy(
+                groupChats = state.groupChats.map { if (it.id == chatId) it.copy(lastMessage = previewText) else it },
+                directChats = state.directChats.map { if (it.id == chatId) it.copy(lastMessage = previewText) else it }
+            )
+        }
+        socketService.sendMessage(chatId, content, imageUrl)
+    }
+
+    /** Uploads [imageUri] then sends it as a chat message, optionally with a text caption. */
+    fun sendImageMessage(chatId: String, imageUri: android.net.Uri, caption: String = "") {
+        viewModelScope.launch {
+            try {
+                val imageUrl = repository.uploadMessageImage(chatId, imageUri)
+                sendMessage(chatId, caption, imageUrl)
+            } catch (_: Exception) {
+                _uiState.update { it.copy(error = SocialUiError.ChatError("Couldn't send the photo. Please try again.")) }
             }
         }
     }
 
-    fun sendMessage(chatId: String, content: String) {
-        val newMessage = ChatMessage(
-            text = content,
-            senderId = currentUserId,
-            isFromBot = false
-        )
-        val updatedMessages = (_uiState.value.chatMessages[chatId] ?: emptyList()) + newMessage
-        val updatedMap = _uiState.value.chatMessages.toMutableMap().apply { put(chatId, updatedMessages) }
-        _uiState.update { it.copy(chatMessages = updatedMap) }
-        _uiState.update { state ->
-            state.copy(groupChats = state.groupChats.map {
-                if (it.id == chatId) it.copy(lastMessage = content) else it
-            })
-        }
-        // Persist new message immediately so it survives restarts
+    /**
+     * Resolves [address] (or the device's current GPS position if blank/null) and stages
+     * it in [SocialUiState.locationSharePreview] rather than sending immediately — a typed
+     * address's geocoded result can land in the wrong city, so the chat shows a map + the
+     * Geocoder's own formatted match first, letting the user confirm or back out before it
+     * goes into a message. Call [confirmLocationShare] to actually send it.
+     */
+    fun previewLocationShare(chatId: String, address: String? = null) {
         viewModelScope.launch {
-            try { chatLocalStorage.saveMessages(chatId, updatedMessages) } catch (_: Exception) {}
+            val preview = if (!address.isNullOrBlank()) {
+                val geocoded = try { locationRepository.geocodeAddress(address) } catch (_: Exception) { null }
+                geocoded?.let { LocationSharePreview(chatId, it.latitude, it.longitude, it.displayAddress) }
+            } else {
+                val location = try { locationRepository.getCurrentDeviceLocation() } catch (_: Exception) { null }
+                location?.let { LocationSharePreview(chatId, it.latitude, it.longitude, displayAddress = null) }
+            }
+            if (preview == null) {
+                val errorMessage = if (!address.isNullOrBlank()) {
+                    "Couldn't find that address. Please try a different one."
+                } else {
+                    "Couldn't get your location. Please check location permissions."
+                }
+                _uiState.update { it.copy(error = SocialUiError.ChatError(errorMessage)) }
+                return@launch
+            }
+            _uiState.update { it.copy(locationSharePreview = preview) }
         }
-        // Send via socket for real-time delivery
-        socketService.sendMessage(chatId, content)
+    }
+
+    /** Sends the currently-staged [SocialUiState.locationSharePreview] as a message (a plain Google
+     *  Maps link the receiving bubble renders as a tappable "Open in Maps" chip — see
+     *  [com.habitflowai.util.buildLocationShareLink]), then clears the preview. No-op if nothing is staged. */
+    fun confirmLocationShare() {
+        val preview = _uiState.value.locationSharePreview ?: return
+        _uiState.update { it.copy(locationSharePreview = null) }
+        sendMessage(preview.chatId, com.habitflowai.util.buildLocationShareLink(preview.latitude, preview.longitude))
+    }
+
+    /** Discards the staged location preview without sending it. */
+    fun dismissLocationPreview() {
+        _uiState.update { it.copy(locationSharePreview = null) }
+    }
+
+    /** Toggles pinning a chat for the current user. Surfaces the server's message on failure (e.g. at the 3-pin limit). */
+    fun togglePinChat(chatId: String) {
+        viewModelScope.launch {
+            try {
+                replaceChatInState(repository.togglePin(chatId))
+            } catch (e: retrofit2.HttpException) {
+                _uiState.update { it.copy(error = SocialUiError.ActionError(com.habitflowai.util.extractErrorMessage(e))) }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(error = SocialUiError.ActionError("Couldn't update pin. Please try again.")) }
+            }
+        }
+    }
+
+    /** Toggles muting notifications for a chat, for the current user only. */
+    fun toggleMuteChat(chatId: String) {
+        viewModelScope.launch {
+            try {
+                replaceChatInState(repository.toggleMute(chatId))
+            } catch (_: Exception) {
+                _uiState.update { it.copy(error = SocialUiError.ActionError("Couldn't update mute. Please try again.")) }
+            }
+        }
+    }
+
+    private fun replaceChatInState(updated: ChatResponse) {
+        _uiState.update { state ->
+            state.copy(
+                groupChats = state.groupChats.map { if (it.id == updated.id) updated else it },
+                directChats = state.directChats.map { if (it.id == updated.id) updated else it }
+            )
+        }
+        viewModelScope.launch {
+            try {
+                chatLocalStorage.saveGroupChats(currentUserId, _uiState.value.groupChats)
+                chatLocalStorage.saveDirectChats(currentUserId, _uiState.value.directChats)
+            } catch (_: Exception) {}
+        }
     }
 
     fun setTyping(chatId: String, isTyping: Boolean) {
@@ -799,11 +917,15 @@ class SocialViewModel @Inject constructor(
     }
 
     private fun handleNewMessage(event: SocialChatSocketEvent.NewMessage) {
+        // Handles every message on this chat, including ones the current user just sent
+        // themselves — see the comment in sendMessage() for why there's no separate
+        // optimistic path anymore.
         val incomingMessage = ChatMessage(
             id = event.messageId,
             text = event.text,
             senderId = event.senderId,
-            imageUrl = event.imageUrl
+            imageUrl = event.imageUrl,
+            timestamp = com.habitflowai.util.parseIsoToMillis(event.createdAt)
         )
         val updatedMessages = (_uiState.value.chatMessages[event.chatId] ?: emptyList()) + incomingMessage
         val updatedMap = _uiState.value.chatMessages.toMutableMap().apply { put(event.chatId, updatedMessages) }
@@ -811,6 +933,9 @@ class SocialViewModel @Inject constructor(
             state.copy(
                 chatMessages = updatedMap,
                 groupChats = state.groupChats.map { chat ->
+                    if (chat.id == event.chatId) chat.copy(lastMessage = event.text) else chat
+                },
+                directChats = state.directChats.map { chat ->
                     if (chat.id == event.chatId) chat.copy(lastMessage = event.text) else chat
                 }
             )

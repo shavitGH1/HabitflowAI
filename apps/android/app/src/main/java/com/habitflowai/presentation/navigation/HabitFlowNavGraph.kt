@@ -39,6 +39,7 @@ import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
 import com.habitflowai.presentation.viewmodel.LoginViewModel
 import com.habitflowai.presentation.viewmodel.ChatViewModel
+import com.habitflowai.presentation.viewmodel.UnreadBadgeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,8 +50,10 @@ fun HabitFlowNavGraph(
     val loginViewModel: LoginViewModel = hiltViewModel()
     val habitsViewModel: HabitsViewModel = hiltViewModel()
     val chatViewModel: ChatViewModel = hiltViewModel()
+    val unreadBadgeViewModel: UnreadBadgeViewModel = hiltViewModel()
     val uiState by onboardingViewModel.uiState.collectAsState()
     val chatUiState by chatViewModel.uiState.collectAsState()
+    val unreadChatCount by unreadBadgeViewModel.unreadChatCount.collectAsState()
 
     LaunchedEffect(uiState.personaResult) {
         uiState.personaResult?.personaType?.let {
@@ -114,7 +117,15 @@ fun HabitFlowNavGraph(
                     NavigationBarItem(
                         selected = currentRoute == NavRoute.Social.route,
                         onClick = { navController.navigate(NavRoute.Social.route) { launchSingleTop = true } },
-                        icon = { Icon(Icons.Rounded.Face, contentDescription = "Social") },
+                        icon = {
+                            BadgedBox(badge = {
+                                if (unreadChatCount > 0) {
+                                    Badge { Text(if (unreadChatCount > 99) "99+" else "$unreadChatCount") }
+                                }
+                            }) {
+                                Icon(Icons.Rounded.Face, contentDescription = "Social")
+                            }
+                        },
                         label = { Text("Social") }
                     )
                     NavigationBarItem(
@@ -152,7 +163,7 @@ fun HabitFlowNavGraph(
                     RegisterCredentialsRoute(
                         viewModel = onboardingViewModel,
                         onNext = {
-                            navController.navigate(NavRoute.NameEntry.route)
+                            navController.navigate(NavRoute.Onboarding.route)
                         },
                         onNavigateBack = {
                             navController.popBackStack()

@@ -30,8 +30,23 @@ export class Chat {
   @Prop()
   lastMessage?: string;
 
+  // Drives chat-list ordering — deliberately separate from Mongoose's auto-managed
+  // `updatedAt` (bumped by *any* update: marking read, pinning, muting), which would
+  // otherwise reorder the whole list just from opening a chat. Only postMessage() sets this.
+  @Prop()
+  lastMessageAt?: Date;
+
   @Prop({ type: Map, of: Number, default: {} })
   unreadCount: Map<string, number>;
+
+  // Up to 3 pinned chats per user (enforced in ChatService.togglePin, not here) float
+  // to the top of that user's own chat list; muted chats just suppress notifications.
+  // Scoped by userId directly on Chat, matching unreadCount's existing pattern.
+  @Prop({ type: [String], default: [] })
+  pinnedBy: string[];
+
+  @Prop({ type: [String], default: [] })
+  mutedBy: string[];
 }
 
 export const ChatSchema = SchemaFactory.createForClass(Chat);

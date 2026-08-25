@@ -4,6 +4,8 @@ import { UserRepository } from '../users/user.repository';
 import { IStorageAdapter, STORAGE_ADAPTER } from '../storage/storage.adapter';
 import { CreateChatDto } from './dto/create-chat.dto';
 
+const MAX_PINNED_CHATS = 3;
+
 @Injectable()
 export class ChatService {
   constructor(
@@ -63,7 +65,8 @@ export class ChatService {
       if (participantId === userId) continue;
       unreadCount[participantId] = (unreadCount[participantId] ?? 0) + 1;
     }
-    await this.chatRepository.updateChat(chatId, { lastMessage: message.id, unreadCount });
+    const lastMessage = text && text.length > 0 ? text : imageUrl ? '📷 Photo' : '';
+    await this.chatRepository.updateChat(chatId, { lastMessage, lastMessageAt: new Date(), unreadCount });
 
     return message;
   }
@@ -71,6 +74,25 @@ export class ChatService {
   async markAsRead(userId: string, chat: ChatData): Promise<ChatData> {
     const unreadCount = { ...chat.unreadCount, [userId]: 0 };
     return (await this.chatRepository.updateChat(chat.id, { unreadCount }))!;
+  }
+
+  async togglePin(userId: string, chat: ChatData): Promise<ChatData> {
+    const isPinned = chat.pinnedBy.includes(userId);
+    if (!isPinned) {
+      const userChats = await this.chatRepository.findByParticipantId(userId);
+      const pinnedCount = userChats.filter(c => c.pinnedBy.includes(userId)).length;
+      if (pinnedCount >= MAX_PINNED_CHATS) {
+        throw new BadRequestException(`You can only pin up to ${MAX_PINNED_CHATS} chats`);
+      }
+    }
+    const pinnedBy = isPinned ? chat.pinnedBy.filter(id => id !== userId) : [...chat.pinnedBy, userId];
+    return (await this.chatRepository.updateChat(chat.id, { pinnedBy }))!;
+  }
+
+  async toggleMute(userId: string, chat: ChatData): Promise<ChatData> {
+    const isMuted = chat.mutedBy.includes(userId);
+    const mutedBy = isMuted ? chat.mutedBy.filter(id => id !== userId) : [...chat.mutedBy, userId];
+    return (await this.chatRepository.updateChat(chat.id, { mutedBy }))!;
   }
 
   async toggleMessageLike(userId: string, chatId: string, messageId: string): Promise<MessageData> {
@@ -164,6 +186,13 @@ export class ChatService {
     await this.getGroupChat(chatId);
     const imageUrl = await this.storage.upload(file);
     return (await this.chatRepository.updateChat(chatId, { imageUrl }))!;
+  }
+
+  // Membership is already verified by ChatMemberGuard before this runs. Doesn't persist
+  // anything — the returned URL is sent back via the sendMessage socket event, which
+  // creates the actual Message document with this imageUrl attached.
+  async uploadMessageImage(file: Express.Multer.File): Promise<string> {
+    return this.storage.upload(file);
   }
 
   async deleteGroup(chatId: string): Promise<void> {

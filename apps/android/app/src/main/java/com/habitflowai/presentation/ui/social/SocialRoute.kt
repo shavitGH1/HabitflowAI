@@ -134,6 +134,8 @@ fun SocialRoute(
                         selectedChatForView = chat
                         viewModel.loadMessages(chat.id)
                     },
+                    onTogglePin = { chatId -> viewModel.togglePinChat(chatId) },
+                    onToggleMute = { chatId -> viewModel.toggleMuteChat(chatId) },
                     onCreateGroupClick = {
                         showCreateGroupDialog = true
                     },
@@ -420,6 +422,13 @@ fun SocialRoute(
             allUsers = uiState.allUsers,
             onDismiss = goBack,
             onSendMessage = { content -> viewModel.sendMessage(activeChatId, content) },
+            onSendImage = { uri -> viewModel.sendImageMessage(activeChatId, uri) },
+            onSendLocation = { address -> viewModel.previewLocationShare(activeChatId, address) },
+            locationPreview = uiState.locationSharePreview,
+            onConfirmLocationShare = { viewModel.confirmLocationShare() },
+            onDismissLocationPreview = { viewModel.dismissLocationPreview() },
+            error = uiState.error,
+            onDismissError = { viewModel.clearError() },
             onTypingChanged = { isTyping -> viewModel.setTyping(activeChatId, isTyping) },
             onLikeMessage = { messageId -> viewModel.toggleMessageLike(activeChatId, messageId) },
             onAddMember = {
@@ -544,15 +553,35 @@ fun SocialRoute(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+// The system coach account's fixed id — mirrors COACH_USER_ID in the backend's
+// coach.templates.ts. Used only to force the coach chat to the very top of the
+// list, ahead of any user-pinned chats.
+private const val COACH_USER_ID = "000000000000000000000c0a"
+
 @Composable
 fun GroupChatsDrawerContent(
     uiState: SocialUiState,
     personaColor: Color,
     onChatClick: (ChatResponse) -> Unit,
+    onTogglePin: (String) -> Unit = {},
+    onToggleMute: (String) -> Unit = {},
     onCreateGroupClick: () -> Unit,
     onJoinGroupClick: () -> Unit,
     onNewDmClick: () -> Unit = {}
 ) {
+    val coachChat = remember(uiState.directChats) {
+        uiState.directChats.find { !it.isGroup && it.participantIds.contains(COACH_USER_ID) }
+    }
+    val pinnedChats = remember(uiState.groupChats, uiState.directChats, uiState.currentUserId, coachChat) {
+        (uiState.groupChats + uiState.directChats)
+            .filter { it.id != coachChat?.id && it.pinnedBy.contains(uiState.currentUserId) }
+    }
+    val topChatIds = remember(coachChat, pinnedChats) {
+        (listOfNotNull(coachChat) + pinnedChats).map { it.id }.toSet()
+    }
+    val visibleGroupChats = remember(uiState.groupChats, topChatIds) { uiState.groupChats.filter { it.id !in topChatIds } }
+    val visibleDirectChats = remember(uiState.directChats, topChatIds) { uiState.directChats.filter { it.id !in topChatIds } }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -592,9 +621,34 @@ fun GroupChatsDrawerContent(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth().weight(1f)
             ) {
-                // Groups section
-                if (uiState.groupChats.isNotEmpty()) {
+                // Pinned section — the coach chat is always first (unconditionally), followed
+                // by up to 3 user-pinned chats (group or direct). Chats shown here are hidden
+                // from their normal section below to avoid listing them twice.
+                val topChats = listOfNotNull(coachChat) + pinnedChats
+                if (topChats.isNotEmpty()) {
                     item {
+                        Text(
+                            "Pinned",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                    items(topChats, key = { "pinned-${it.id}" }) { chat ->
+                        SocialGroupChatListItem(
+                            chat = chat, personaColor = personaColor, currentUserId = uiState.currentUserId, allUsers = uiState.allUsers,
+                            onClick = { onChatClick(chat) },
+                            onTogglePin = { onTogglePin(chat.id) },
+                            onToggleMute = { onToggleMute(chat.id) }
+                        )
+                    }
+                }
+
+                // Groups section
+                if (visibleGroupChats.isNotEmpty()) {
+                    item {
+                        Spacer(Modifier.height(8.dp))
                         Text(
                             "Groups",
                             style = MaterialTheme.typography.labelMedium,
@@ -603,13 +657,18 @@ fun GroupChatsDrawerContent(
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
-                    items(uiState.groupChats) { chat ->
-                        SocialGroupChatListItem(chat = chat, personaColor = personaColor, currentUserId = uiState.currentUserId, allUsers = uiState.allUsers, onClick = { onChatClick(chat) })
+                    items(visibleGroupChats) { chat ->
+                        SocialGroupChatListItem(
+                            chat = chat, personaColor = personaColor, currentUserId = uiState.currentUserId, allUsers = uiState.allUsers,
+                            onClick = { onChatClick(chat) },
+                            onTogglePin = { onTogglePin(chat.id) },
+                            onToggleMute = { onToggleMute(chat.id) }
+                        )
                     }
                 }
 
                 // Direct Messages section
-                if (uiState.directChats.isNotEmpty()) {
+                if (visibleDirectChats.isNotEmpty()) {
                     item {
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -620,8 +679,13 @@ fun GroupChatsDrawerContent(
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
-                    items(uiState.directChats, key = { it.id }) { chat ->
-                        SocialGroupChatListItem(chat = chat, personaColor = personaColor, currentUserId = uiState.currentUserId, allUsers = uiState.allUsers, onClick = { onChatClick(chat) })
+                    items(visibleDirectChats, key = { it.id }) { chat ->
+                        SocialGroupChatListItem(
+                            chat = chat, personaColor = personaColor, currentUserId = uiState.currentUserId, allUsers = uiState.allUsers,
+                            onClick = { onChatClick(chat) },
+                            onTogglePin = { onTogglePin(chat.id) },
+                            onToggleMute = { onToggleMute(chat.id) }
+                        )
                     }
                 }
 

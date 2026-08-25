@@ -184,7 +184,7 @@ describe('ChatGateway', () => {
     it('persists the message and broadcasts it to the chat room', async () => {
       const client = makeSocket();
       client.data.userId = USER_ID;
-      const savedMessage = { id: 'm1', chatId: CHAT_ID, senderId: USER_ID, text: 'hi', sentAt: 'now' };
+      const savedMessage = { id: 'm1', chatId: CHAT_ID, senderId: USER_ID, text: 'hi', createdAt: 'now' };
       mockChatService.postMessage.mockResolvedValue(savedMessage);
       const emit = jest.fn();
       gateway.server = { to: jest.fn().mockReturnValue({ emit }) } as never;

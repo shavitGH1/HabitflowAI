@@ -18,7 +18,8 @@ sealed class SocialChatSocketEvent {
         val messageId: String,
         val text: String,
         val senderId: String,
-        val imageUrl: String?
+        val imageUrl: String?,
+        val createdAt: String?
     ) : SocialChatSocketEvent()
 
     data class TypingChanged(val chatId: String, val userId: String, val isTyping: Boolean) : SocialChatSocketEvent()
@@ -74,7 +75,8 @@ class SocialChatSocketService @Inject constructor(
                             messageId = data.optString("id"),
                             text = data.optString("text"),
                             senderId = data.optString("senderId"),
-                            imageUrl = resolveImageUrl(data.optString("imageUrl"))
+                            imageUrl = resolveImageUrl(data.optString("imageUrl")),
+                            createdAt = data.optString("createdAt").takeIf { it.isNotBlank() }
                         )
                     )
                 }
@@ -176,8 +178,10 @@ class SocialChatSocketService @Inject constructor(
         socket?.emit("leaveChat", JSONObject().put("chatId", chatId))
     }
 
-    fun sendMessage(chatId: String, text: String) {
-        socket?.emit("sendMessage", JSONObject().put("chatId", chatId).put("text", text))
+    fun sendMessage(chatId: String, text: String, imageUrl: String? = null) {
+        val payload = JSONObject().put("chatId", chatId).put("text", text)
+        if (imageUrl != null) payload.put("imageUrl", imageUrl)
+        socket?.emit("sendMessage", payload)
     }
 
     fun setTyping(chatId: String, isTyping: Boolean) {

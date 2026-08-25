@@ -171,6 +171,12 @@ interface HabitFlowApi {
     @POST("api/v1/chats/{chatId}/read")
     suspend fun markAsRead(@Path("chatId") chatId: String): Response<Unit>
 
+    @POST("api/v1/chats/{chatId}/pin")
+    suspend fun togglePin(@Path("chatId") chatId: String): com.habitflowai.data.model.ChatResponse
+
+    @POST("api/v1/chats/{chatId}/mute")
+    suspend fun toggleMute(@Path("chatId") chatId: String): com.habitflowai.data.model.ChatResponse
+
     @HTTP(method = "DELETE", path = "api/v1/chats/{chatId}/members", hasBody = true)
     suspend fun removeMembers(
         @Path("chatId") chatId: String,
@@ -219,6 +225,13 @@ interface HabitFlowApi {
         @Path("chatId") chatId: String,
         @Part image: MultipartBody.Part
     ): com.habitflowai.data.model.ChatResponse
+
+    @Multipart
+    @POST("api/v1/chats/{chatId}/messages/image")
+    suspend fun uploadMessageImage(
+        @Path("chatId") chatId: String,
+        @Part image: MultipartBody.Part
+    ): com.habitflowai.data.model.UploadChatImageResponse
 
     @POST("api/v1/users/{userId}/follow")
     suspend fun followUser(@Path("userId") userId: String): Response<Unit>

@@ -21,6 +21,9 @@ interface SocialRepository {
     suspend fun getGroupChats(): List<ChatResponse>
     suspend fun createGroup(name: String, participantIds: List<String> = emptyList(), isPublic: Boolean = false): ChatResponse
     suspend fun uploadGroupImage(chatId: String, imageUri: android.net.Uri): ChatResponse
+
+    /** Uploads an image to attach to a chat message. Returns the URL — send it via sendMessage. */
+    suspend fun uploadMessageImage(chatId: String, imageUri: android.net.Uri): String
     suspend fun joinGroup(chatId: String): Boolean
     suspend fun addMember(chatId: String, userId: String): Boolean
     suspend fun removeMember(chatId: String, userId: String): Boolean
@@ -28,6 +31,12 @@ interface SocialRepository {
     suspend fun getMessages(chatId: String): List<ChatMessage>
     suspend fun toggleMessageLike(chatId: String, messageId: String): ChatMessage?
     suspend fun markAsRead(chatId: String)
+
+    /** Toggles pinning [chatId] to the top of the caller's own chat list (max 3 pinned). Throws on failure (e.g. at the pin limit) so the caller can surface the real message. */
+    suspend fun togglePin(chatId: String): ChatResponse
+
+    /** Toggles muting notifications for [chatId], for the caller only. */
+    suspend fun toggleMute(chatId: String): ChatResponse
     suspend fun renameGroup(chatId: String, name: String): ChatResponse
     suspend fun updateGroupDescription(chatId: String, description: String): ChatResponse
     suspend fun updateGroupVisibility(chatId: String, isPublic: Boolean): ChatResponse
