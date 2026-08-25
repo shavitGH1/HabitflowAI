@@ -310,8 +310,7 @@ fun HomeScreen(
                         today = today,
                         selectedDate = selectedDate,
                         onDateSelected = { selectedDate = it },
-                        checkedCount = checklistState.values.count { it },
-                        totalCount = goalsForSelectedDate.size
+                        completionHistory = homeData.completionHistory ?: emptyList()
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -452,12 +451,12 @@ fun HistoryCalendarSection(
     today: LocalDate,
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
-    checkedCount: Int,
-    totalCount: Int
+    completionHistory: List<String>
 ) {
     val startOfWeek = today.with(DayOfWeek.MONDAY)
     val weekDates = (0..6).map { startOfWeek.plusDays(it.toLong()) }
     val dayFormatter = remember { DateTimeFormatter.ofPattern("EEE\nd") }
+    val historySet = remember(completionHistory) { completionHistory.toSet() }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -477,7 +476,8 @@ fun HistoryCalendarSection(
             items(weekDates) { date ->
                 val isToday = date == today
                 val isSelected = date == selectedDate
-                val isCompleted = isToday && (checkedCount >= totalCount && totalCount > 0)
+                val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                val isCompleted = historySet.contains(dateStr)
 
                 Card(
                     modifier = Modifier

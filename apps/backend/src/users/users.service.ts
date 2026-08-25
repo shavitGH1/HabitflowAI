@@ -35,10 +35,18 @@ export class UsersService {
     }
 
     const habits = await this.habitRepository.findByUserId(userId);
-    let consistencyScore = user.confidenceScore ?? 0.0;
+    let consistencyScore = 0.0;
+    let goalHabitHistory: string[] = [];
+
     if (habits.length > 0) {
       const totalScore = habits.reduce((acc, h) => acc + (h.consistencyScore || 0), 0);
       consistencyScore = totalScore / habits.length;
+
+      // Find the history of the primary goal habit for the home calendar
+      const goalHabit = habits.find((h) => h.title === user.goal);
+      if (goalHabit) {
+        goalHabitHistory = goalHabit.completionHistory;
+      }
     }
 
     return {
@@ -55,6 +63,7 @@ export class UsersService {
       tips: user.tips,
       failurePatterns: user.failurePatterns,
       confidenceScore: consistencyScore,
+      completionHistory: goalHabitHistory,
       nameChangedAt: user.nameChangedAt,
       authProvider: user.authProvider,
       success: true,

@@ -117,6 +117,7 @@ data class HomeResponse(
     @SerializedName("tips") val tips: List<String>? = null,
     @SerializedName("failurePatterns") val failurePatterns: List<String>? = null,
     @SerializedName("confidenceScore") val confidenceScore: Double? = null,
+    @SerializedName("completionHistory") val completionHistory: List<String>? = null,
     @SerializedName("driftDetected") val driftDetected: Boolean = false,
     @SerializedName("driftRationale") val driftRationale: String? = null,
     val firstName: String? = null,
