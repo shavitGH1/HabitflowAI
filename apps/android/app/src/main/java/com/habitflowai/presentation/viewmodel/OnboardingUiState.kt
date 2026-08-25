@@ -25,5 +25,13 @@ data class OnboardingUiState(
     // completion (handled by OnboardingRoute itself), while this one fires from
     // Login/RegisterCredentials for an existing account signing in via Google.
     val navigateToNameEntry: Boolean = false,
-    val googleLoginSuccess: Boolean = false
+    val googleLoginSuccess: Boolean = false,
+    // When the name was last changed — drives the 3-month edit-profile cooldown.
+    val nameChangedAt: String? = null,
+    // "local" or "google" — Google accounts have no password the user knows, so the
+    // password section of Edit Profile is hidden entirely for them.
+    val authProvider: String? = null,
+    // One-shot flag: set on a successful password change, consumed by the UI then cleared
+    // via onPasswordChangeHandled(), same pattern as navigateToHome/googleLoginSuccess.
+    val passwordChangeSuccess: Boolean = false
 )

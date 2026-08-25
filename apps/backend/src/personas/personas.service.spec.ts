@@ -50,6 +50,7 @@ const makeUser = (overrides: Partial<UserData> = {}): UserData => ({
   firstName: 'Test',
   lastName: 'User',
   password: 'hashed',
+  authProvider: 'local',
   goal: 'Stay consistent',
   personaType: 'Achiever',
   motivationalMessage: 'Keep going',

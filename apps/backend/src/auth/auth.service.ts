@@ -43,6 +43,7 @@ export class AuthService {
       firstName: firstName ?? '',
       lastName: lastName ?? '',
       hashedPassword,
+      authProvider: 'local',
       goal,
       openAnswers,
       fcmToken,
@@ -82,6 +83,7 @@ export class AuthService {
       firstName: payload.firstName,
       lastName: payload.lastName,
       hashedPassword,
+      authProvider: 'google',
       goal,
       openAnswers,
       fcmToken,
@@ -107,11 +109,12 @@ export class AuthService {
     firstName: string;
     lastName: string;
     hashedPassword: string;
+    authProvider: 'local' | 'google';
     goal: string;
     openAnswers: string[];
     fcmToken?: string;
   }): Promise<UserData> {
-    const { email, firstName, lastName, hashedPassword, goal, openAnswers, fcmToken } = input;
+    const { email, firstName, lastName, hashedPassword, authProvider, goal, openAnswers, fcmToken } = input;
 
     const classification = await this.ai.classifyPersonaWeighted({ goal, openAnswers });
     if (!classification.isValid) {
@@ -127,6 +130,7 @@ export class AuthService {
       firstName,
       lastName,
       password: hashedPassword,
+      authProvider,
       goal,
       personaType,
       motivationalMessage: portfolio.summary,

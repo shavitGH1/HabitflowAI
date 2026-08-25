@@ -17,7 +17,9 @@ export interface UserData {
   firstName: string;
   lastName: string;
   profilePicture?: string;
+  nameChangedAt?: string;
   password: string;
+  authProvider: 'local' | 'google';
   goal: string;
   personaType: string;
   motivationalMessage: string;
@@ -121,6 +123,24 @@ export class UserRepository {
     return doc ? this.toUserData(doc) : null;
   }
 
+  async updateName(userId: string, firstName: string, lastName: string): Promise<UserData | null> {
+    const doc = await this.userModel.findByIdAndUpdate(
+      userId,
+      { firstName, lastName, nameChangedAt: new Date() },
+      { new: true },
+    );
+    return doc ? this.toUserData(doc) : null;
+  }
+
+  async updatePassword(userId: string, hashedPassword: string): Promise<UserData | null> {
+    const doc = await this.userModel.findByIdAndUpdate(
+      userId,
+      { password: hashedPassword },
+      { new: true },
+    );
+    return doc ? this.toUserData(doc) : null;
+  }
+
   async updateUserPersona(
     userId: string,
     updates: Partial<Pick<UserData, 'goal' | 'personaType' | 'motivationalMessage' | 'coreGoals' | 'dailyVariations' | 'tasksLastGeneratedDate' | 'personaBreakdown' | 'weightedScores'>>,
@@ -159,7 +179,9 @@ export class UserRepository {
       firstName: doc.firstName,
       lastName: doc.lastName,
       profilePicture: doc.profilePicture,
+      nameChangedAt: doc.nameChangedAt?.toISOString(),
       password: doc.password,
+      authProvider: doc.authProvider ?? 'local',
       goal: doc.goal,
       personaType: doc.personaType,
       motivationalMessage: doc.motivationalMessage,

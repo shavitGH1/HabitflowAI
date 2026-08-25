@@ -19,6 +19,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateNameDto } from './dto/update-name.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 
@@ -56,6 +58,31 @@ export class UsersController {
     @Body() dto: UpdateProfileDto,
   ) {
     return this.usersService.updateProfilePicture(req.user.id, dto.profilePicture ?? '');
+  }
+
+  @Patch('me/name')
+  @ApiOperation({ summary: "Update the authenticated user's first/last name — limited to once every 3 months" })
+  @ApiResponse({ status: 200, description: '{ firstName, lastName, nameChangedAt, success }' })
+  @ApiResponse({ status: 400, description: 'Still within the 3-month cooldown since the last name change' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  updateName(
+    @Req() req: { user: { id: string } },
+    @Body() dto: UpdateNameDto,
+  ) {
+    return this.usersService.updateName(req.user.id, dto.firstName, dto.lastName);
+  }
+
+  @Patch('me/password')
+  @ApiOperation({ summary: "Change the authenticated user's password" })
+  @ApiResponse({ status: 200, description: '{ success }' })
+  @ApiResponse({ status: 401, description: 'Missing/invalid access token, or current password is incorrect' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  changePassword(
+    @Req() req: { user: { id: string } },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.usersService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
   }
 
   @Post('me/avatar')

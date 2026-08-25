@@ -49,8 +49,16 @@ export class User {
   @Prop()
   profilePicture?: string;
 
+  @Prop()
+  nameChangedAt?: Date;
+
   @Prop({ required: true })
   password: string;
+
+  // Google accounts get a random, never-shared password hash (see AuthService.registerViaGoogle) —
+  // this is how the app tells the two apart, e.g. to hide "change password" for Google accounts.
+  @Prop({ enum: ['local', 'google'], default: 'local' })
+  authProvider: 'local' | 'google';
 
   @Prop({ required: true })
   goal: string;

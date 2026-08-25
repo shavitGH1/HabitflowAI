@@ -1,8 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { AiService } from '../ai/ai.service';
 import { IStorageAdapter, STORAGE_ADAPTER } from '../storage/storage.adapter';
 import { UserRepository } from './user.repository';
+
+const NAME_CHANGE_COOLDOWN_MONTHS = 3;
 
 @Injectable()
 export class UsersService {
@@ -43,6 +46,8 @@ export class UsersService {
       tips: user.tips,
       failurePatterns: user.failurePatterns,
       confidenceScore: user.confidenceScore,
+      nameChangedAt: user.nameChangedAt,
+      authProvider: user.authProvider,
       success: true,
     };
   }
@@ -53,6 +58,44 @@ export class UsersService {
 
     const updated = await this.userRepository.updateProfilePicture(userId, profilePicture);
     return { profilePicture: updated?.profilePicture ?? profilePicture, success: true };
+  }
+
+  async updateName(userId: string, firstName: string, lastName: string) {
+    const user = await this.userRepository.findUserById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.nameChangedAt) {
+      const nextEligible = new Date(user.nameChangedAt);
+      nextEligible.setMonth(nextEligible.getMonth() + NAME_CHANGE_COOLDOWN_MONTHS);
+      if (nextEligible > new Date()) {
+        throw new BadRequestException(
+          `You can change your name again on ${nextEligible.toISOString().split('T')[0]}`,
+        );
+      }
+    }
+
+    const updated = await this.userRepository.updateName(userId, firstName, lastName);
+    return {
+      firstName: updated?.firstName ?? firstName,
+      lastName: updated?.lastName ?? lastName,
+      nameChangedAt: updated?.nameChangedAt,
+      success: true,
+    };
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.userRepository.findUserById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    if (user.authProvider === 'google') {
+      throw new BadRequestException("Google accounts don't have a password to change");
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) throw new UnauthorizedException('Current password is incorrect');
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.userRepository.updatePassword(userId, hashedPassword);
+    return { success: true };
   }
 
   async uploadAvatar(userId: string, file: Express.Multer.File) {

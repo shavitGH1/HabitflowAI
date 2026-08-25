@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import com.habitflowai.data.local.dao.UserDao
 import com.habitflowai.data.local.entity.UserEntity
+import com.habitflowai.data.model.ChangePasswordRequest
+import com.habitflowai.data.model.UpdateNameRequest
 import com.habitflowai.data.model.UpdateProfilePictureRequest
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.di.AuthManager
@@ -51,6 +53,15 @@ class UserRepositoryImpl @Inject constructor(
         }
         cacheProfilePicture(profilePicture)
         return profilePicture
+    }
+
+    override suspend fun updateName(firstName: String, lastName: String): String? {
+        val response = api.updateName(UpdateNameRequest(firstName, lastName))
+        return response.nameChangedAt
+    }
+
+    override suspend fun changePassword(currentPassword: String, newPassword: String) {
+        api.changePassword(ChangePasswordRequest(currentPassword, newPassword))
     }
 
     override suspend fun cacheProfile(
