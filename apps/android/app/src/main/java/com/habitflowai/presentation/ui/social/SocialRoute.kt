@@ -1758,20 +1758,89 @@ fun CreatePostBottomSheet(
     onDismiss: () -> Unit,
     onPostCreated: (String, String, Uri?) -> Unit
 ) {
-    var habitName by remember { mutableStateOf("") }
-    var completionNote by remember { mutableStateOf("") }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    val launcher = rememberLauncherForActivityResult(
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var habitName by rememberSaveable { mutableStateOf("") }
+    var completionNote by rememberSaveable { mutableStateOf("") }
+    var selectedImageUriStr by rememberSaveable { mutableStateOf("") }
+    val selectedImageUri: Uri? = selectedImageUriStr.takeIf { it.isNotEmpty() }?.toUri()
+    
+    var showPhotoDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingCameraUriStr by rememberSaveable { mutableStateOf("") }
+    val pendingCameraUri: Uri? = pendingCameraUriStr.takeIf { it.isNotEmpty() }?.toUri()
+
+    val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        selectedImageUri = uri
+        uri?.let { selectedImageUriStr = it.toString() }
+        showPhotoDialog = false
     }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && pendingCameraUriStr.isNotEmpty()) {
+            selectedImageUriStr = pendingCameraUriStr
+        }
+        showPhotoDialog = false
+    }
+
+    val cameraPermLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val uri = createImageFileUri(context)
+            pendingCameraUriStr = uri.toString()
+        }
+        showPhotoDialog = false
+    }
+
+    LaunchedEffect(pendingCameraUri) {
+        pendingCameraUri?.let { cameraLauncher.launch(it) }
+    }
+
     // Prevent Material3's ModalBottomSheet from auto-collapsing to Hidden when the
     // IME closes and its content remeasures (a known Compose bug) — the explicit
     // close button below remains the guaranteed way to dismiss.
     val sheetState = rememberModalBottomSheetState(
         confirmValueChange = { it != SheetValue.Hidden },
     )
+
+    if (showPhotoDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoDialog = false },
+            title = { Text("Add Photo", fontWeight = FontWeight.Bold) },
+            text = {
+                Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Surface(
+                        modifier = Modifier.weight(1f).height(100.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        onClick = { cameraPermLauncher.launch(android.Manifest.permission.CAMERA) }
+                    ) {
+                        Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                            Icon(Icons.Rounded.PhotoCamera, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                            Spacer(Modifier.height(8.dp))
+                            Text("Camera", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    Surface(
+                        modifier = Modifier.weight(1f).height(100.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        onClick = { galleryLauncher.launch("image/*") }
+                    ) {
+                        Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                            Icon(Icons.Rounded.PhotoLibrary, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                            Spacer(Modifier.height(8.dp))
+                            Text("Gallery", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showPhotoDialog = false }) { Text("Cancel") } }
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1842,20 +1911,26 @@ fun CreatePostBottomSheet(
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
+                    IconButton(
+                        onClick = { selectedImageUriStr = "" },
+                        modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    ) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Remove image", tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
                 }
             }
 
             Button(
-                onClick = { launcher.launch("image/*") },
+                onClick = { showPhotoDialog = true },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             ) {
-                Icon(Icons.Rounded.PhotoLibrary, contentDescription = null)
+                Icon(if (selectedImageUri == null) Icons.Rounded.AddAPhoto else Icons.Rounded.PhotoCamera, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Attach Image")
+                Text(if (selectedImageUri == null) "Add Photo" else "Change Photo")
             }
 
             Button(
