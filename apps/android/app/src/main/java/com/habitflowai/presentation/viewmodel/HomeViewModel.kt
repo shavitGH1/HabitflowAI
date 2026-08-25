@@ -55,6 +55,7 @@ class HomeViewModel @Inject constructor(
                         )
                     }
                     locationRepository.captureAndSaveLocation(taskId)
+                    fetchHomeData() // Refresh to get updated consistency score and history
                     onResult(true)
                 } else {
                     onResult(false)

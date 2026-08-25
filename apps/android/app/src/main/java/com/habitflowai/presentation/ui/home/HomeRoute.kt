@@ -165,6 +165,8 @@ fun HomeScreen(
         else -> Color(0xFF81D4FA) to Color(0xFFCE93D8)
     }
 
+    val isViewingHistory = selectedDate != today
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -288,24 +290,6 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    GoalPlanSection(
-                        goals = goalsForSelectedDate,
-                        selectedDate = selectedDate,
-                        today = today,
-                        checkedGoals = checklistState,
-                        onGoalToggled = { taskId, isChecked ->
-                            if (isChecked) {
-                                val newState = checklistState.toMutableMap()
-                                newState[taskId] = true
-                                checklistState = newState
-                                onCompleteTask(taskId)
-                            }
-                        },
-                        personaType = actualPersonaType
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
                     HistoryCalendarSection(
                         today = today,
                         selectedDate = selectedDate,
@@ -313,7 +297,54 @@ fun HomeScreen(
                         completionHistory = homeData.completionHistory ?: emptyList()
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    if (!isViewingHistory) {
+                        GoalPlanSection(
+                            goals = goalsForSelectedDate,
+                            selectedDate = selectedDate,
+                            today = today,
+                            checkedGoals = checklistState,
+                            onGoalToggled = { taskId, isChecked ->
+                                if (isChecked) {
+                                    val newState = checklistState.toMutableMap()
+                                    newState[taskId] = true
+                                    checklistState = newState
+                                    onCompleteTask(taskId)
+                                }
+                            },
+                            personaType = actualPersonaType
+                        )
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.DateRange,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Historical task details are not available for this date.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Check the calendar checkmarks above to see if you reached your goal.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
 
                     ProgressPhaseSection(actualPersonaType, homeData?.confidenceScore ?: 0.0)
 
@@ -603,7 +634,7 @@ fun InteractiveGoalItem(
     onCheckedChange: (Boolean) -> Unit
 ) {
     val backgroundColor by animateColorAsState(
-        targetValue = if (isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        targetValue = if (isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
                       else MaterialTheme.colorScheme.surfaceVariant,
         label = "GoalBackgroundAnimation"
     )
@@ -634,7 +665,9 @@ fun InteractiveGoalItem(
                 colors = CheckboxDefaults.colors(
                     checkedColor = MaterialTheme.colorScheme.primary,
                     uncheckedColor = MaterialTheme.colorScheme.outline,
-                    checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                    checkmarkColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledCheckedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                    disabledUncheckedColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
                 )
             )
             Spacer(modifier = Modifier.width(12.dp))

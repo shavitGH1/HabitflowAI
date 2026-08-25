@@ -95,7 +95,7 @@ export class HabitRepository {
 
     doc.streak = calculateStreak(doc.completionHistory);
 
-    const createdAt = (doc as unknown as { createdAt: Date }).createdAt.toISOString().split('T')[0];
+    const createdAt = (doc as any).createdAt?.toISOString()?.split('T')[0] || today;
     doc.consistencyScore = calculateConsistencyScore(doc.completionHistory, createdAt, today);
 
     if (!doc.implementedAt && isImplemented(doc.consistencyScore, createdAt, today)) {
