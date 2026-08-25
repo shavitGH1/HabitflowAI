@@ -38,8 +38,7 @@ fun HabitDetailRoute(
     habitId: String,
     viewModel: HabitsViewModel,
     personaType: String,
-    onBack: () -> Unit,
-    onComplete: (Boolean) -> Unit = { isPublic -> viewModel.completeHabit(habitId, isPublic) }
+    onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val habit = uiState.habits.find { it.id == habitId }
@@ -53,8 +52,14 @@ fun HabitDetailRoute(
         habit = habit,
         stats = stats,
         personaType = personaType,
+        isLoading = uiState.isLoading,
+        errorMessage = uiState.errorMessage,
         onBack = onBack,
-        onComplete = onComplete
+        onComplete = { isPublic ->
+            viewModel.completeHabit(habitId, isPublic) { success ->
+                if (success) onBack()
+            }
+        }
     )
 }
 
@@ -64,12 +69,22 @@ fun HabitDetailContent(
     habit: HabitEntity?,
     stats: Map<String, Any>?,
     personaType: String,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
     onBack: () -> Unit,
     onComplete: (Boolean) -> Unit = {}
 ) {
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Habit Details") },
@@ -192,9 +207,18 @@ fun HabitDetailContent(
                                     .fillMaxWidth()
                                     .height(52.dp),
                                 shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = details.endColor)
+                                colors = ButtonDefaults.buttonColors(containerColor = details.endColor),
+                                enabled = !isLoading
                             ) {
-                                Text("Mark Complete", fontWeight = FontWeight.Bold)
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text("Mark Complete", fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }

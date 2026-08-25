@@ -30,6 +30,9 @@ interface HabitDao {
     @Query("SELECT * FROM habits WHERE id = :habitId")
     suspend fun getHabitById(habitId: String): HabitEntity?
 
+    @Query("SELECT * FROM habits WHERE serverId = :serverId")
+    suspend fun getHabitByServerId(serverId: String): HabitEntity?
+
     @Query("SELECT * FROM habits WHERE syncStatus != :status")
     suspend fun getUnsyncedHabits(status: SyncStatus = SyncStatus.SYNCED): List<HabitEntity>
 

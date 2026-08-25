@@ -39,6 +39,7 @@ import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.HabitsUiState
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun HabitsRoute(
@@ -54,7 +55,8 @@ fun HabitsRoute(
         onHabitClick = onHabitClick,
         onAddHabit = viewModel::addHabit,
         onDeleteHabit = viewModel::deleteHabit,
-        onToggleChat = onToggleChat
+        onToggleChat = onToggleChat,
+        onClearCongratulation = viewModel::clearCongratulation
     )
 }
 
@@ -65,11 +67,24 @@ fun HabitsContent(
     onHabitClick: (String) -> Unit,
     onAddHabit: (String, String, String) -> Unit,
     onDeleteHabit: (String) -> Unit,
-    onToggleChat: () -> Unit
+    onToggleChat: () -> Unit,
+    onClearCongratulation: () -> Unit = {}
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
     val isDark = isSystemInDarkTheme()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(uiState.congratulationMessage) {
+        uiState.congratulationMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            onClearCongratulation()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -87,6 +102,7 @@ fun HabitsContent(
             )
     ) {
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text("Habit Hub", fontWeight = FontWeight.Bold) },
@@ -157,9 +173,13 @@ fun HabitsContent(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = details.endColor)
                     }
-                } else if (uiState.habits.isEmpty()) {
+                } else if (uiState.habits.none { !it.completed }) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No habits yet. Tap + to start!", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            text = if (uiState.habits.isEmpty()) "No habits yet. Tap + to start!" else "All habits completed for today! 🎉",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 } else {
                     LazyColumn(
@@ -168,7 +188,7 @@ fun HabitsContent(
                         contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp)
                     ) {
                         items(
-                            items = uiState.habits,
+                            items = uiState.habits.filter { !it.completed },
                             key = { habit: HabitEntity -> habit.id }
                         ) { habit: HabitEntity ->
                             HabitItem(
@@ -361,7 +381,7 @@ fun HabitCreateBottomSheet(
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var frequency by remember { mutableStateOf("DAILY") }
+    var frequency by remember { mutableStateOf("daily") }
     // Prevent Material3's ModalBottomSheet from auto-collapsing to Hidden when the
     // IME closes and its content remeasures (a known Compose bug) — an explicit
     // close button below remains the guaranteed way to dismiss.

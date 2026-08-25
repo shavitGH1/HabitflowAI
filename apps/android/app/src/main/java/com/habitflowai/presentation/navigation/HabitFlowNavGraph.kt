@@ -248,10 +248,7 @@ fun HabitFlowNavGraph(
                         habitId = habitId,
                         viewModel = habitsViewModel,
                         personaType = uiState.personaResult?.personaType ?: "Regulator",
-                        onBack = { navController.popBackStack() },
-                        onComplete = { isPublic ->
-                            habitsViewModel.completeHabit(habitId, isPublic)
-                        }
+                        onBack = { navController.popBackStack() }
                     )
                 }
                 composable(
