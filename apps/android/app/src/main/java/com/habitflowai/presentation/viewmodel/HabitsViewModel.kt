@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -45,9 +44,12 @@ class HabitsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             habitsRepository.getHabits(userId)
-                .map { entities -> HabitsUiState(habits = entities, isLoading = false) }
-                .catch { e -> emit(HabitsUiState(errorMessage = e.message, isLoading = false)) }
-                .collect { state -> _uiState.value = state }
+                .catch { e ->
+                    _uiState.value = _uiState.value.copy(errorMessage = e.message, isLoading = false)
+                }
+                .collect { entities ->
+                    _uiState.value = _uiState.value.copy(habits = entities, isLoading = false)
+                }
         }
     }
 
