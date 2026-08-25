@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import com.habitflowai.data.model.Post
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
@@ -51,23 +52,28 @@ fun SuccessJournalRoute(
     val personaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
 
     var selectedPostForComments by remember { mutableStateOf<Post?>(null) }
+    var selectedFilter by remember { mutableStateOf(JournalFilter.ALL) }
     
     // Combine personal posts and habit completions into a single "Journal" view
-    val journalItems = remember(uiState.posts, uiState.currentUserId, habitsState.habits) {
-        val posts = uiState.posts
-            .filter { it.authorId == uiState.currentUserId }
-            .map { JournalItem.SocialPost(it) }
+    val journalItems = remember(uiState.posts, uiState.currentUserId, habitsState.habits, selectedFilter) {
+        val posts = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.POSTS) {
+            uiState.posts
+                .filter { it.authorId == uiState.currentUserId }
+                .map { JournalItem.SocialPost(it) }
+        } else emptyList()
         
-        val completions = habitsState.habits.flatMap { habit ->
-            habit.completionHistory.map { date ->
-                JournalItem.HabitCompletion(
-                    habitId = habit.id,
-                    habitName = habit.title,
-                    date = date,
-                    description = habit.description
-                )
+        val completions = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.HABITS) {
+            habitsState.habits.flatMap { habit ->
+                habit.completionHistory.map { date ->
+                    JournalItem.HabitCompletion(
+                        habitId = habit.id,
+                        habitName = habit.title,
+                        date = date,
+                        description = habit.description
+                    )
+                }
             }
-        }
+        } else emptyList()
         
         (posts + completions).sortedByDescending { it.timestamp }
     }
@@ -84,54 +90,91 @@ fun SuccessJournalRoute(
             )
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            if (journalItems.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "No entries yet.",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Complete habits or share posts to fill your journal!",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            TabRow(
+                selectedTabIndex = selectedFilter.ordinal,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = personaDetails.endColor,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedFilter.ordinal]),
+                        color = personaDetails.endColor
                     )
                 }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(journalItems) { item ->
-                        when (item) {
-                            is JournalItem.SocialPost -> {
-                                PostCard(
-                                    post = item.post,
-                                    personaColor = personaDetails.endColor,
-                                    onLikeClick = { viewModel.toggleLike(item.post.id) },
-                                    onUserClick = { onUserClick(item.post.authorId) },
-                                    onClick = {
-                                        selectedPostForComments = item.post
-                                        viewModel.loadComments(item.post.id)
-                                    }
-                                )
-                            }
-                            is JournalItem.HabitCompletion -> {
-                                HabitCompletionCard(
-                                    completion = item,
-                                    personaColor = personaDetails.endColor
-                                )
+            ) {
+                JournalFilter.entries.forEach { filter ->
+                    Tab(
+                        selected = selectedFilter == filter,
+                        onClick = { selectedFilter = filter },
+                        text = {
+                            Text(
+                                text = when (filter) {
+                                    JournalFilter.ALL -> "All"
+                                    JournalFilter.HABITS -> "Habits"
+                                    JournalFilter.POSTS -> "Posts"
+                                },
+                                fontWeight = if (selectedFilter == filter) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
+
+            Box(modifier = Modifier.weight(1f)) {
+                if (journalItems.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "No entries yet.",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = when (selectedFilter) {
+                                JournalFilter.ALL -> "Complete habits or share posts to fill your journal!"
+                                JournalFilter.HABITS -> "No completed habits found."
+                                JournalFilter.POSTS -> "You haven't shared any posts yet."
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 32.dp)
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(journalItems) { item ->
+                            when (item) {
+                                is JournalItem.SocialPost -> {
+                                    PostCard(
+                                        post = item.post,
+                                        personaColor = personaDetails.endColor,
+                                        onLikeClick = { viewModel.toggleLike(item.post.id) },
+                                        onUserClick = { onUserClick(item.post.authorId) },
+                                        onClick = {
+                                            selectedPostForComments = item.post
+                                            viewModel.loadComments(item.post.id)
+                                        }
+                                    )
+                                }
+                                is JournalItem.HabitCompletion -> {
+                                    HabitCompletionCard(
+                                        completion = item,
+                                        personaColor = personaDetails.endColor
+                                    )
+                                }
                             }
                         }
                     }
@@ -153,6 +196,10 @@ fun SuccessJournalRoute(
             )
         }
     }
+}
+
+enum class JournalFilter {
+    ALL, HABITS, POSTS
 }
 
 sealed class JournalItem {

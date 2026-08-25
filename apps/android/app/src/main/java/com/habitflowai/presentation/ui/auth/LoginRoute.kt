@@ -133,18 +133,25 @@ fun LoginContent(
         if (uiState.isLoading) {
             CircularProgressIndicator()
         } else {
+            val isButtonEnabled = uiState.email.contains("@") && uiState.password.length >= 6
             val gradient = Brush.linearGradient(
-                colors = listOf(Color(0xFF64B5F6), Color(0xFF1E88E5))
+                colors = if (isButtonEnabled) {
+                    listOf(Color(0xFF64B5F6), Color(0xFF1E88E5))
+                } else {
+                    listOf(Color(0xFFBDBDBD), Color(0xFF9E9E9E))
+                }
             )
             
             Button(
                 onClick = onLoginClick,
+                enabled = isButtonEnabled,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
                     .background(gradient, shape = RoundedCornerShape(16.dp)),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent
+                    containerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent
                 ),
                 contentPadding = PaddingValues()
             ) {
