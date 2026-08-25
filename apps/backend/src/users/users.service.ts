@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { AiService } from '../ai/ai.service';
 import { IStorageAdapter, STORAGE_ADAPTER } from '../storage/storage.adapter';
+import { HabitRepository } from '../habits/habit.repository';
 import { UserRepository } from './user.repository';
 
 const NAME_CHANGE_COOLDOWN_MONTHS = 3;
@@ -11,6 +12,7 @@ const NAME_CHANGE_COOLDOWN_MONTHS = 3;
 export class UsersService {
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly habitRepository: HabitRepository,
     private readonly ai: AiService,
     @Inject(STORAGE_ADAPTER) private readonly storage: IStorageAdapter,
   ) {}
@@ -32,6 +34,13 @@ export class UsersService {
       user.dailyVariations = updated?.dailyVariations ?? updatedTasks;
     }
 
+    const habits = await this.habitRepository.findByUserId(userId);
+    let consistencyScore = user.confidenceScore ?? 0.0;
+    if (habits.length > 0) {
+      const totalScore = habits.reduce((acc, h) => acc + (h.consistencyScore || 0), 0);
+      consistencyScore = totalScore / habits.length;
+    }
+
     return {
       email: user.email,
       firstName: user.firstName,
@@ -45,7 +54,7 @@ export class UsersService {
       portfolioSummary: user.portfolioSummary,
       tips: user.tips,
       failurePatterns: user.failurePatterns,
-      confidenceScore: user.confidenceScore,
+      confidenceScore: consistencyScore,
       nameChangedAt: user.nameChangedAt,
       authProvider: user.authProvider,
       success: true,
