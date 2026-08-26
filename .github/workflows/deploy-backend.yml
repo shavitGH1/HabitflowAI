@@ -1,0 +1,78 @@
+name: Deploy Backend
+
+# Runs on a self-hosted runner installed directly on the target server
+# (cs115@ST26-115) — see .docs/set-server.md for the server itself, and
+# the CI/CD setup notes for how the runner and deploy key were installed.
+# A self-hosted runner makes an OUTBOUND connection to GitHub to pick up
+# jobs, so this works even though the server's SSH is VPN/campus-only —
+# no inbound port has to open for GitHub to reach it.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "apps/backend/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "mongo-init.js"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch: {} # manual "Run workflow" button, for redeploying without a new commit
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false # let an in-flight deploy finish rather than restarting the app mid-swap
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux]
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Pull latest master
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          cd ~/habitflow-backend
+          git fetch origin master
+          git reset --hard origin/master
+          # .env is gitignored (never tracked), so it's untouched by the reset above.
+
+      - name: Install dependencies
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          cd ~/habitflow-backend
+          pnpm install --frozen-lockfile
+
+      - name: Build backend
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          cd ~/habitflow-backend/apps/backend
+          # dist/ and tsconfig.tsbuildinfo are gitignored, so `git reset --hard` above
+          # never touches them — they'd otherwise persist across deploys and reproduce
+          # the exact stale-incremental-build bug documented in set-server.md step 5
+          # (tsc trusting a stale tsbuildinfo and silently skipping recompiling a file).
+          rm -rf dist tsconfig.tsbuildinfo
+          pnpm build
+
+      - name: Restart app
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          pm2 restart habitflow-backend --update-env
+
+      - name: Health check
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          for i in $(seq 1 10); do
+            sleep 2
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/v1)
+            if [ "$code" = "404" ]; then
+              echo "Backend responded (expected 404 JSON on /, all real routes live under /api/v1/...)"
+              exit 0
+            fi
+          done
+          echo "Backend did not come back up after restart — check: pm2 logs habitflow-backend"
+          exit 1

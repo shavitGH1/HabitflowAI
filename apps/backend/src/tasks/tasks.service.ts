@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserRepository } from '../users/user.repository';
 import { LeaderboardService } from '../leaderboard/leaderboard.service';
 import { HabitRepository } from '../habits/habit.repository';
+import { GoalRepository } from '../goals/goal.repository';
 
 @Injectable()
 export class TasksService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly habitRepository: HabitRepository,
+    private readonly goalRepository: GoalRepository,
     private readonly leaderboardService: LeaderboardService,
   ) {}
 
@@ -26,13 +28,14 @@ export class TasksService {
     if (!wasAlreadyCompleted) {
       await this.leaderboardService.recordCompletion(userId);
 
-      // If it's a goal-genre task, we also mark the primary goal habit as complete for today.
-      // This connects the Home dashboard actions to the actual consistency score logic.
       if (task.genre === 'goal') {
-        const habits = await this.habitRepository.findByUserId(userId);
-        const goalHabit = habits.find((h) => h.title === user.goal);
-        if (goalHabit) {
-          await this.habitRepository.completeHabit(goalHabit.id);
+        const activeGoal = await this.goalRepository.findActiveByUserId(userId);
+        if (activeGoal) {
+          const habits = await this.habitRepository.findByUserId(userId);
+          const goalHabit = habits.find((h) => h.goalId === activeGoal.id);
+          if (goalHabit) {
+            await this.habitRepository.completeHabit(goalHabit.id);
+          }
         }
       }
     }

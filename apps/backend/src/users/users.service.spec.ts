@@ -2,7 +2,11 @@ import { BadRequestException, NotFoundException, UnauthorizedException } from '@
 import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
 import { AiService } from '../ai/ai.service';
+import { HabitRepository } from '../habits/habit.repository';
+import { GoalRepository } from '../goals/goal.repository';
 import { STORAGE_ADAPTER } from '../storage/storage.adapter';
+import { HabitData } from '../habits/habit.repository';
+import { GoalData } from '../goals/goal.repository';
 import { UserData, UserRepository } from './user.repository';
 import { UsersService } from './users.service';
 
@@ -12,6 +16,14 @@ const mockUserRepository = {
   updateProfilePicture: jest.fn(),
   updateName: jest.fn(),
   updatePassword: jest.fn(),
+};
+
+const mockHabitRepository = {
+  findByUserId: jest.fn(),
+};
+
+const mockGoalRepository = {
+  findActiveByUserId: jest.fn(),
 };
 
 const mockAiService = {
@@ -24,6 +36,33 @@ const mockStorage = {
 };
 
 const USER_ID = 'user-123';
+
+const makeHabit = (overrides: Partial<HabitData> = {}): HabitData => ({
+  id: 'habit-1',
+  userId: USER_ID,
+  title: 'Morning Run',
+  description: '',
+  frequency: 'daily',
+  targetCount: 1,
+  streak: 0,
+  completionHistory: [],
+  persona: '',
+  isArchived: false,
+  consistencyScore: 0,
+  completionNotes: [],
+  createdAt: '2026-08-01T00:00:00.000Z',
+  ...overrides,
+});
+
+const makeGoal = (overrides: Partial<GoalData> = {}): GoalData => ({
+  id: 'goal-1',
+  userId: USER_ID,
+  title: 'Run a marathon',
+  targetDate: '2026-12-01T00:00:00.000Z',
+  status: 'active',
+  createdAt: '2026-08-01T00:00:00.000Z',
+  ...overrides,
+});
 
 const makeUser = (overrides: Partial<UserData> = {}): UserData => ({
   id: USER_ID,
@@ -49,6 +88,8 @@ describe('UsersService', () => {
       providers: [
         UsersService,
         { provide: UserRepository, useValue: mockUserRepository },
+        { provide: HabitRepository, useValue: mockHabitRepository },
+        { provide: GoalRepository, useValue: mockGoalRepository },
         { provide: AiService, useValue: mockAiService },
         { provide: STORAGE_ADAPTER, useValue: mockStorage },
       ],
@@ -71,6 +112,71 @@ describe('UsersService', () => {
         { id: USER_ID, email: 'user@example.com', firstName: 'Test', lastName: 'User', profilePicture: 'preset:3' },
         { id: 'user-456', email: 'other@example.com', firstName: 'Test', lastName: 'User', profilePicture: undefined },
       ]);
+    });
+  });
+
+  describe('getHomePageData()', () => {
+    const today = new Date().toISOString().split('T')[0];
+
+    it('averages consistencyScore only across habits that have been completed at least once', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: today }));
+      mockHabitRepository.findByUserId.mockResolvedValue([
+        makeHabit({ id: 'h1', consistencyScore: 0.96, completionHistory: ['2026-08-25'] }),
+        makeHabit({ id: 'h2', consistencyScore: 0, completionHistory: [] }),
+      ]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+
+      const result = await service.getHomePageData(USER_ID);
+
+      expect(result.confidenceScore).toBeCloseTo(0.96, 5);
+    });
+
+    it('reports 0 consistency when no habit has ever been completed', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: today }));
+      mockHabitRepository.findByUserId.mockResolvedValue([
+        makeHabit({ id: 'h1', consistencyScore: 0, completionHistory: [] }),
+      ]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+
+      const result = await service.getHomePageData(USER_ID);
+
+      expect(result.confidenceScore).toBe(0);
+    });
+
+    it('reports 0 consistency and empty history for a user with no habits at all', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: today }));
+      mockHabitRepository.findByUserId.mockResolvedValue([]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+
+      const result = await service.getHomePageData(USER_ID);
+
+      expect(result.confidenceScore).toBe(0);
+      expect(result.completionHistory).toEqual([]);
+    });
+
+    it('finds the goal calendar history via the real goalId link, not the habit title', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: today, goal: 'Run a marathon' }));
+      mockHabitRepository.findByUserId.mockResolvedValue([
+        makeHabit({ id: 'h1', title: 'Evening Jog', goalId: 'goal-1', completionHistory: ['2026-08-20', '2026-08-21'] }),
+        makeHabit({ id: 'h2', title: 'Read 10 pages', completionHistory: ['2026-08-22'] }),
+      ]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(makeGoal({ id: 'goal-1' }));
+
+      const result = await service.getHomePageData(USER_ID);
+
+      expect(result.completionHistory).toEqual(['2026-08-20', '2026-08-21']);
+    });
+
+    it('leaves the goal calendar history empty when no habit is linked to the active goal', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: today }));
+      mockHabitRepository.findByUserId.mockResolvedValue([
+        makeHabit({ id: 'h1', title: 'Evening Jog', completionHistory: ['2026-08-20'] }),
+      ]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(makeGoal({ id: 'goal-1' }));
+
+      const result = await service.getHomePageData(USER_ID);
+
+      expect(result.completionHistory).toEqual([]);
     });
   });
 

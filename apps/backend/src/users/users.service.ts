@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { AiService } from '../ai/ai.service';
 import { IStorageAdapter, STORAGE_ADAPTER } from '../storage/storage.adapter';
 import { HabitRepository } from '../habits/habit.repository';
+import { GoalRepository } from '../goals/goal.repository';
 import { UserRepository } from './user.repository';
 
 const NAME_CHANGE_COOLDOWN_MONTHS = 3;
@@ -13,6 +14,7 @@ export class UsersService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly habitRepository: HabitRepository,
+    private readonly goalRepository: GoalRepository,
     private readonly ai: AiService,
     @Inject(STORAGE_ADAPTER) private readonly storage: IStorageAdapter,
   ) {}
@@ -38,12 +40,15 @@ export class UsersService {
     let consistencyScore = 0.0;
     let goalHabitHistory: string[] = [];
 
-    if (habits.length > 0) {
-      const totalScore = habits.reduce((acc, h) => acc + (h.consistencyScore || 0), 0);
-      consistencyScore = totalScore / habits.length;
+    const engagedHabits = habits.filter(h => h.completionHistory.length > 0);
+    if (engagedHabits.length > 0) {
+      const totalScore = engagedHabits.reduce((acc, h) => acc + (h.consistencyScore || 0), 0);
+      consistencyScore = totalScore / engagedHabits.length;
+    }
 
-      // Find the history of the primary goal habit for the home calendar
-      const goalHabit = habits.find((h) => h.title === user.goal);
+    const activeGoal = await this.goalRepository.findActiveByUserId(userId);
+    if (activeGoal) {
+      const goalHabit = habits.find((h) => h.goalId === activeGoal.id);
       if (goalHabit) {
         goalHabitHistory = goalHabit.completionHistory;
       }

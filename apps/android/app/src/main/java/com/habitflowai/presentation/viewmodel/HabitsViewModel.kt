@@ -64,6 +64,7 @@ class HabitsViewModel @Inject constructor(
 
     fun addHabit(title: String, description: String, frequency: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(errorMessage = null) }
             val habit = HabitEntity(
                 id = UUID.randomUUID().toString(),
                 title = title,
@@ -73,7 +74,14 @@ class HabitsViewModel @Inject constructor(
                 completed = false,
                 syncStatus = SyncStatus.PENDING_CREATE
             )
-            habitsRepository.createHabit(habit)
+            habitsRepository.createHabit(habit).onFailure { e ->
+                val message = if (e is retrofit2.HttpException) {
+                    com.habitflowai.util.extractErrorMessage(e)
+                } else {
+                    "Couldn't reach the server — your habit will be added once you're back online."
+                }
+                _uiState.update { it.copy(errorMessage = message) }
+            }
         }
     }
 
@@ -126,6 +134,10 @@ class HabitsViewModel @Inject constructor(
 
     fun clearCongratulation() {
         _uiState.update { it.copy(congratulationMessage = null) }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     fun fetchHabitStats(habitId: String) {

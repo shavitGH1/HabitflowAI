@@ -52,16 +52,24 @@ class HabitsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createHabit(habit: HabitEntity) {
-        try {
+    override suspend fun createHabit(habit: HabitEntity): Result<Unit> {
+        return try {
             val request = HabitRequest(habit.title, habit.description, habit.frequency)
             val response = api.createHabit(request)
-            // Update local habit with serverId and mark as synced
-            habitDao.update(habit.copy(serverId = response.id, syncStatus = SyncStatus.SYNCED))
-            refreshHabits()
+            habitDao.insert(
+                habit.copy(
+                    serverId = response.id,
+                    completed = response.completed,
+                    completionHistory = response.completionHistory ?: emptyList(),
+                    syncStatus = SyncStatus.SYNCED
+                )
+            )
+            try { refreshHabits() } catch (_: Exception) {}
+            Result.success(Unit)
         } catch (e: Exception) {
             habitDao.insert(habit.copy(syncStatus = SyncStatus.PENDING_CREATE))
             enqueueSync()
+            Result.failure(e)
         }
     }
 

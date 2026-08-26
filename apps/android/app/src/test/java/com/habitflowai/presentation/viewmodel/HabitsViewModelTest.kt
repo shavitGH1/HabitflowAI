@@ -2,6 +2,7 @@ package com.habitflowai.presentation.viewmodel
 
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
+import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.GoalsRepository
 import com.habitflowai.domain.repository.HabitsRepository
 import com.habitflowai.domain.repository.LocationRepository
@@ -32,6 +33,7 @@ class HabitsViewModelTest {
     private val habitsRepository: HabitsRepository = mockk()
     private val goalsRepository: GoalsRepository = mockk()
     private val locationRepository: LocationRepository = mockk()
+    private val authManager: AuthManager = mockk()
     private lateinit var viewModel: HabitsViewModel
 
     private val testHabits = listOf(
@@ -60,13 +62,14 @@ class HabitsViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
+        every { authManager.currentUserId } returns MutableStateFlow("local_user")
         every { habitsRepository.getHabits(any()) } returns flowOf(testHabits)
-        coEvery { habitsRepository.createHabit(any()) } just runs
+        coEvery { habitsRepository.createHabit(any()) } returns Result.success(Unit)
         coEvery { habitsRepository.deleteHabit(any()) } just runs
         coEvery { habitsRepository.completeHabit(any()) } returns true
         coEvery { locationRepository.captureAndSaveLocation(any(), any(), any()) } just runs
 
-        viewModel = HabitsViewModel(habitsRepository, goalsRepository, locationRepository)
+        viewModel = HabitsViewModel(habitsRepository, goalsRepository, locationRepository, authManager)
     }
 
     @After
@@ -91,7 +94,7 @@ class HabitsViewModelTest {
             habitsRepository.createHabit(match { entity ->
                 entity.title == "New Habit" &&
                 entity.description == "Description" &&
-                entity.frequency == "WEEKLY" &&
+                entity.frequency == "weekly" &&
                 entity.userId == "local_user" &&
                 !entity.completed &&
                 entity.syncStatus == SyncStatus.PENDING_CREATE &&
@@ -111,6 +114,7 @@ class HabitsViewModelTest {
         val habitSlot = mutableListOf<HabitEntity>()
         coEvery { habitsRepository.createHabit(any()) } answers {
             habitSlot.add(firstArg())
+            Result.success(Unit)
         }
 
         viewModel.addHabit("Habit C", "Desc", "MONTHLY")
@@ -139,7 +143,7 @@ class HabitsViewModelTest {
         val errorRepo: HabitsRepository = mockk()
         every { errorRepo.getHabits(any()) } returns flowOf()
 
-        val errorViewModel = HabitsViewModel(errorRepo, goalsRepository, locationRepository)
+        val errorViewModel = HabitsViewModel(errorRepo, goalsRepository, locationRepository, authManager)
         assertEquals(0, errorViewModel.uiState.value.habits.size)
     }
 

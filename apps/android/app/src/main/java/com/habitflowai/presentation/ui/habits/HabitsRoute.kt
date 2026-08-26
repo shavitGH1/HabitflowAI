@@ -60,7 +60,8 @@ fun HabitsRoute(
         onAddHabit = viewModel::addHabit,
         onDeleteHabit = viewModel::deleteHabit,
         onToggleChat = onToggleChat,
-        onClearCongratulation = viewModel::clearCongratulation
+        onClearCongratulation = viewModel::clearCongratulation,
+        onClearError = viewModel::clearError
     )
 }
 
@@ -72,7 +73,8 @@ fun HabitsContent(
     onAddHabit: (String, String, String) -> Unit,
     onDeleteHabit: (String) -> Unit,
     onToggleChat: () -> Unit,
-    onClearCongratulation: () -> Unit = {}
+    onClearCongratulation: () -> Unit = {},
+    onClearError: () -> Unit = {}
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
@@ -86,6 +88,16 @@ fun HabitsContent(
                 duration = SnackbarDuration.Short
             )
             onClearCongratulation()
+        }
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long
+            )
+            onClearError()
         }
     }
 
