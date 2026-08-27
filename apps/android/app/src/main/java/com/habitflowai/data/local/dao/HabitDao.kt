@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Transaction
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +15,12 @@ import kotlinx.coroutines.flow.Flow
 interface HabitDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(habit: HabitEntity)
+
+    @Transaction
+    suspend fun replaceHabit(oldHabit: HabitEntity, newHabit: HabitEntity) {
+        delete(oldHabit)
+        insert(newHabit)
+    }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(habits: List<HabitEntity>)

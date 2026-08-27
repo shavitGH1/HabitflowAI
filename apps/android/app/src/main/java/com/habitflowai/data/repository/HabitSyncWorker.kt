@@ -105,7 +105,10 @@ class HabitSyncWorker @AssistedInject constructor(
                     completed = remote.completed,
                     syncStatus = SyncStatus.SYNCED,
                     serverId = remote.id,
-                    completionHistory = remote.completionHistory ?: emptyList()
+                    goalId = remote.goalId,
+                    completionHistory = remote.completionHistory ?: emptyList(),
+                    relevanceWarning = remote.relevanceWarning,
+                    verificationWarning = remote.verificationWarning
                 )
                 habitDao.insert(entity)
             }
@@ -120,6 +123,6 @@ class HabitSyncWorker @AssistedInject constructor(
         description = description,
         frequency = frequency,
         targetCount = 1,
-        goalId = null // Could be linked later if needed
+        goalId = goalId
     )
 }

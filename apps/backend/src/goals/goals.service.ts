@@ -26,7 +26,23 @@ export class GoalsService {
   }
 
   async getActiveGoal(userId: string): Promise<GoalData | null> {
-    return this.goalRepository.findActiveByUserId(userId);
+    const active = await this.goalRepository.findActiveByUserId(userId);
+    if (active) return active;
+
+    // Transition logic: if no formal Goal record exists but the user has a goal
+    // string in their profile (from onboarding or old version), create it now.
+    const user = await this.userRepository.findUserById(userId);
+    if (user?.goal) {
+      const targetDate = new Date();
+      targetDate.setMonth(targetDate.getMonth() + 3); // Default 3 month window
+      return this.goalRepository.createGoal({
+        userId,
+        title: user.goal,
+        targetDate,
+      });
+    }
+
+    return null;
   }
 
   async forfeitGoal(userId: string, id: string): Promise<GoalData> {

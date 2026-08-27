@@ -50,7 +50,7 @@ class GoalsRepositoryImpl @Inject constructor(
         return response.isSuccessful
     }
 
-    override suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse {
+    override suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse? {
         return api.getActiveGoal()
     }
 }

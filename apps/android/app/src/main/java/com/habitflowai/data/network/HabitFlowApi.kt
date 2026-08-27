@@ -82,7 +82,7 @@ interface HabitFlowApi {
     suspend fun changePassword(@Body request: com.habitflowai.data.model.ChangePasswordRequest): com.habitflowai.data.model.ChangePasswordResponse
 
     @GET("api/v1/goals/active")
-    suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse
+    suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse?
 
     @POST("api/v1/personas/classify")
     suspend fun classifyPersona(@Body request: ClassifyPersonaRequest): ClassifyPersonaResponse

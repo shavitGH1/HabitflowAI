@@ -33,10 +33,26 @@ export class HabitsService {
 
   async createHabit(userId: string, dto: CreateHabitDto): Promise<HabitWithWarning> {
     let relevanceWarning: string | undefined;
+    let finalGoalId = dto.goalId;
 
     if (dto.goalId) {
       const goal = await this.assertCanLinkToGoal(userId, dto.goalId);
-      relevanceWarning = await this.checkRelevance(goal, dto.title, dto.description);
+      const relevance = await this.ai.checkHabitGoalRelevance({
+        goalTitle: goal.title,
+        habitTitle: dto.title,
+        habitDescription: dto.description,
+      });
+
+      if (!relevance.isRelated) {
+        relevanceWarning = relevance.reason;
+        // If unrelated, try to demote to standalone if there's room
+        try {
+          await this.assertCanGoStandalone(userId);
+          finalGoalId = undefined;
+        } catch (e) {
+          // No room in standalone? Keep it linked but with the warning
+        }
+      }
     } else {
       await this.assertCanGoStandalone(userId);
     }
@@ -47,7 +63,7 @@ export class HabitsService {
       description: dto.description,
       frequency: dto.frequency,
       targetCount: dto.targetCount,
-      goalId: dto.goalId,
+      goalId: finalGoalId,
     });
 
     return relevanceWarning ? { ...habit, relevanceWarning } : habit;

@@ -26,7 +26,9 @@ data class HabitsUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val habitStats: Map<String, Map<String, Any>> = emptyMap(),
-    val congratulationMessage: String? = null
+    val congratulationMessage: String? = null,
+    val suggestions: List<com.habitflowai.data.model.HomeGoalTask> = emptyList(),
+    val relevanceWarning: String? = null
 )
 
 @HiltViewModel
@@ -56,6 +58,7 @@ class HabitsViewModel @Inject constructor(
                         }
                         .collect { entities ->
                             _uiState.update { it.copy(habits = entities, isLoading = false) }
+                            fetchSuggestions() // Refresh suggestions when habits change
                         }
                 }
             }
@@ -69,25 +72,60 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
-    fun addHabit(title: String, description: String, frequency: String) {
+    fun addHabit(title: String, description: String, frequency: String, linkToGoal: Boolean = true) {
         viewModelScope.launch {
-            _uiState.update { it.copy(errorMessage = null) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            
+            var finalGoalId: String? = null
+            if (linkToGoal) {
+                // 1. Try memory
+                finalGoalId = _uiState.value.activeGoal?.id
+                
+                // 2. Try priority fetch if missing
+                if (finalGoalId == null) {
+                    try {
+                        val freshGoal = goalsRepository.getActiveGoal()
+                        finalGoalId = freshGoal?.id
+                        if (freshGoal != null) {
+                            _uiState.update { it.copy(activeGoal = freshGoal) }
+                        }
+                    } catch (_: Exception) {}
+                }
+                
+                // 3. Final safety check: if we STILL have no ID but user requested linking,
+                // we MUST NOT proceed with goalId=null as it will land in Standalone.
+                if (finalGoalId == null) {
+                    _uiState.update { it.copy(
+                        isLoading = false, 
+                        errorMessage = "Still syncronizing your goal details. Please try again in a moment."
+                    ) }
+                    return@launch
+                }
+            }
+
             val habit = HabitEntity(
                 id = UUID.randomUUID().toString(),
                 title = title,
                 description = description,
                 frequency = frequency.lowercase(),
                 userId = userId,
+                goalId = finalGoalId,
                 completed = false,
-                syncStatus = SyncStatus.PENDING_CREATE
+                syncStatus = SyncStatus.SYNCED
             )
-            habitsRepository.createHabit(habit).onFailure { e ->
+            
+            habitsRepository.createHabit(habit, finalGoalId).onSuccess { createdHabit ->
+                _uiState.update { it.copy(isLoading = false) }
+                if (!createdHabit.relevanceWarning.isNullOrEmpty()) {
+                    _uiState.update { it.copy(relevanceWarning = createdHabit.relevanceWarning) }
+                }
+            }.onFailure { e ->
                 val message = if (e is retrofit2.HttpException) {
                     com.habitflowai.util.extractErrorMessage(e)
                 } else {
                     "Couldn't reach the server — your habit will be added once you're back online."
                 }
-                _uiState.update { it.copy(errorMessage = message) }
+                _uiState.update { it.copy(errorMessage = message, isLoading = false) }
             }
         }
     }
@@ -99,7 +137,7 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
-    fun completeHabit(habitId: String, isPublic: Boolean = true, onResult: (Boolean) -> Unit = {}) {
+    fun completeHabit(habitId: String, note: String? = null, isPublic: Boolean = true, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val habit = _uiState.value.habits.find { it.id == habitId }
@@ -109,7 +147,7 @@ class HabitsViewModel @Inject constructor(
                 return@launch
             }
             
-            val success = habitsRepository.completeHabit(habit)
+            val success = habitsRepository.completeHabit(habit, note)
             if (success) {
                 val congrats = listOf(
                     "Amazing job! One step closer to your goals! 🚀",
@@ -144,7 +182,11 @@ class HabitsViewModel @Inject constructor(
     }
 
     fun clearError() {
-        _uiState.update { it.copy(errorMessage = null) }
+        _uiState.update { it.copy(errorMessage = null, relevanceWarning = null) }
+    }
+
+    fun clearRelevanceWarning() {
+        _uiState.update { it.copy(relevanceWarning = null) }
     }
 
     fun fetchHabitStats(habitId: String) {
@@ -160,16 +202,33 @@ class HabitsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val goal = goalsRepository.getActiveGoal()
-                _uiState.update { it.copy(activeGoal = goal) }
+                if (goal != null) {
+                    _uiState.update { it.copy(activeGoal = goal, onboardingGoal = null) }
+                } else {
+                    // Formal goal missing, fallback to profile goal title
+                    val homeData = goalsRepository.getHomeData()
+                    _uiState.update { it.copy(onboardingGoal = homeData.goal, activeGoal = null) }
+                }
             } catch (e: Exception) {
-                // If no actionable goal, try to get the onboarding goal from home data
+                // Best effort fallback
                 try {
                     val homeData = goalsRepository.getHomeData()
                     _uiState.update { it.copy(onboardingGoal = homeData.goal) }
-                } catch (e2: Exception) {
-                    // Ignore
-                }
+                } catch (_: Exception) {}
             }
+        }
+    }
+
+    fun fetchSuggestions() {
+        viewModelScope.launch {
+            try {
+                val homeData = goalsRepository.getHomeData()
+                val suggestions = homeData.coreGoals.filter { task ->
+                    // Only suggest if not already added as a habit
+                    _uiState.value.habits.none { it.title.contains(task.description, ignoreCase = true) }
+                }
+                _uiState.update { it.copy(suggestions = suggestions) }
+            } catch (_: Exception) {}
         }
     }
 }

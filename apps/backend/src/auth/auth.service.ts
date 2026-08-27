@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
 import { AiService } from '../ai/ai.service';
 import { HabitRepository } from '../habits/habit.repository';
+import { GoalRepository } from '../goals/goal.repository';
 import { UserData, UserRepository } from '../users/user.repository';
 import { GoogleRegisterDto } from './dto/google-register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -28,6 +29,7 @@ export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly habitRepository: HabitRepository,
+    private readonly goalRepository: GoalRepository,
     private readonly ai: AiService,
     private readonly config: ConfigService,
   ) {}
@@ -146,10 +148,13 @@ export class AuthService {
       fcmToken: fcmToken ?? undefined,
     });
 
-    await this.habitRepository.createHabit({
+    // Create an active goal record so it's actionable on the client
+    const targetDate = new Date();
+    targetDate.setMonth(targetDate.getMonth() + 3); // Default 3 month goal
+    await this.goalRepository.createGoal({
       userId: newUser.id,
       title: goal,
-      frequency: 'daily',
+      targetDate,
     });
 
     logger.info({ userId: newUser.id }, 'user registered');
