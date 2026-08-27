@@ -245,6 +245,7 @@ describe('ChatService', () => {
       expect(mockChatRepository.updateChat).toHaveBeenCalledWith(GROUP_CHAT_ID, {
         lastMessage: 'hi all',
         lastMessageAt: expect.any(Date),
+        lastMessageSenderId: USER_ID,
         unreadCount: { [OTHER_USER_ID]: 3, [THIRD_USER_ID]: 1 },
       });
     });
@@ -267,6 +268,7 @@ describe('ChatService', () => {
       expect(mockChatRepository.updateChat).toHaveBeenCalledWith(GROUP_CHAT_ID, {
         lastMessage: '📷 Photo',
         lastMessageAt: expect.any(Date),
+        lastMessageSenderId: USER_ID,
         unreadCount: { [OTHER_USER_ID]: 1, [THIRD_USER_ID]: 1 },
       });
     });

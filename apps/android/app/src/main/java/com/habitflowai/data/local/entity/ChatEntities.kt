@@ -14,7 +14,11 @@ data class ChatEntity(
     val admins: List<String>,
     val owner: String?,
     val description: String?,
-    val imageUrl: String?
+    val imageUrl: String?,
+    val pinnedBy: List<String> = emptyList(),
+    val mutedBy: List<String> = emptyList(),
+    val lastMessageAt: Long? = null,
+    val lastMessageSenderId: String? = null
 )
 
 @Entity(tableName = "messages")

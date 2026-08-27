@@ -2,7 +2,9 @@ package com.habitflowai.presentation.ui.social
 
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
+import androidx.compose.ui.text.style.TextOverflow
 import com.habitflowai.util.formatChatDateSeparator
+import com.habitflowai.util.formatChatListTime
 import com.habitflowai.util.formatMessageTime
 import com.habitflowai.util.isDifferentDay
 import com.habitflowai.util.parseLocationShareLink
@@ -85,6 +87,11 @@ fun resolveDisplayName(userId: String, allUsers: List<AppUser>): String {
     } else {
         user.email.substringBefore('@')
     }
+}
+
+fun resolveFirstName(userId: String, allUsers: List<AppUser>): String {
+    val user = allUsers.find { it.id == userId } ?: return userId
+    return user.firstName?.takeIf { it.isNotBlank() } ?: user.email.substringBefore('@')
 }
 
 @Composable
@@ -1338,30 +1345,46 @@ fun SocialGroupChatListItem(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = displayName, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = displayName,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
                     if (isPinned) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        Icon(Icons.Rounded.PushPin, contentDescription = "Pinned", tint = personaColor, modifier = Modifier.size(12.dp))
+                        Icon(Icons.Rounded.PushPin, contentDescription = "Pinned", tint = personaColor, modifier = Modifier.size(14.dp))
                     }
                     if (isMuted) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        Icon(Icons.Rounded.NotificationsOff, contentDescription = "Muted", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(12.dp))
+                        Icon(Icons.Rounded.NotificationsOff, contentDescription = "Muted", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                    }
+                    val timeLabel = formatChatListTime(chat.lastMessageAt)
+                    if (timeLabel.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = timeLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
                 }
-                val subtitle = chat.lastMessage?.takeIf { it.isNotBlank() } ?: chat.description
+                val lastMessage = chat.lastMessage?.takeIf { it.isNotBlank() }
+                val subtitle = if (lastMessage != null) {
+                    val senderPrefix = chat.lastMessageSenderId?.let { senderId ->
+                        if (senderId == currentUserId) "You" else resolveFirstName(senderId, allUsers)
+                    }
+                    if (senderPrefix != null) "$senderPrefix: $lastMessage" else lastMessage
+                } else chat.description
                 if (!subtitle.isNullOrBlank()) {
-                    Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            Spacer(modifier = Modifier.width(8.dp))
             if (unreadCount > 0) {
+                Spacer(modifier = Modifier.width(8.dp))
                 val badgeContentColor = if (personaColor.luminance() > 0.5f) Color.Black else Color.White
                 Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(personaColor), contentAlignment = Alignment.Center) {
                     Text(text = if (unreadCount > 99) "99+" else "$unreadCount", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = badgeContentColor)
                 }
-            } else {
-                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.size(18.dp))
             }
         }
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {

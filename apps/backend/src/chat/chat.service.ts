@@ -66,7 +66,12 @@ export class ChatService {
       unreadCount[participantId] = (unreadCount[participantId] ?? 0) + 1;
     }
     const lastMessage = text && text.length > 0 ? text : imageUrl ? '📷 Photo' : '';
-    await this.chatRepository.updateChat(chatId, { lastMessage, lastMessageAt: new Date(), unreadCount });
+    await this.chatRepository.updateChat(chatId, {
+      lastMessage,
+      lastMessageAt: new Date(),
+      lastMessageSenderId: userId,
+      unreadCount,
+    });
 
     return message;
   }

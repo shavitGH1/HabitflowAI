@@ -13,7 +13,7 @@ interface ChatDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChats(chats: List<ChatEntity>)
 
-    @Query("SELECT * FROM chats WHERE userId = :userId")
+    @Query("SELECT * FROM chats WHERE userId = :userId ORDER BY lastMessageAt DESC")
     suspend fun getChats(userId: String): List<ChatEntity>
 
     @Query("SELECT * FROM chats WHERE id = :chatId")

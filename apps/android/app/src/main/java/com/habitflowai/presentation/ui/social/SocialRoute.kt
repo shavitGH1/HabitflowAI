@@ -60,6 +60,8 @@ import com.habitflowai.presentation.viewmodel.SocialViewModel
 import com.habitflowai.presentation.viewmodel.SearchResult
 import com.habitflowai.presentation.viewmodel.FeedFilter
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
+import com.habitflowai.presentation.viewmodel.UnreadBadgeViewModel
+import com.habitflowai.util.formatChatListTime
 import com.habitflowai.util.formatCommentTime
 import com.habitflowai.util.formatPostTime
 import kotlinx.coroutines.launch
@@ -69,11 +71,13 @@ import kotlinx.coroutines.launch
 fun SocialRoute(
     viewModel: SocialViewModel = hiltViewModel(),
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
+    unreadBadgeViewModel: UnreadBadgeViewModel = hiltViewModel(),
     onUserClick: (String) -> Unit,
     onToggleChat: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val onboardingState by onboardingViewModel.uiState.collectAsState()
+    val unreadChatCount by unreadBadgeViewModel.unreadChatCount.collectAsState()
 
     LaunchedEffect(Unit) {
         if (onboardingState.personaResult == null && !onboardingState.isLoading) {
@@ -170,14 +174,20 @@ fun SocialRoute(
                                 tint = personaDetails.endColor
                             )
                         }
-                        IconButton(onClick = { 
+                        IconButton(onClick = {
                             scope.launch { drawerState.open() }
                         }) {
-                            Icon(
-                                Icons.Rounded.Forum, 
-                                contentDescription = "Community Chats", 
-                                tint = personaDetails.endColor
-                            )
+                            BadgedBox(badge = {
+                                if (unreadChatCount > 0) {
+                                    Badge { Text(if (unreadChatCount > 99) "99+" else "$unreadChatCount") }
+                                }
+                            }) {
+                                Icon(
+                                    Icons.Rounded.Forum,
+                                    contentDescription = "Community Chats",
+                                    tint = personaDetails.endColor
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(

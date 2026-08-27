@@ -53,7 +53,11 @@ private fun ChatResponse.toEntity(userId: String) = ChatEntity(
     admins = admins,
     owner = owner,
     description = description,
-    imageUrl = imageUrl
+    imageUrl = imageUrl,
+    pinnedBy = pinnedBy,
+    mutedBy = mutedBy,
+    lastMessageAt = lastMessageAt?.let { com.habitflowai.util.parseIsoToMillis(it) },
+    lastMessageSenderId = lastMessageSenderId
 )
 
 private fun ChatEntity.toResponse() = ChatResponse(
@@ -65,7 +69,11 @@ private fun ChatEntity.toResponse() = ChatResponse(
     admins = admins,
     owner = owner,
     description = description,
-    imageUrl = imageUrl
+    imageUrl = imageUrl,
+    pinnedBy = pinnedBy,
+    mutedBy = mutedBy,
+    lastMessageAt = lastMessageAt?.let { java.time.Instant.ofEpochMilli(it).toString() },
+    lastMessageSenderId = lastMessageSenderId
 )
 
 private fun ChatMessage.toEntity(chatId: String) = MessageEntity(
