@@ -55,9 +55,15 @@ fun HabitsRoute(
     viewModel: HabitsViewModel,
     personaType: String,
     onHabitClick: (String) -> Unit,
-    onToggleChat: () -> Unit
+    onToggleChat: () -> Unit,
+    onSetGoal: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+    }
+
     HabitsContent(
         uiState = uiState,
         personaType = personaType,
@@ -65,6 +71,7 @@ fun HabitsRoute(
         onAddHabit = viewModel::addHabit,
         onDeleteHabit = viewModel::deleteHabit,
         onToggleChat = onToggleChat,
+        onSetGoal = onSetGoal,
         onClearCongratulation = viewModel::clearCongratulation,
         onClearError = viewModel::clearError
     )
@@ -78,6 +85,7 @@ fun HabitsContent(
     onAddHabit: (String, String, String) -> Unit,
     onDeleteHabit: (String) -> Unit,
     onToggleChat: () -> Unit,
+    onSetGoal: () -> Unit,
     onClearCongratulation: () -> Unit = {},
     onClearError: () -> Unit = {}
 ) {
@@ -173,6 +181,12 @@ fun HabitsContent(
                         OnboardingGoalCard(
                             goalText = uiState.onboardingGoal,
                             personaColor = details.endColor
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    } else {
+                        EmptyGoalCard(
+                            personaColor = details.endColor,
+                            onSetGoal = onSetGoal
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                     }
@@ -515,6 +529,42 @@ fun OnboardingGoalCard(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold
             )
+        }
+    }
+}
+
+@Composable
+fun EmptyGoalCard(
+    personaColor: Color,
+    onSetGoal: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = personaColor.copy(alpha = 0.1f),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, personaColor.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Let's set a new goal and start a new journey!",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onSetGoal,
+                colors = ButtonDefaults.buttonColors(containerColor = personaColor),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Set My Goal", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

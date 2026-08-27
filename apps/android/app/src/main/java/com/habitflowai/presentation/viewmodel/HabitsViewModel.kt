@@ -62,6 +62,13 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
+    fun refresh() {
+        fetchActiveGoal()
+        viewModelScope.launch {
+            habitsRepository.refreshHabits()
+        }
+    }
+
     fun addHabit(title: String, description: String, frequency: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(errorMessage = null) }
@@ -153,12 +160,12 @@ class HabitsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val goal = goalsRepository.getActiveGoal()
-                _uiState.value = _uiState.value.copy(activeGoal = goal)
+                _uiState.update { it.copy(activeGoal = goal) }
             } catch (e: Exception) {
                 // If no actionable goal, try to get the onboarding goal from home data
                 try {
                     val homeData = goalsRepository.getHomeData()
-                    _uiState.value = _uiState.value.copy(onboardingGoal = homeData.goal)
+                    _uiState.update { it.copy(onboardingGoal = homeData.goal) }
                 } catch (e2: Exception) {
                     // Ignore
                 }
