@@ -354,7 +354,7 @@ describe('HabitsService', () => {
 
       const result = await service.completeHabit(USER_ID, HABIT_ID);
 
-      expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith(HABIT_ID, undefined);
+      expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith(HABIT_ID, undefined, undefined);
       expect(result.streak).toBe(2);
     });
 
@@ -391,7 +391,7 @@ describe('HabitsService', () => {
 
       await service.completeHabit(USER_ID, HABIT_ID, 'Ran 5km this morning');
 
-      expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith(HABIT_ID, 'Ran 5km this morning');
+      expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith(HABIT_ID, 'Ran 5km this morning', undefined);
       expect(mockAiService.checkTaskVerification).toHaveBeenCalledWith({
         habitTitle: 'Morning Run',
         note: 'Ran 5km this morning',
@@ -436,6 +436,26 @@ describe('HabitsService', () => {
       mockHabitRepository.completeHabit.mockResolvedValue(makeHabit({ completionHistory: [today] }));
 
       await service.completeHabit(USER_ID, HABIT_ID);
+
+      expect(mockLeaderboardService.recordCompletion).not.toHaveBeenCalled();
+    });
+
+    it('uses the client-supplied date instead of the server clock when provided', async () => {
+      const clientDate = '2026-08-27';
+      mockHabitRepository.findById.mockResolvedValue(makeHabit({ completionHistory: [] }));
+      mockHabitRepository.completeHabit.mockResolvedValue(makeHabit({ completionHistory: [clientDate] }));
+
+      await service.completeHabit(USER_ID, HABIT_ID, undefined, clientDate);
+
+      expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith(HABIT_ID, undefined, clientDate);
+    });
+
+    it('does not double-record leaderboard points for a repeat completion on the client-supplied date', async () => {
+      const clientDate = '2026-08-27';
+      mockHabitRepository.findById.mockResolvedValue(makeHabit({ completionHistory: [clientDate] }));
+      mockHabitRepository.completeHabit.mockResolvedValue(makeHabit({ completionHistory: [clientDate] }));
+
+      await service.completeHabit(USER_ID, HABIT_ID, undefined, clientDate);
 
       expect(mockLeaderboardService.recordCompletion).not.toHaveBeenCalled();
     });

@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
+import { GoalsModule } from '../goals/goals.module';
 import { LeaderboardModule } from '../leaderboard/leaderboard.module';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 
 @Module({
-  imports: [AuthModule, DatabaseModule, LeaderboardModule],
+  imports: [AuthModule, DatabaseModule, LeaderboardModule, GoalsModule],
   providers: [TasksService],
   controllers: [TasksController],
 })

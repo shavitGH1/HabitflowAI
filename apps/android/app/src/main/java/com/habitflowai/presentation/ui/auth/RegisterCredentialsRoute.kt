@@ -154,12 +154,14 @@ fun RegisterCredentialsContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        val isEnabled = uiState.email.contains("@") && uiState.password.length >= 6 && !uiState.isLoading
-        val gradient = if (isEnabled) {
-            Brush.linearGradient(colors = listOf(Color(0xFF64B5F6), Color(0xFF1E88E5)))
-        } else {
-            Brush.linearGradient(colors = listOf(Color.LightGray, Color.Gray))
-        }
+        val isEnabled = uiState.firstName.isNotBlank() && uiState.lastName.isNotBlank() && uiState.email.contains("@") && uiState.password.length >= 6 && !uiState.isLoading
+        val gradient = Brush.linearGradient(
+            colors = if (isEnabled) {
+                listOf(Color(0xFF64B5F6), Color(0xFF1E88E5))
+            } else {
+                listOf(Color(0xFFBDBDBD), Color(0xFF9E9E9E))
+            }
+        )
 
         if (!isEnabled && uiState.password.isNotEmpty() && uiState.password.length < 6) {
             Text(

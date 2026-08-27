@@ -94,7 +94,7 @@ interface HabitFlowApi {
     suspend fun generateGoals(@Body request: GenerateGoalsRequest): GenerateGoalsResponse
 
     @PATCH("api/v1/tasks/{taskId}/complete")
-    suspend fun completeTask(@Path("taskId") taskId: String): Response<Unit>
+    suspend fun completeTask(@Path("taskId") taskId: String, @Body body: Map<String, String?> = emptyMap()): Response<Unit>
 
     @POST("api/v1/habits")
     suspend fun createHabit(@Body habit: HabitRequest): HabitResponse
@@ -103,7 +103,7 @@ interface HabitFlowApi {
     suspend fun updateHabit(@Path("id") id: String, @Body habit: HabitRequest): HabitResponse
 
     @PATCH("api/v1/habits/{id}/complete")
-    suspend fun completeHabit(@Path("id") id: String): Response<HabitResponse>
+    suspend fun completeHabit(@Path("id") id: String, @Body body: Map<String, String?> = emptyMap()): Response<HabitResponse>
 
     @DELETE("api/v1/habits/{id}")
     suspend fun deleteHabit(@Path("id") id: String): Response<Unit>

@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,8 +26,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import java.time.LocalDate
 import java.time.ZonedDateTime
-import java.time.format.TextStyle
-import java.util.Locale
 import com.habitflowai.presentation.ui.persona.PersonaDetails
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
@@ -38,8 +37,7 @@ fun HabitDetailRoute(
     habitId: String,
     viewModel: HabitsViewModel,
     personaType: String,
-    onBack: () -> Unit,
-    onComplete: (Boolean) -> Unit = { isPublic -> viewModel.completeHabit(habitId, isPublic) }
+    onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val habit = uiState.habits.find { it.id == habitId }
@@ -53,8 +51,14 @@ fun HabitDetailRoute(
         habit = habit,
         stats = stats,
         personaType = personaType,
+        isLoading = uiState.isLoading,
+        errorMessage = uiState.errorMessage,
         onBack = onBack,
-        onComplete = onComplete
+        onComplete = { isPublic ->
+            viewModel.completeHabit(habitId, isPublic) { success ->
+                if (success) onBack()
+            }
+        }
     )
 }
 
@@ -64,12 +68,22 @@ fun HabitDetailContent(
     habit: HabitEntity?,
     stats: Map<String, Any>?,
     personaType: String,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
     onBack: () -> Unit,
     onComplete: (Boolean) -> Unit = {}
 ) {
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Habit Details") },
@@ -192,9 +206,18 @@ fun HabitDetailContent(
                                     .fillMaxWidth()
                                     .height(52.dp),
                                 shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = details.endColor)
+                                colors = ButtonDefaults.buttonColors(containerColor = details.endColor),
+                                enabled = !isLoading
                             ) {
-                                Text("Mark Complete", fontWeight = FontWeight.Bold)
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text("Mark Complete", fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
@@ -234,14 +257,14 @@ fun HabitDetailContent(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Completion History",
+                            text = "Frequency",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        CompletionCalendar(
-                            personaColor = details.endColor,
-                            completionHistory = habit.completionHistory
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = habit.frequency.lowercase().replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
@@ -253,14 +276,14 @@ fun HabitDetailContent(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Frequency",
+                            text = "Completion History",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = habit.frequency.lowercase().replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.bodyLarge
+                        Spacer(modifier = Modifier.height(16.dp))
+                        CompletionCalendar(
+                            personaColor = details.endColor,
+                            completionHistory = habit.completionHistory
                         )
                     }
                 }
@@ -278,19 +301,25 @@ fun CompletionCalendar(
     val days = remember {
         (0 until 28).map { today.minusDays(it.toLong()) }.reversed()
     }
-    
-    // Parse completion history dates
+
     val completionDates = remember(completionHistory) {
         completionHistory.mapNotNull {
             try {
-                // Try to parse typical ISO formats
-                if (it.contains("T")) {
-                    java.time.ZonedDateTime.parse(it).toLocalDate()
-                } else {
+                if (it.length == 10 && it.count { c -> c == '-' } == 2) {
                     LocalDate.parse(it)
+                } else {
+                    ZonedDateTime.parse(it).toLocalDate()
                 }
             } catch (_: Exception) {
-                null
+                try {
+                    java.time.LocalDateTime.parse(it).toLocalDate()
+                } catch (_: Exception) {
+                    try {
+                        java.time.Instant.parse(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
             }
         }.toSet()
     }
@@ -317,20 +346,39 @@ fun CompletionCalendar(
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
-        
+
+        val gridSpacing = 8.dp
+        val leadingBlanks = remember(days) { days.first().dayOfWeek.value % 7 }
+        val gridItems: List<LocalDate?> = remember(days, leadingBlanks) {
+            List(leadingBlanks) { null } + days
+        }
+        val gridRows = (gridItems.size + 6) / 7
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gridSpacing)) {
+            listOf("S", "M", "T", "W", "T", "F", "S").forEach { label ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
-            modifier = Modifier.height(180.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.height(32.dp * gridRows + gridSpacing * (gridRows - 1)),
+            verticalArrangement = Arrangement.spacedBy(gridSpacing),
+            horizontalArrangement = Arrangement.spacedBy(gridSpacing),
             userScrollEnabled = false
         ) {
-            items(days) { day ->
-                val isCompleted = completionMap[day] ?: false
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+            items(gridItems) { day ->
+                if (day == null) {
+                    Box(modifier = Modifier.size(32.dp))
+                } else {
+                    val isCompleted = completionMap[day] ?: false
                     Box(
                         modifier = Modifier
                             .size(32.dp)
@@ -347,11 +395,6 @@ fun CompletionCalendar(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Text(
-                        text = day.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(1),
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                        color = Color.Gray
-                    )
                 }
             }
         }

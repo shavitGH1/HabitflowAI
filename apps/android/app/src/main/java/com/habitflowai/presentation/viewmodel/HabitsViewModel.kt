@@ -8,12 +8,13 @@ import com.habitflowai.data.model.ActiveGoalResponse
 import com.habitflowai.domain.repository.HabitsRepository
 import com.habitflowai.domain.repository.GoalsRepository
 import com.habitflowai.domain.repository.LocationRepository
+import com.habitflowai.di.AuthManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -24,19 +25,22 @@ data class HabitsUiState(
     val onboardingGoal: String? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val habitStats: Map<String, Map<String, Any>> = emptyMap()
+    val habitStats: Map<String, Map<String, Any>> = emptyMap(),
+    val congratulationMessage: String? = null
 )
 
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
     private val habitsRepository: HabitsRepository,
     private val goalsRepository: GoalsRepository,
-    private val locationRepository: LocationRepository
+    private val locationRepository: LocationRepository,
+    private val authManager: AuthManager
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
 
-    private val userId = "local_user"
+    private val userId: String
+        get() = authManager.currentUserId.value ?: "local_user"
 
     init {
         fetchActiveGoal()
@@ -44,25 +48,40 @@ class HabitsViewModel @Inject constructor(
             habitsRepository.refreshHabits()
         }
         viewModelScope.launch {
-            habitsRepository.getHabits(userId)
-                .map { entities -> HabitsUiState(habits = entities, isLoading = false) }
-                .catch { e -> emit(HabitsUiState(errorMessage = e.message, isLoading = false)) }
-                .collect { state -> _uiState.value = state }
+            authManager.currentUserId.collect { id ->
+                id?.let {
+                    habitsRepository.getHabits(it)
+                        .catch { e ->
+                            _uiState.update { it.copy(errorMessage = e.message, isLoading = false) }
+                        }
+                        .collect { entities ->
+                            _uiState.update { it.copy(habits = entities, isLoading = false) }
+                        }
+                }
+            }
         }
     }
 
     fun addHabit(title: String, description: String, frequency: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(errorMessage = null) }
             val habit = HabitEntity(
                 id = UUID.randomUUID().toString(),
                 title = title,
                 description = description,
-                frequency = frequency,
+                frequency = frequency.lowercase(),
                 userId = userId,
                 completed = false,
                 syncStatus = SyncStatus.PENDING_CREATE
             )
-            habitsRepository.createHabit(habit)
+            habitsRepository.createHabit(habit).onFailure { e ->
+                val message = if (e is retrofit2.HttpException) {
+                    com.habitflowai.util.extractErrorMessage(e)
+                } else {
+                    "Couldn't reach the server — your habit will be added once you're back online."
+                }
+                _uiState.update { it.copy(errorMessage = message) }
+            }
         }
     }
 
@@ -75,24 +94,50 @@ class HabitsViewModel @Inject constructor(
 
     fun completeHabit(habitId: String, isPublic: Boolean = true, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val habit = _uiState.value.habits.find { it.id == habitId }
             if (habit == null) {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Habit not found locally") }
                 onResult(false)
                 return@launch
             }
+            
             val success = habitsRepository.completeHabit(habit)
             if (success) {
-                _uiState.value = _uiState.value.copy(
-                    habits = _uiState.value.habits.map {
-                        if (it.id == habitId) it.copy(completed = true) else it
-                    }
-                )
+                val congrats = listOf(
+                    "Amazing job! One step closer to your goals! 🚀",
+                    "Habit crushed! Keep that momentum going! 💪",
+                    "Fantastic! You're becoming the best version of yourself! ✨",
+                    "Victory! Another day of consistency in the books! 🏆"
+                ).random()
+                
+                _uiState.update { state ->
+                    state.copy(
+                        habits = state.habits.map {
+                            if (it.id == habitId) it.copy(
+                                completed = true,
+                                completionHistory = (it.completionHistory + java.time.LocalDate.now().toString()).distinct()
+                            ) else it
+                        },
+                        isLoading = false,
+                        congratulationMessage = congrats
+                    )
+                }
                 locationRepository.captureAndSaveLocation(habit.id, isPublic, "habit")
                 onResult(true)
             } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
                 onResult(false)
             }
         }
+    }
+
+    fun clearCongratulation() {
+        _uiState.update { it.copy(congratulationMessage = null) }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     fun fetchHabitStats(habitId: String) {

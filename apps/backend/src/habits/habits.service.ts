@@ -91,7 +91,7 @@ export class HabitsService {
     return (await this.habitRepository.deleteHabit(id))!;
   }
 
-  async completeHabit(userId: string, id: string, note?: string): Promise<HabitWithWarning> {
+  async completeHabit(userId: string, id: string, note?: string, date?: string): Promise<HabitWithWarning> {
     const habit = await this.habitRepository.findById(id);
     if (!habit) throw new NotFoundException('Habit not found');
     if (habit.userId !== userId) throw new ForbiddenException('You do not own this habit');
@@ -99,10 +99,10 @@ export class HabitsService {
     // completeHabit() only appends today's date if it isn't already there, but
     // doesn't error on a repeat call for the same day — check first so
     // leaderboard points aren't awarded twice for one day's completion.
-    const today = new Date().toISOString().split('T')[0];
+    const today = date ?? new Date().toISOString().split('T')[0];
     const alreadyCompletedToday = habit.completionHistory.includes(today);
 
-    const completed = (await this.habitRepository.completeHabit(id, note))!;
+    const completed = (await this.habitRepository.completeHabit(id, note, date))!;
 
     if (!alreadyCompletedToday) {
       await this.leaderboardService.recordCompletion(userId);

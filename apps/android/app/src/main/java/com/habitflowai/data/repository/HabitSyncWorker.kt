@@ -87,21 +87,24 @@ class HabitSyncWorker @AssistedInject constructor(
     private suspend fun pullServerChanges() {
         try {
             val remoteHabits = api.getHabits()
-            val entities = remoteHabits.map { remote ->
-                HabitEntity(
-                    id = remote.id,
+            val currentUserId = authManager.currentUserId.value ?: ""
+            
+            for (remote in remoteHabits) {
+                val localByServerId = habitDao.getHabitByServerId(remote.id)
+                val localById = habitDao.getHabitById(remote.id)
+                
+                val entity = HabitEntity(
+                    id = localByServerId?.id ?: localById?.id ?: remote.id,
                     title = remote.title,
                     description = remote.description,
                     frequency = remote.frequency,
-                    userId = "",
+                    userId = currentUserId,
                     completed = remote.completed,
                     syncStatus = SyncStatus.SYNCED,
                     serverId = remote.id,
                     completionHistory = remote.completionHistory ?: emptyList()
                 )
-            }
-            if (entities.isNotEmpty()) {
-                habitDao.upsertAll(entities)
+                habitDao.insert(entity)
             }
             habitDao.deleteBySyncStatus(SyncStatus.PENDING_DELETE)
         } catch (_: Exception) {
@@ -113,6 +116,7 @@ class HabitSyncWorker @AssistedInject constructor(
         title = title,
         description = description,
         frequency = frequency,
-        completed = completed
+        targetCount = 1,
+        goalId = null // Could be linked later if needed
     )
 }

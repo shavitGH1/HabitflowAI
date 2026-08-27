@@ -85,7 +85,7 @@ export class HabitsController {
   @ApiResponse({ status: 403, description: 'Habit belongs to a different user' })
   @ApiResponse({ status: 404, description: 'Habit not found' })
   complete(@Req() req: { user: { id: string } }, @Param('id') id: string, @Body() dto: CompleteHabitDto) {
-    return this.habitsService.completeHabit(req.user.id, id, dto.note);
+    return this.habitsService.completeHabit(req.user.id, id, dto.note, dto.date);
   }
 
   @Get(':id/stats')

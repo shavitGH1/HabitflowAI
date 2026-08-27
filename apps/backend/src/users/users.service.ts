@@ -3,6 +3,8 @@ import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { AiService } from '../ai/ai.service';
 import { IStorageAdapter, STORAGE_ADAPTER } from '../storage/storage.adapter';
+import { HabitRepository } from '../habits/habit.repository';
+import { GoalRepository } from '../goals/goal.repository';
 import { UserRepository } from './user.repository';
 
 const NAME_CHANGE_COOLDOWN_MONTHS = 3;
@@ -11,6 +13,8 @@ const NAME_CHANGE_COOLDOWN_MONTHS = 3;
 export class UsersService {
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly habitRepository: HabitRepository,
+    private readonly goalRepository: GoalRepository,
     private readonly ai: AiService,
     @Inject(STORAGE_ADAPTER) private readonly storage: IStorageAdapter,
   ) {}
@@ -32,6 +36,29 @@ export class UsersService {
       user.dailyVariations = updated?.dailyVariations ?? updatedTasks;
     }
 
+    const habits = await this.habitRepository.findByUserId(userId);
+    let consistencyScore = 0.0;
+    let goalHabitHistory: string[] = [];
+
+    const engagedHabits = habits.filter(h => h.completionHistory.length > 0);
+    if (engagedHabits.length > 0) {
+      const totalScore = engagedHabits.reduce((acc, h) => acc + (h.consistencyScore || 0), 0);
+      consistencyScore = totalScore / engagedHabits.length;
+    }
+
+    const activeGoal = await this.goalRepository.findActiveByUserId(userId);
+    if (activeGoal) {
+      const goalHabits = habits.filter((h) => h.goalId === activeGoal.id);
+      goalHabitHistory = [...new Set(goalHabits.flatMap((h) => h.completionHistory))];
+    }
+
+    const achievements = await Promise.all(
+      (user.achievements ?? []).map(async (a) => {
+        const goal = await this.goalRepository.findById(a.goalId);
+        return { goalId: a.goalId, goalTitle: goal?.title ?? 'Goal', medal: a.medal, awardedAt: a.awardedAt };
+      }),
+    );
+
     return {
       email: user.email,
       firstName: user.firstName,
@@ -45,7 +72,9 @@ export class UsersService {
       portfolioSummary: user.portfolioSummary,
       tips: user.tips,
       failurePatterns: user.failurePatterns,
-      confidenceScore: user.confidenceScore,
+      confidenceScore: consistencyScore,
+      completionHistory: goalHabitHistory,
+      achievements,
       nameChangedAt: user.nameChangedAt,
       authProvider: user.authProvider,
       success: true,

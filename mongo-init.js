@@ -6,6 +6,7 @@ const users = [
     email: 'demo.alex@habitflow.ai',
     firstName: 'Alex',
     lastName: 'Morgan',
+    profilePicture: 'preset:1',
     password: DEMO_PASSWORD,
     authProvider: 'local',
     goal: 'Break personal records and dominate every leaderboard',
@@ -33,6 +34,7 @@ const users = [
     email: 'demo.maya@habitflow.ai',
     firstName: 'Maya',
     lastName: 'Cohen',
+    profilePicture: 'preset:2',
     password: DEMO_PASSWORD,
     authProvider: 'local',
     goal: 'Be the most consistent person in every challenge',
@@ -60,6 +62,7 @@ const users = [
     email: 'demo.ben@habitflow.ai',
     firstName: 'Ben',
     lastName: 'Carter',
+    profilePicture: 'preset:3',
     password: DEMO_PASSWORD,
     authProvider: 'local',
     goal: 'Build habits that bring people together',
@@ -87,6 +90,7 @@ const users = [
     email: 'demo.sara@habitflow.ai',
     firstName: 'Sara',
     lastName: 'Levi',
+    profilePicture: 'preset:4',
     password: DEMO_PASSWORD,
     authProvider: 'local',
     goal: 'Stay consistent through community and connection',
@@ -114,6 +118,7 @@ const users = [
     email: 'demo.tom@habitflow.ai',
     firstName: 'Tom',
     lastName: 'Reed',
+    profilePicture: 'preset:5',
     password: DEMO_PASSWORD,
     authProvider: 'local',
     goal: 'Become 1% better every single day',
@@ -141,6 +146,7 @@ const users = [
     email: 'demo.lena@habitflow.ai',
     firstName: 'Lena',
     lastName: 'Novak',
+    profilePicture: 'preset:6',
     password: DEMO_PASSWORD,
     authProvider: 'local',
     goal: 'Try something new every week',
@@ -168,6 +174,7 @@ const users = [
     email: 'demo.dana@habitflow.ai',
     firstName: 'Dana',
     lastName: 'Shapiro',
+    profilePicture: 'preset:7',
     password: DEMO_PASSWORD,
     authProvider: 'local',
     goal: 'Use my habits to make a positive impact on others',
@@ -195,6 +202,7 @@ const users = [
     email: 'demo.ron@habitflow.ai',
     firstName: 'Ron',
     lastName: 'Katz',
+    profilePicture: 'preset:8',
     password: DEMO_PASSWORD,
     authProvider: 'local',
     goal: 'Design and execute the perfect daily system',
@@ -445,8 +453,15 @@ function historyLastNDays(n, skipOffsets = []) {
 function calcStreak(history) {
   const sorted = [...new Set(history)].sort().reverse();
   if (!sorted.length) return 0;
-  let streak = 0;
   const cursor = new Date(today + 'T00:00:00.000Z');
+  const yesterday = new Date(cursor);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  if (sorted[0] === dateStr(yesterday)) {
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  } else if (sorted[0] !== today) {
+    return 0;
+  }
+  let streak = 0;
   for (const d of sorted) {
     if (d === dateStr(cursor)) {
       streak++;
@@ -490,12 +505,19 @@ function buildHabit({ userId, persona, title, description, frequency, createdAtD
 }
 
 let goalIds = {};
-if (alexId && mayaId && benId && saraId && db.goals.countDocuments() === 0) {
+if (alexId && mayaId && benId && saraId && tomId && lenaId && danaId && ronId && db.goals.countDocuments() === 0) {
   const goalDefs = [
     { key: 'alex', userId: alexId, title: 'Run a half marathon', targetDate: daysAgoDate(-60), status: 'active' },
-    { key: 'maya', userId: mayaId, title: '30-day meditation streak', targetDate: daysAgoDate(2), status: 'achieved' },
+    { key: 'alexAchieved', userId: alexId, title: 'Log workouts for 30 days straight', targetDate: daysAgoDate(3), status: 'achieved', medal: 'goal-achiever', awardedAt: daysAgoDate(3) },
+    { key: 'maya', userId: mayaId, title: '30-day meditation streak', targetDate: daysAgoDate(2), status: 'achieved', medal: 'goal-achiever', awardedAt: daysAgoDate(2) },
     { key: 'ben', userId: benId, title: 'Train for a group 10k', targetDate: daysAgoDate(5), status: 'forfeited' },
+    { key: 'benAchieved', userId: benId, title: 'Check in on a friend every day for a month', targetDate: daysAgoDate(4), status: 'achieved', medal: 'goal-achiever', awardedAt: daysAgoDate(4) },
     { key: 'sara', userId: saraId, title: 'Build a support squad', targetDate: daysAgoDate(-45), status: 'active' },
+    { key: 'saraAchieved', userId: saraId, title: 'Complete a full community challenge', targetDate: daysAgoDate(5), status: 'achieved', medal: 'goal-achiever', awardedAt: daysAgoDate(5) },
+    { key: 'tom', userId: tomId, title: 'Finish a personal development book', targetDate: daysAgoDate(6), status: 'achieved', medal: 'goal-achiever', awardedAt: daysAgoDate(6) },
+    { key: 'lena', userId: lenaId, title: 'Try 30 new experiences', targetDate: daysAgoDate(7), status: 'achieved', medal: 'goal-achiever', awardedAt: daysAgoDate(7) },
+    { key: 'dana', userId: danaId, title: 'Complete a season of volunteering', targetDate: daysAgoDate(8), status: 'achieved', medal: 'goal-achiever', awardedAt: daysAgoDate(8) },
+    { key: 'ron', userId: ronId, title: 'Build a bulletproof morning routine', targetDate: daysAgoDate(9), status: 'achieved', medal: 'goal-achiever', awardedAt: daysAgoDate(9) },
   ];
   goalDefs.forEach(def => {
     const goalId = db.goals.insertOne({
@@ -507,20 +529,26 @@ if (alexId && mayaId && benId && saraId && db.goals.countDocuments() === 0) {
       updatedAt: new Date(),
     }).insertedId;
     goalIds[def.key] = goalId.toString();
-  });
 
-  db.users.updateOne(
-    { _id: ObjectId(mayaId) },
-    { $push: { achievements: { goalId: goalIds.maya, medal: 'goal-achiever', awardedAt: daysAgoDate(2) } } },
-  );
+    if (def.status === 'achieved') {
+      db.users.updateOne(
+        { _id: ObjectId(def.userId) },
+        { $push: { achievements: { goalId: goalIds[def.key], medal: def.medal, awardedAt: def.awardedAt } } },
+      );
+    }
+  });
 }
 
-if (alexId && mayaId && benId && saraId && db.habits.countDocuments() === 0) {
+if (alexId && mayaId && benId && saraId && tomId && lenaId && danaId && ronId && db.habits.countDocuments() === 0) {
   const habitDefs = [
     buildHabit({
       userId: alexId, persona: 'Achiever', title: '5km morning run', frequency: 'daily',
       createdAtDaysAgo: 40, history: historyLastNDays(32, [5, 19]), goalId: goalIds.alex,
       notes: [{ date: today, note: 'New personal best pace today!' }],
+    }),
+    buildHabit({
+      userId: alexId, persona: 'Achiever', title: 'Log workout stats in app', frequency: 'daily',
+      createdAtDaysAgo: 35, history: historyLastNDays(30), goalId: goalIds.alexAchieved,
     }),
     buildHabit({
       userId: alexId, persona: 'Achiever', title: '100 push-ups', frequency: 'daily',
@@ -541,7 +569,7 @@ if (alexId && mayaId && benId && saraId && db.habits.countDocuments() === 0) {
     }),
     buildHabit({
       userId: benId, persona: 'Socializer', title: 'Check in on a friend', frequency: 'daily',
-      createdAtDaysAgo: 22, history: historyLastNDays(22, [4, 9, 15]),
+      createdAtDaysAgo: 35, history: historyLastNDays(30), goalId: goalIds.benAchieved,
     }),
     // No completions in the last 10 days — this gap is why Ben's goal ended up forfeited.
     buildHabit({
@@ -551,6 +579,27 @@ if (alexId && mayaId && benId && saraId && db.habits.countDocuments() === 0) {
     buildHabit({
       userId: saraId, persona: 'Socializer', title: 'Join a community challenge', frequency: 'weekly',
       createdAtDaysAgo: 11, history: historyLastNDays(11, [3, 8]), goalId: goalIds.sara,
+    }),
+    buildHabit({
+      userId: saraId, persona: 'Socializer', title: 'Comment or react on 3 posts', frequency: 'daily',
+      createdAtDaysAgo: 35, history: historyLastNDays(30), goalId: goalIds.saraAchieved,
+    }),
+    buildHabit({
+      userId: tomId, persona: 'Grower', title: 'Read 20 pages', frequency: 'daily',
+      createdAtDaysAgo: 35, history: historyLastNDays(30), goalId: goalIds.tom,
+      notes: [{ date: daysAgoStr(6), note: 'Finished the book!' }],
+    }),
+    buildHabit({
+      userId: lenaId, persona: 'Explorer', title: 'Try a new route or activity', frequency: 'weekly',
+      createdAtDaysAgo: 35, history: historyLastNDays(30), goalId: goalIds.lena,
+    }),
+    buildHabit({
+      userId: danaId, persona: 'Altruist', title: 'Volunteer or help someone today', frequency: 'daily',
+      createdAtDaysAgo: 35, history: historyLastNDays(30), goalId: goalIds.dana,
+    }),
+    buildHabit({
+      userId: ronId, persona: 'Architect', title: 'Follow morning routine without skips', frequency: 'daily',
+      createdAtDaysAgo: 35, history: historyLastNDays(30), goalId: goalIds.ron,
     }),
   ];
   db.habits.insertMany(habitDefs);

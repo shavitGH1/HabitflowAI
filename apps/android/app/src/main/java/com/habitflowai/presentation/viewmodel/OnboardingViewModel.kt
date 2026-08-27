@@ -237,6 +237,7 @@ class OnboardingViewModel @Inject constructor(
                             motivationalMessage = homeData.motivationalMessage,
                             success = true
                         ),
+                        achievements = homeData.achievements ?: emptyList(),
                         profilePicture = homeData.profilePicture,
                         nameChangedAt = homeData.nameChangedAt,
                         authProvider = homeData.authProvider

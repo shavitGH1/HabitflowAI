@@ -57,12 +57,20 @@ private fun formatClockTime(instant: Instant): String =
 private fun formatFullDateTime(instant: Instant): String =
     "${FULL_DATE_FORMATTER.withZone(ZoneId.systemDefault()).format(instant)} ${formatClockTime(instant)}"
 
-/** Parses an ISO-8601 instant string to epoch millis, falling back to now on failure/blank. */
+/** Parses an ISO-8601 instant string or a plain YYYY-MM-DD date to epoch millis, falling back to now on failure/blank. */
 fun parseIsoToMillis(isoDate: String?): Long {
     if (isoDate.isNullOrBlank()) return System.currentTimeMillis()
     return try {
-        Instant.parse(isoDate).toEpochMilli()
-    } catch (e: DateTimeParseException) {
+        if (isoDate.length == 10 && isoDate.count { it == '-' } == 2) {
+            // Handle YYYY-MM-DD
+            java.time.LocalDate.parse(isoDate)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+        } else {
+            Instant.parse(isoDate).toEpochMilli()
+        }
+    } catch (e: Exception) {
         System.currentTimeMillis()
     }
 }

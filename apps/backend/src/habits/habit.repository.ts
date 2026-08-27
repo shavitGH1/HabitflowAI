@@ -67,22 +67,26 @@ export class HabitRepository {
   }
 
   async findById(id: string): Promise<HabitData | null> {
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) return null;
     const doc = await this.habitModel.findById(id);
     return doc ? this.toHabitData(doc) : null;
   }
 
   async updateHabit(id: string, updates: UpdateHabitInput): Promise<HabitData | null> {
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) return null;
     const doc = await this.habitModel.findByIdAndUpdate(id, updates, { returnDocument: 'after' });
     return doc ? this.toHabitData(doc) : null;
   }
 
   async deleteHabit(id: string): Promise<HabitData | null> {
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) return null;
     const doc = await this.habitModel.findByIdAndUpdate(id, { isArchived: true }, { returnDocument: 'after' });
     return doc ? this.toHabitData(doc) : null;
   }
 
-  async completeHabit(id: string, note?: string): Promise<HabitData | null> {
-    const today = new Date().toISOString().split('T')[0];
+  async completeHabit(id: string, note?: string, date?: string): Promise<HabitData | null> {
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) return null;
+    const today = date ?? new Date().toISOString().split('T')[0];
     const doc = await this.habitModel.findById(id);
     if (!doc) return null;
 
@@ -95,7 +99,7 @@ export class HabitRepository {
 
     doc.streak = calculateStreak(doc.completionHistory);
 
-    const createdAt = (doc as unknown as { createdAt: Date }).createdAt.toISOString().split('T')[0];
+    const createdAt = (doc as any).createdAt?.toISOString()?.split('T')[0] || today;
     doc.consistencyScore = calculateConsistencyScore(doc.completionHistory, createdAt, today);
 
     if (!doc.implementedAt && isImplemented(doc.consistencyScore, createdAt, today)) {
