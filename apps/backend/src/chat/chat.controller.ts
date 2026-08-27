@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -247,13 +248,21 @@ export class ChatController {
   }
 
   @Delete(':chatId')
-  @UseGuards(ChatAdminGuard)
-  @ApiOperation({ summary: 'Delete a group chat and all its messages (admin only)' })
-  @ApiResponse({ status: 200, description: 'Group deleted' })
+  @UseGuards(ChatMemberGuard)
+  @ApiOperation({
+    summary: 'Delete a chat and all its messages',
+    description: 'A group can only be deleted by an admin; a direct chat can be deleted by either participant.',
+  })
+  @ApiResponse({ status: 200, description: 'Chat deleted' })
   @ApiResponse({ status: 403, description: 'Not a group admin' })
-  async deleteGroup(@Param('chatId') chatId: string) {
-    this.chatGateway.emitToRoom(chatId, 'groupDeleted', { chatId });
-    await this.chatService.deleteGroup(chatId);
-    return { message: 'Group deleted' };
+  async deleteChat(@Req() req: ChatMemberRequest, @Param('chatId') chatId: string) {
+    if (req.chat.isGroup && !req.chat.admins.includes(req.user.id)) {
+      throw new ForbiddenException('Only group admins can delete a group chat');
+    }
+    if (req.chat.isGroup) {
+      this.chatGateway.emitToRoom(chatId, 'groupDeleted', { chatId });
+    }
+    await this.chatService.deleteChat(chatId);
+    return { message: 'Chat deleted' };
   }
 }

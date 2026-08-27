@@ -6,12 +6,14 @@ import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.data.model.GenerateGoalsRequest
 import com.habitflowai.data.model.HomeResponse
 import com.habitflowai.data.model.toGoalPairList
+import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.GoalsRepository
 import javax.inject.Inject
 
 class GoalsRepositoryImpl @Inject constructor(
     private val api: HabitFlowApi,
-    private val userDao: UserDao
+    private val userDao: UserDao,
+    private val authManager: AuthManager
 ) : GoalsRepository {
     override suspend fun fetchGoals(userId: String, dayOfWeek: Int): List<Pair<String, Int>> {
         val request = GenerateGoalsRequest(userId, dayOfWeek)
@@ -31,7 +33,8 @@ class GoalsRepositoryImpl @Inject constructor(
     }
 
     private suspend fun savePortfolioToRoom(homeData: HomeResponse) {
-        val existingUser = userDao.getFirstUser() ?: return
+        val userId = authManager.currentUserId.value ?: return
+        val existingUser = userDao.getUserById(userId) ?: return
         val updatedUser = existingUser.copy(
             portfolioSummary = homeData.portfolioSummary,
             tips = homeData.tips?.joinToString(","),

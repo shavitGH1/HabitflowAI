@@ -195,8 +195,7 @@ export class ChatService {
     return this.storage.upload(file);
   }
 
-  async deleteGroup(chatId: string): Promise<void> {
-    await this.getGroupChat(chatId);
+  async deleteChat(chatId: string): Promise<void> {
     await this.chatRepository.deleteChat(chatId);
   }
 

@@ -9,6 +9,7 @@ import com.habitflowai.data.local.dao.HabitDao
 import com.habitflowai.data.local.entity.DriftCheckEntity
 import com.habitflowai.data.model.DriftCheckRequest
 import com.habitflowai.data.network.HabitFlowApi
+import com.habitflowai.di.AuthManager
 import com.habitflowai.notification.NotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -21,7 +22,8 @@ class DriftCheckWorker @AssistedInject constructor(
     private val api: HabitFlowApi,
     private val driftCheckDao: DriftCheckDao,
     private val habitDao: HabitDao,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val authManager: AuthManager
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -52,7 +54,8 @@ class DriftCheckWorker @AssistedInject constructor(
     }
 
     private suspend fun buildRequest(): DriftCheckRequest {
-        val habits = habitDao.getAll()
+        val userId = authManager.currentUserId.value
+        val habits = userId?.let { habitDao.getAllForUser(it) } ?: emptyList()
         val completed = habits.filter { it.completed }.map { it.title }
         val skipped = habits.filter { !it.completed }.map { it.title }
         val completionRate = if (habits.isNotEmpty()) {

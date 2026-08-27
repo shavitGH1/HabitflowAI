@@ -17,7 +17,4 @@ interface UserDao {
 
     @Query("SELECT * FROM users WHERE email = :email")
     fun getUserByEmail(email: String): Flow<UserEntity?>
-
-    @Query("SELECT * FROM users LIMIT 1")
-    suspend fun getFirstUser(): UserEntity?
 }

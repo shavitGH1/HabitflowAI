@@ -2,6 +2,7 @@ package com.habitflowai.di
 
 import com.google.gson.Gson
 import com.habitflowai.BuildConfig
+import com.habitflowai.data.local.HabitFlowDatabase
 import com.habitflowai.data.model.TokenRefreshRequest
 import com.habitflowai.data.network.HabitFlowApi
 import dagger.Module
@@ -41,7 +42,8 @@ object NetworkModule {
     @Singleton
     fun provideAuthenticator(
         authManager: AuthManager,
-        apiProvider: Provider<HabitFlowApi>
+        apiProvider: Provider<HabitFlowApi>,
+        database: HabitFlowDatabase
     ): Authenticator {
         return object : Authenticator {
             private var isRefreshing = false
@@ -81,6 +83,7 @@ object NetworkModule {
                                 .build()
                         } else {
                             authManager.clearTokens()
+                            database.clearAllTables()
                             null
                         }
                     } catch (e: Exception) {

@@ -27,9 +27,11 @@ class HabitsRepositoryImpl @Inject constructor(
 
     override suspend fun refreshHabits() {
         try {
+            val userIdAtRequestTime = authManager.currentUserId.value ?: return
             val response = api.getHabits()
             val currentUserId = authManager.currentUserId.value ?: return
-            
+            if (currentUserId != userIdAtRequestTime) return
+
             for (res in response) {
                 val localByServerId = habitDao.getHabitByServerId(res.id)
                 val localById = habitDao.getHabitById(res.id)

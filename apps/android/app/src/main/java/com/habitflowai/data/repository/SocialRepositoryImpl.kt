@@ -412,7 +412,7 @@ class SocialRepositoryImpl @Inject constructor(
         val tempId = (10000..99999).random().toString()
         val tempChat = ChatResponse(
             id = tempId,
-            name = userId,
+            name = null,
             isGroup = false,
             lastMessage = null,
             participantIds = listOf(myId, userId)
@@ -424,7 +424,7 @@ class SocialRepositoryImpl @Inject constructor(
         } catch (_: Exception) {}
 
         return try {
-            val chat = api.createChat(CreateChatRequest(name = userId, participantIds = listOf(userId), isGroup = false))
+            val chat = api.createChat(CreateChatRequest(name = null, participantIds = listOf(userId), isGroup = false))
             try {
                 chatLocalStorage.deleteChat(tempId)
                 chatLocalStorage.saveDirectChats(myId, listOf(chat))

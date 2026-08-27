@@ -330,4 +330,42 @@ describe('Chat (e2e)', () => {
       expect(res.body.some((c: { id: string }) => c.id === groupId)).toBe(false);
     });
   });
+
+  describe('Direct chat deletion', () => {
+    it('rejects deletion from someone who is not a participant', async () => {
+      const res = await agent(app)
+        .post('/api/v1/chats')
+        .set('Authorization', `Bearer ${userCToken}`)
+        .send({ participantIds: [userDId] })
+        .expect(201);
+      const dmId = res.body.id;
+
+      await agent(app)
+        .delete(`/api/v1/chats/${dmId}`)
+        .set('Authorization', `Bearer ${userAToken}`)
+        .expect(403);
+    });
+
+    it('lets either participant delete a direct chat, and starting a new one afterwards creates a fresh chat', async () => {
+      const created = await agent(app)
+        .post('/api/v1/chats')
+        .set('Authorization', `Bearer ${userCToken}`)
+        .send({ participantIds: [userDId] })
+        .expect(201);
+      const dmId = created.body.id;
+
+      await agent(app)
+        .delete(`/api/v1/chats/${dmId}`)
+        .set('Authorization', `Bearer ${userDToken}`)
+        .expect(200);
+
+      const recreated = await agent(app)
+        .post('/api/v1/chats')
+        .set('Authorization', `Bearer ${userCToken}`)
+        .send({ participantIds: [userDId] })
+        .expect(201);
+
+      expect(recreated.body.id).not.toBe(dmId);
+    });
+  });
 });

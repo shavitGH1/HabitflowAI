@@ -584,20 +584,17 @@ describe('ChatService', () => {
     });
   });
 
-  describe('deleteGroup()', () => {
-    it('rejects deleting a direct chat via the group-delete path', async () => {
-      mockChatRepository.findById.mockResolvedValue(makeChat());
-
-      await expect(service.deleteGroup(CHAT_ID)).rejects.toThrow(BadRequestException);
-      expect(mockChatRepository.deleteChat).not.toHaveBeenCalled();
-    });
-
-    it('deletes a group chat and its messages', async () => {
-      mockChatRepository.findById.mockResolvedValue(makeGroupChat());
-
-      await service.deleteGroup(GROUP_CHAT_ID);
+  describe('deleteChat()', () => {
+    it('deletes a chat and its messages', async () => {
+      await service.deleteChat(GROUP_CHAT_ID);
 
       expect(mockChatRepository.deleteChat).toHaveBeenCalledWith(GROUP_CHAT_ID);
+    });
+
+    it('deletes a direct chat the same way as a group', async () => {
+      await service.deleteChat(CHAT_ID);
+
+      expect(mockChatRepository.deleteChat).toHaveBeenCalledWith(CHAT_ID);
     });
   });
 });
