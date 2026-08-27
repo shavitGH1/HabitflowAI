@@ -2,6 +2,7 @@
 package com.habitflowai.presentation.ui.habits
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -19,6 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
@@ -31,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -278,6 +283,22 @@ fun ConsistencyCalendar(
         days.associateWith { it in completionDates }
     }
 
+    val streakCount = remember(completionDates, today) {
+        var cursor = when {
+            completionDates.contains(today) -> today
+            completionDates.contains(today.minusDays(1)) -> today.minusDays(1)
+            else -> null
+        }
+        var streak = 0
+        while (cursor != null && completionDates.contains(cursor)) {
+            streak++
+            cursor = cursor.minusDays(1)
+        }
+        streak
+    }
+
+    var isExpanded by remember { mutableStateOf(true) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -286,55 +307,102 @@ fun ConsistencyCalendar(
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isExpanded = !isExpanded },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Consistency (Last 28 Days)",
+                    text = if (isExpanded) "Consistency (Last 28 Days)" else "Calendar",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "${completionMap.values.count { it }} Days Active",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = personaColor,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.LocalFireDepartment,
+                        contentDescription = null,
+                        tint = if (streakCount > 0) personaColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "$streakCount",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (streakCount > 0) personaColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = if (isExpanded) "Collapse" else "Expand",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(7),
-                modifier = Modifier.height(240.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                userScrollEnabled = false
-            ) {
-                items(days) { day ->
-                    val isCompleted = completionMap[day] ?: false
-                    val isToday = day == today
-                    
-                    Box(
-                        modifier = Modifier
-                            .aspectRatio(1f)
-                            .clip(CircleShape)
-                            .background(
-                                when {
-                                    isCompleted -> personaColor
-                                    isToday -> personaColor.copy(alpha = 0.2f)
-                                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+
+            AnimatedVisibility(visible = isExpanded) {
+                Column {
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    val gridSpacing = 10.dp
+                    val leadingBlanks = remember(days) { days.first().dayOfWeek.value % 7 }
+                    val gridItems: List<LocalDate?> = remember(days, leadingBlanks) {
+                        List(leadingBlanks) { null } + days
+                    }
+                    val gridRows = (gridItems.size + 6) / 7
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gridSpacing)) {
+                        listOf("S", "M", "T", "W", "T", "F", "S").forEach { label ->
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    BoxWithConstraints {
+                        val cellSize = (maxWidth - gridSpacing * 6) / 7
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(7),
+                            modifier = Modifier.height(cellSize * gridRows + gridSpacing * (gridRows - 1)),
+                            verticalArrangement = Arrangement.spacedBy(gridSpacing),
+                            horizontalArrangement = Arrangement.spacedBy(gridSpacing),
+                            userScrollEnabled = false
+                        ) {
+                            items(gridItems) { day ->
+                                if (day == null) {
+                                    Box(modifier = Modifier.aspectRatio(1f))
+                                } else {
+                                    val isCompleted = completionMap[day] ?: false
+                                    val isToday = day == today
+
+                                    Box(
+                                        modifier = Modifier
+                                            .aspectRatio(1f)
+                                            .clip(CircleShape)
+                                            .background(
+                                                when {
+                                                    isCompleted -> personaColor
+                                                    isToday -> personaColor.copy(alpha = 0.2f)
+                                                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                                }
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = day.dayOfMonth.toString(),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (isCompleted) Color.White else if (isToday) personaColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontWeight = if (isToday || isCompleted) FontWeight.ExtraBold else FontWeight.Bold
+                                        )
+                                    }
                                 }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = day.dayOfMonth.toString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isCompleted) Color.White else if (isToday) personaColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (isToday || isCompleted) FontWeight.ExtraBold else FontWeight.Bold
-                        )
+                            }
+                        }
                     }
                 }
             }

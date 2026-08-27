@@ -84,9 +84,9 @@ export class HabitRepository {
     return doc ? this.toHabitData(doc) : null;
   }
 
-  async completeHabit(id: string, note?: string): Promise<HabitData | null> {
+  async completeHabit(id: string, note?: string, date?: string): Promise<HabitData | null> {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) return null;
-    const today = new Date().toISOString().split('T')[0];
+    const today = date ?? new Date().toISOString().split('T')[0];
     const doc = await this.habitModel.findById(id);
     if (!doc) return null;
 

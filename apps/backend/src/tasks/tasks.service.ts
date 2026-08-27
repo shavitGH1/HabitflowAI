@@ -13,7 +13,7 @@ export class TasksService {
     private readonly leaderboardService: LeaderboardService,
   ) {}
 
-  async completeTask(userId: string, taskId: string) {
+  async completeTask(userId: string, taskId: string, date?: string) {
     const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
@@ -32,10 +32,8 @@ export class TasksService {
         const activeGoal = await this.goalRepository.findActiveByUserId(userId);
         if (activeGoal) {
           const habits = await this.habitRepository.findByUserId(userId);
-          const goalHabit = habits.find((h) => h.goalId === activeGoal.id);
-          if (goalHabit) {
-            await this.habitRepository.completeHabit(goalHabit.id);
-          }
+          const goalHabits = habits.filter((h) => h.goalId === activeGoal.id);
+          await Promise.all(goalHabits.map((h) => this.habitRepository.completeHabit(h.id, undefined, date)));
         }
       }
     }

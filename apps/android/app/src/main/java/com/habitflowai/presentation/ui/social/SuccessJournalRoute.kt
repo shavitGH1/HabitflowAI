@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import com.habitflowai.data.model.HomeAchievement
 import com.habitflowai.data.model.Post
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
@@ -55,7 +57,7 @@ fun SuccessJournalRoute(
     var selectedFilter by remember { mutableStateOf(JournalFilter.ALL) }
     
     // Combine personal posts and habit completions into a single "Journal" view
-    val journalItems = remember(uiState.posts, uiState.currentUserId, habitsState.habits, selectedFilter) {
+    val journalItems = remember(uiState.posts, uiState.currentUserId, habitsState.habits, onboardingState.achievements, selectedFilter) {
         val posts = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.POSTS) {
             uiState.posts
                 .filter { it.authorId == uiState.currentUserId }
@@ -74,8 +76,12 @@ fun SuccessJournalRoute(
                 }
             }
         } else emptyList()
-        
-        (posts + completions).sortedByDescending { it.timestamp }
+
+        val achievements = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.GOALS) {
+            onboardingState.achievements.map { JournalItem.GoalAchievement(it) }
+        } else emptyList()
+
+        (posts + completions + achievements).sortedByDescending { it.timestamp }
     }
 
     Scaffold(
@@ -117,6 +123,7 @@ fun SuccessJournalRoute(
                                     JournalFilter.ALL -> "All"
                                     JournalFilter.HABITS -> "Habits"
                                     JournalFilter.POSTS -> "Posts"
+                                    JournalFilter.GOALS -> "Goals"
                                 },
                                 fontWeight = if (selectedFilter == filter) FontWeight.Bold else FontWeight.Normal
                             )
@@ -142,6 +149,7 @@ fun SuccessJournalRoute(
                                 JournalFilter.ALL -> "Complete habits or share posts to fill your journal!"
                                 JournalFilter.HABITS -> "No completed habits found."
                                 JournalFilter.POSTS -> "You haven't shared any posts yet."
+                                JournalFilter.GOALS -> "No goals achieved yet."
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -175,6 +183,12 @@ fun SuccessJournalRoute(
                                         personaColor = personaDetails.endColor
                                     )
                                 }
+                                is JournalItem.GoalAchievement -> {
+                                    GoalAchievementCard(
+                                        achievement = item,
+                                        personaColor = personaDetails.endColor
+                                    )
+                                }
                             }
                         }
                     }
@@ -199,7 +213,7 @@ fun SuccessJournalRoute(
 }
 
 enum class JournalFilter {
-    ALL, HABITS, POSTS
+    ALL, GOALS, HABITS, POSTS
 }
 
 sealed class JournalItem {
@@ -207,6 +221,10 @@ sealed class JournalItem {
 
     data class SocialPost(val post: Post) : JournalItem() {
         override val timestamp: Long = parseIsoToMillis(post.createdAt)
+    }
+
+    data class GoalAchievement(val achievement: HomeAchievement) : JournalItem() {
+        override val timestamp: Long = parseIsoToMillis(achievement.awardedAt)
     }
 
     data class HabitCompletion(
@@ -264,6 +282,57 @@ fun HabitCompletionCard(
                 }
                 Text(
                     text = formatJournalDate(completion.timestamp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GoalAchievementCard(
+    achievement: JournalItem.GoalAchievement,
+    personaColor: Color
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                color = personaColor.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    Icons.Rounded.EmojiEvents,
+                    contentDescription = null,
+                    tint = personaColor,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "Achieved: ${achievement.achievement.goalTitle}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${achievement.achievement.medal.replaceFirstChar { it.uppercase() }} medal",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = formatJournalDate(achievement.timestamp),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )

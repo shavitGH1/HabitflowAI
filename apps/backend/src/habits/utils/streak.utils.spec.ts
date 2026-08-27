@@ -35,4 +35,14 @@ describe('calculateStreak()', () => {
   it('deduplicates repeated dates', () => {
     expect(calculateStreak([TODAY, TODAY, TODAY], TODAY)).toBe(1);
   });
+
+  it('keeps a streak alive when today is not completed yet but yesterday was', () => {
+    const history = [YESTERDAY, TWO_DAYS_AGO, THREE_DAYS_AGO];
+    expect(calculateStreak(history, TODAY)).toBe(3);
+  });
+
+  it('resets to 0 when neither today nor yesterday was completed', () => {
+    const history = [THREE_DAYS_AGO, FOUR_DAYS_AGO];
+    expect(calculateStreak(history, TODAY)).toBe(0);
+  });
 });

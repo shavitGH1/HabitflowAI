@@ -105,8 +105,7 @@ class HabitsRepositoryImpl @Inject constructor(
         
         return try {
             val idToComplete = habit.serverId ?: habit.id
-            // Pass an empty body because the backend expects CompleteHabitDto
-            val response = api.completeHabit(idToComplete, emptyMap())
+            val response = api.completeHabit(idToComplete, mapOf("date" to today))
             
             if (response.isSuccessful) {
                 // Update locally immediately with the server-returned data (via refresh)

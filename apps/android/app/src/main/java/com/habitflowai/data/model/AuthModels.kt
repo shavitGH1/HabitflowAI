@@ -105,6 +105,13 @@ data class HomeGoalTask(
     val genre: String = "persona"
 )
 
+data class HomeAchievement(
+    @SerializedName("goalId") val goalId: String,
+    @SerializedName("goalTitle") val goalTitle: String,
+    @SerializedName("medal") val medal: String,
+    @SerializedName("awardedAt") val awardedAt: String
+)
+
 data class HomeResponse(
     @SerializedName("email") val email: String? = null,
     @SerializedName("goal") val goal: String,
@@ -118,6 +125,7 @@ data class HomeResponse(
     @SerializedName("failurePatterns") val failurePatterns: List<String>? = null,
     @SerializedName("confidenceScore") val confidenceScore: Double? = null,
     @SerializedName("completionHistory") val completionHistory: List<String>? = null,
+    @SerializedName("achievements") val achievements: List<HomeAchievement>? = null,
     @SerializedName("driftDetected") val driftDetected: Boolean = false,
     @SerializedName("driftRationale") val driftRationale: String? = null,
     val firstName: String? = null,

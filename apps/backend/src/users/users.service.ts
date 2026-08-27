@@ -48,11 +48,16 @@ export class UsersService {
 
     const activeGoal = await this.goalRepository.findActiveByUserId(userId);
     if (activeGoal) {
-      const goalHabit = habits.find((h) => h.goalId === activeGoal.id);
-      if (goalHabit) {
-        goalHabitHistory = goalHabit.completionHistory;
-      }
+      const goalHabits = habits.filter((h) => h.goalId === activeGoal.id);
+      goalHabitHistory = [...new Set(goalHabits.flatMap((h) => h.completionHistory))];
     }
+
+    const achievements = await Promise.all(
+      (user.achievements ?? []).map(async (a) => {
+        const goal = await this.goalRepository.findById(a.goalId);
+        return { goalId: a.goalId, goalTitle: goal?.title ?? 'Goal', medal: a.medal, awardedAt: a.awardedAt };
+      }),
+    );
 
     return {
       email: user.email,
@@ -69,6 +74,7 @@ export class UsersService {
       failurePatterns: user.failurePatterns,
       confidenceScore: consistencyScore,
       completionHistory: goalHabitHistory,
+      achievements,
       nameChangedAt: user.nameChangedAt,
       authProvider: user.authProvider,
       success: true,

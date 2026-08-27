@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,8 +26,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import java.time.LocalDate
 import java.time.ZonedDateTime
-import java.time.format.TextStyle
-import java.util.Locale
 import com.habitflowai.presentation.ui.persona.PersonaDetails
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
@@ -266,6 +265,134 @@ fun HabitDetailContent(
                         Text(
                             text = habit.frequency.lowercase().replaceFirstChar { it.uppercase() },
                             style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Completion History",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        CompletionCalendar(
+                            personaColor = details.endColor,
+                            completionHistory = habit.completionHistory
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CompletionCalendar(
+    personaColor: Color,
+    completionHistory: List<String> = emptyList()
+) {
+    val today = LocalDate.now()
+    val days = remember {
+        (0 until 28).map { today.minusDays(it.toLong()) }.reversed()
+    }
+
+    val completionDates = remember(completionHistory) {
+        completionHistory.mapNotNull {
+            try {
+                if (it.length == 10 && it.count { c -> c == '-' } == 2) {
+                    LocalDate.parse(it)
+                } else {
+                    ZonedDateTime.parse(it).toLocalDate()
+                }
+            } catch (_: Exception) {
+                try {
+                    java.time.LocalDateTime.parse(it).toLocalDate()
+                } catch (_: Exception) {
+                    try {
+                        java.time.Instant.parse(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            }
+        }.toSet()
+    }
+
+    val completionMap = remember(days, completionDates) {
+        days.associateWith { it in completionDates }
+    }
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Last 28 Days",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.Gray
+            )
+            Text(
+                text = "${completionMap.values.count { it }}/${days.size} Completed",
+                style = MaterialTheme.typography.labelMedium,
+                color = personaColor,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+
+        val gridSpacing = 8.dp
+        val leadingBlanks = remember(days) { days.first().dayOfWeek.value % 7 }
+        val gridItems: List<LocalDate?> = remember(days, leadingBlanks) {
+            List(leadingBlanks) { null } + days
+        }
+        val gridRows = (gridItems.size + 6) / 7
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gridSpacing)) {
+            listOf("S", "M", "T", "W", "T", "F", "S").forEach { label ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(7),
+            modifier = Modifier.height(32.dp * gridRows + gridSpacing * (gridRows - 1)),
+            verticalArrangement = Arrangement.spacedBy(gridSpacing),
+            horizontalArrangement = Arrangement.spacedBy(gridSpacing),
+            userScrollEnabled = false
+        ) {
+            items(gridItems) { day ->
+                if (day == null) {
+                    Box(modifier = Modifier.size(32.dp))
+                } else {
+                    val isCompleted = completionMap[day] ?: false
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isCompleted) personaColor else personaColor.copy(alpha = 0.1f)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = day.dayOfMonth.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isCompleted) Color.White else personaColor,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

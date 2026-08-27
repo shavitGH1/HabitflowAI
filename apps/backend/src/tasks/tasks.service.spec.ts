@@ -120,7 +120,46 @@ describe('TasksService', () => {
 
         await service.completeTask(USER_ID, TASK_ID);
 
-        expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith('habit-1');
+        expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith('habit-1', undefined, undefined);
+      });
+
+      it('completes every habit linked to the active goal, not just the first match', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(
+          makeUser({
+            coreGoals: [{ id: TASK_ID, description: 'Morning run', points: 20, completed: false, genre: 'goal' }],
+          }),
+        );
+        mockUserRepository.completeTask.mockResolvedValue(true);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue({ id: 'goal-1' });
+        mockHabitRepository.findByUserId.mockResolvedValue([
+          { id: 'habit-1', title: 'Evening Jog', goalId: 'goal-1' },
+          { id: 'habit-2', title: 'Push-ups', goalId: 'goal-1' },
+          { id: 'habit-3', title: 'Unrelated', goalId: 'goal-2' },
+        ]);
+
+        await service.completeTask(USER_ID, TASK_ID);
+
+        expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith('habit-1', undefined, undefined);
+        expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith('habit-2', undefined, undefined);
+        expect(mockHabitRepository.completeHabit).not.toHaveBeenCalledWith('habit-3', undefined, undefined);
+        expect(mockHabitRepository.completeHabit).toHaveBeenCalledTimes(2);
+      });
+
+      it('passes the client-supplied date through to each completed habit', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(
+          makeUser({
+            coreGoals: [{ id: TASK_ID, description: 'Morning run', points: 20, completed: false, genre: 'goal' }],
+          }),
+        );
+        mockUserRepository.completeTask.mockResolvedValue(true);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue({ id: 'goal-1' });
+        mockHabitRepository.findByUserId.mockResolvedValue([
+          { id: 'habit-1', title: 'Evening Jog', goalId: 'goal-1' },
+        ]);
+
+        await service.completeTask(USER_ID, TASK_ID, '2026-08-27');
+
+        expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith('habit-1', undefined, '2026-08-27');
       });
 
       it('does nothing habit-related when the user has no active goal', async () => {

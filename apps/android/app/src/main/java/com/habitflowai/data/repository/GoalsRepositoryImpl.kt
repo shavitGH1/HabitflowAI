@@ -42,7 +42,8 @@ class GoalsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun completeTask(taskId: String): Boolean {
-        val response = api.completeTask(taskId)
+        val today = java.time.LocalDate.now().toString()
+        val response = api.completeTask(taskId, mapOf("date" to today))
         return response.isSuccessful
     }
 

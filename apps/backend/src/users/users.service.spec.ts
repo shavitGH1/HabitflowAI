@@ -24,6 +24,7 @@ const mockHabitRepository = {
 
 const mockGoalRepository = {
   findActiveByUserId: jest.fn(),
+  findById: jest.fn(),
 };
 
 const mockAiService = {
@@ -167,6 +168,19 @@ describe('UsersService', () => {
       expect(result.completionHistory).toEqual(['2026-08-20', '2026-08-21']);
     });
 
+    it('unions completion history across every habit linked to the active goal', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: today, goal: 'Run a marathon' }));
+      mockHabitRepository.findByUserId.mockResolvedValue([
+        makeHabit({ id: 'h1', title: 'Evening Jog', goalId: 'goal-1', completionHistory: ['2026-08-20', '2026-08-21'] }),
+        makeHabit({ id: 'h2', title: 'Push-ups', goalId: 'goal-1', completionHistory: ['2026-08-21', '2026-08-22'] }),
+      ]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(makeGoal({ id: 'goal-1' }));
+
+      const result = await service.getHomePageData(USER_ID);
+
+      expect(result.completionHistory?.sort()).toEqual(['2026-08-20', '2026-08-21', '2026-08-22']);
+    });
+
     it('leaves the goal calendar history empty when no habit is linked to the active goal', async () => {
       mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: today }));
       mockHabitRepository.findByUserId.mockResolvedValue([
@@ -177,6 +191,46 @@ describe('UsersService', () => {
       const result = await service.getHomePageData(USER_ID);
 
       expect(result.completionHistory).toEqual([]);
+    });
+
+    it('resolves each achievement with its goal title', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(
+        makeUser({
+          tasksLastGeneratedDate: today,
+          achievements: [
+            { goalId: 'goal-1', medal: 'gold', awardedAt: '2026-08-10T00:00:00.000Z' },
+            { goalId: 'goal-2', medal: 'silver', awardedAt: '2026-08-15T00:00:00.000Z' },
+          ],
+        }),
+      );
+      mockHabitRepository.findByUserId.mockResolvedValue([]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+      mockGoalRepository.findById.mockImplementation((id: string) =>
+        Promise.resolve(id === 'goal-1' ? makeGoal({ id: 'goal-1', title: 'Run a marathon' }) : makeGoal({ id: 'goal-2', title: 'Read 12 books' })),
+      );
+
+      const result = await service.getHomePageData(USER_ID);
+
+      expect(result.achievements).toEqual([
+        { goalId: 'goal-1', goalTitle: 'Run a marathon', medal: 'gold', awardedAt: '2026-08-10T00:00:00.000Z' },
+        { goalId: 'goal-2', goalTitle: 'Read 12 books', medal: 'silver', awardedAt: '2026-08-15T00:00:00.000Z' },
+      ]);
+    });
+
+    it('falls back to a generic title when the linked goal no longer exists', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(
+        makeUser({
+          tasksLastGeneratedDate: today,
+          achievements: [{ goalId: 'deleted-goal', medal: 'gold', awardedAt: '2026-08-10T00:00:00.000Z' }],
+        }),
+      );
+      mockHabitRepository.findByUserId.mockResolvedValue([]);
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+      mockGoalRepository.findById.mockResolvedValue(null);
+
+      const result = await service.getHomePageData(USER_ID);
+
+      expect(result.achievements[0].goalTitle).toBe('Goal');
     });
   });
 
