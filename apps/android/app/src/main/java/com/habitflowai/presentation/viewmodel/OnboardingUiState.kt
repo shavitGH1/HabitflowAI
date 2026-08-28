@@ -20,6 +20,8 @@ data class OnboardingUiState(
     val isRetakeMode: Boolean = false,
     val suggestionsByQuestionId: Map<Int, List<String>> = emptyMap(),
     val suggestionsForGoal: String? = null,
+    val suggestedHabits: List<com.habitflowai.data.model.HomeGoalTask> = emptyList(),
+    val navigateToSuggestions: Boolean = false,
     // Set when Google Sign-In finds no matching account — carries the short-lived
     // token needed to complete registration once the onboarding quiz is done.
     val googleSignupToken: String? = null,

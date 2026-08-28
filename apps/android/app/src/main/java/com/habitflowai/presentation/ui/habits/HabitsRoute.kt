@@ -8,10 +8,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,33 +57,46 @@ fun HabitsRoute(
     viewModel: HabitsViewModel,
     personaType: String,
     onHabitClick: (String) -> Unit,
-    onToggleChat: () -> Unit
+    onToggleChat: () -> Unit,
+    onSetGoal: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    HabitsContent(
-        uiState = uiState,
-        personaType = personaType,
-        onHabitClick = onHabitClick,
-        onAddHabit = viewModel::addHabit,
-        onDeleteHabit = viewModel::deleteHabit,
-        onToggleChat = onToggleChat,
-        onClearCongratulation = viewModel::clearCongratulation,
-        onClearError = viewModel::clearError
-    )
-}
 
-@Composable
-fun HabitsContent(
-    uiState: HabitsUiState,
-    personaType: String,
-    onHabitClick: (String) -> Unit,
-    onAddHabit: (String, String, String) -> Unit,
-    onDeleteHabit: (String) -> Unit,
-    onToggleChat: () -> Unit,
-    onClearCongratulation: () -> Unit = {},
-    onClearError: () -> Unit = {}
-) {
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+    }
+
+        HabitsContent(
+            uiState = uiState,
+            personaType = personaType,
+            onHabitClick = onHabitClick,
+            onAddHabit = { title, desc, freq, linkToGoal ->
+                viewModel.addHabit(title, desc, freq, linkToGoal)
+            },
+            onDeleteHabit = viewModel::deleteHabit,
+            onToggleChat = onToggleChat,
+            onSetGoal = onSetGoal,
+            onClearCongratulation = viewModel::clearCongratulation,
+            onClearError = viewModel::clearError,
+            onClearRelevanceWarning = viewModel::clearRelevanceWarning
+        )
+    }
+
+    @Composable
+    fun HabitsContent(
+        uiState: HabitsUiState,
+        personaType: String,
+        onHabitClick: (String) -> Unit,
+        onAddHabit: (String, String, String, Boolean) -> Unit,
+        onDeleteHabit: (String) -> Unit,
+        onToggleChat: () -> Unit,
+        onSetGoal: () -> Unit,
+        onClearCongratulation: () -> Unit = {},
+        onClearError: () -> Unit = {},
+        onClearRelevanceWarning: () -> Unit = {}
+    ) {
     var showCreateSheet by remember { mutableStateOf(false) }
+    var selectedSuggestionTitle by remember { mutableStateOf<String?>(null) }
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
     val isDark = isSystemInDarkTheme()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -175,6 +190,41 @@ fun HabitsContent(
                             personaColor = details.endColor
                         )
                         Spacer(modifier = Modifier.height(4.dp))
+                    } else {
+                        EmptyGoalCard(
+                            personaColor = details.endColor,
+                            onSetGoal = onSetGoal
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
+
+                if (uiState.suggestions.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "AI Suggested Habits",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = details.endColor,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    item {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(bottom = 8.dp)
+                        ) {
+                            items(uiState.suggestions) { suggestion ->
+                                SuggestionChip(
+                                    title = suggestion.description,
+                                    personaColor = details.endColor,
+                                    onClick = {
+                                        selectedSuggestionTitle = suggestion.description
+                                        showCreateSheet = true
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -214,16 +264,63 @@ fun HabitsContent(
                         }
                     }
                 } else {
-                    items(
-                        items = habitsToDisplay,
-                        key = { habit: HabitEntity -> habit.id }
-                    ) { habit: HabitEntity ->
-                        HabitItem(
-                            habit = habit,
-                            personaColor = details.endColor,
-                            onDelete = { onDeleteHabit(habit.id) },
-                            onClick = { onHabitClick(habit.id) }
-                        )
+                    val activeGoalId = uiState.activeGoal?.id
+                    val goalHabits = habitsToDisplay.filter { 
+                        it.goalId != null && (activeGoalId == null || it.goalId == activeGoalId)
+                    }
+                    val standaloneHabits = habitsToDisplay.filter { 
+                        it.goalId == null || (activeGoalId != null && it.goalId != activeGoalId)
+                    }
+
+                    val totalGoalHabits = uiState.habits.count { it.goalId != null && (activeGoalId == null || it.goalId == activeGoalId) }
+                    val totalStandaloneHabits = uiState.habits.count { it.goalId == null || (activeGoalId != null && it.goalId != activeGoalId) }
+
+                    if (goalHabits.isNotEmpty()) {
+                        item {
+                            val headerText = if (activeGoalId != null) "Goal Related Habits ($totalGoalHabits/3)" else "Goal Related Habits"
+                            Text(
+                                text = headerText,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = details.endColor,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+                        items(
+                            items = goalHabits,
+                            key = { habit: HabitEntity -> habit.id }
+                        ) { habit: HabitEntity ->
+                            HabitItem(
+                                habit = habit,
+                                personaColor = details.endColor,
+                                onDelete = { onDeleteHabit(habit.id) },
+                                onClick = { onHabitClick(habit.id) }
+                            )
+                        }
+                    }
+
+                    if (standaloneHabits.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Standalone Habits ($totalStandaloneHabits/2)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+                        items(
+                            items = standaloneHabits,
+                            key = { habit: HabitEntity -> habit.id }
+                        ) { habit: HabitEntity ->
+                            HabitItem(
+                                habit = habit,
+                                personaColor = details.endColor,
+                                onDelete = { onDeleteHabit(habit.id) },
+                                onClick = { onHabitClick(habit.id) }
+                            )
+                        }
                     }
                 }
                 
@@ -233,16 +330,88 @@ fun HabitsContent(
                 }
             }
 
-            if (showCreateSheet) {
-                HabitCreateBottomSheet(
-                    personaColor = details.endColor,
-                    onDismiss = { showCreateSheet = false },
-                    onHabitCreated = { title, desc, freq ->
-                        onAddHabit(title, desc, freq)
-                        showCreateSheet = false
+            if (uiState.relevanceWarning != null) {
+                AlertDialog(
+                    onDismissRequest = onClearRelevanceWarning,
+                    icon = { Icon(Icons.Rounded.SmartToy, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    title = { Text("AI Relevance Warning") },
+                    text = { Text(uiState.relevanceWarning) },
+                    confirmButton = {
+                        Button(onClick = onClearRelevanceWarning) {
+                            Text("I Understand")
+                        }
                     }
                 )
             }
+
+            if (showCreateSheet) {
+                val activeGoalId = uiState.activeGoal?.id
+                val hasGoal = activeGoalId != null || !uiState.onboardingGoal.isNullOrEmpty()
+                val goalHabitCount = uiState.habits.count { it.goalId != null }
+                val standaloneHabitCount = uiState.habits.count { it.goalId == null }
+
+                HabitCreateBottomSheet(
+                    personaColor = details.endColor,
+                    hasActiveGoal = hasGoal,
+                    goalHabitCount = goalHabitCount,
+                    standaloneHabitCount = standaloneHabitCount,
+                    initialTitle = selectedSuggestionTitle ?: "",
+                    onDismiss = { 
+                        showCreateSheet = false
+                        selectedSuggestionTitle = null
+                    },
+                    onHabitCreated = { title, desc, freq, linkToGoal ->
+                        onAddHabit(title, desc, freq, linkToGoal)
+                        showCreateSheet = false
+                        selectedSuggestionTitle = null
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SuggestionChip(
+    title: String,
+    personaColor: Color,
+    onClick: () -> Unit
+) {
+    var lastClickTime by remember { mutableLongStateOf(0L) }
+    Card(
+        modifier = Modifier
+            .widthIn(max = 200.dp)
+            .clickable { 
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - lastClickTime > 1000) {
+                    lastClickTime = currentTime
+                    onClick()
+                }
+            },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = personaColor.copy(alpha = 0.1f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, personaColor.copy(alpha = 0.2f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Rounded.SmartToy,
+                contentDescription = null,
+                tint = personaColor,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                color = personaColor
+            )
         }
     }
 }
@@ -520,6 +689,42 @@ fun OnboardingGoalCard(
 }
 
 @Composable
+fun EmptyGoalCard(
+    personaColor: Color,
+    onSetGoal: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = personaColor.copy(alpha = 0.1f),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, personaColor.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Let's set a new goal and start a new journey!",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onSetGoal,
+                colors = ButtonDefaults.buttonColors(containerColor = personaColor),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Set My Goal", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
 fun HabitItem(
     habit: HabitEntity,
     personaColor: Color,
@@ -529,39 +734,66 @@ fun HabitItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(vertical = 4.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = habit.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = personaColor
-                )
-                if (!habit.description.isNullOrEmpty()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = habit.description!!,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = habit.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = personaColor
+                    )
+                    if (!habit.description.isNullOrEmpty()) {
+                        Text(
+                            text = habit.description!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Rounded.Delete,
+                        contentDescription = "Delete Habit",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
             }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Rounded.Delete,
-                    contentDescription = "Delete Habit",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
+
+            if (!habit.relevanceWarning.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.SmartToy,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = habit.relevanceWarning,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
             }
         }
     }
@@ -570,12 +802,25 @@ fun HabitItem(
 @Composable
 fun HabitCreateBottomSheet(
     personaColor: Color,
+    hasActiveGoal: Boolean,
+    goalHabitCount: Int,
+    standaloneHabitCount: Int,
+    initialTitle: String = "",
     onDismiss: () -> Unit,
-    onHabitCreated: (String, String, String) -> Unit
+    onHabitCreated: (String, String, String, Boolean) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
+    val isSuggestion = initialTitle.isNotBlank()
+    var title by remember(initialTitle) { mutableStateOf(initialTitle) }
     var description by remember { mutableStateOf("") }
     var frequency by remember { mutableStateOf("daily") }
+    // If it's an AI suggestion, we always want to link it to the goal by default 
+    // even if the formal goal record is still loading in the background.
+    var linkToGoal by remember(hasActiveGoal, isSuggestion) { 
+        mutableStateOf((hasActiveGoal || isSuggestion) && goalHabitCount < 3) 
+    }
+    
+    var isSubmitting by remember { mutableStateOf(false) }
+
     val sheetState = rememberModalBottomSheetState(
         confirmValueChange = { it != SheetValue.Hidden },
     )
@@ -587,6 +832,7 @@ fun HabitCreateBottomSheet(
         properties = ModalBottomSheetDefaults.properties(shouldDismissOnBackPress = false)
     ) {
         val keyboardController = LocalSoftwareKeyboardController.current
+        @OptIn(ExperimentalLayoutApi::class)
         val imeVisible = WindowInsets.isImeVisible
         BackHandler {
             if (imeVisible) keyboardController?.hide() else onDismiss()
@@ -632,15 +878,74 @@ fun HabitCreateBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
+            
+            if (hasActiveGoal) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { if (goalHabitCount < 3 || linkToGoal) linkToGoal = !linkToGoal }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Link to active goal",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = if (goalHabitCount >= 3 && !linkToGoal) "Goal habit limit reached (3/3)" 
+                                       else "AI will check if this habit supports your goal",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (goalHabitCount >= 3 && !linkToGoal) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = linkToGoal,
+                            onCheckedChange = { linkToGoal = it },
+                            enabled = goalHabitCount < 3 || linkToGoal,
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = personaColor
+                            )
+                        )
+                    }
+                }
+            }
+
+            val isStandaloneLimitReached = !linkToGoal && standaloneHabitCount >= 2
+            if (isStandaloneLimitReached) {
+                Text(
+                    text = "Standalone habit limit reached (2/2). Link this to a goal or delete an old one.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
 
             Button(
-                onClick = { onHabitCreated(title, description, frequency) },
+                onClick = { 
+                    if (!isSubmitting) {
+                        isSubmitting = true
+                        onHabitCreated(title, description, frequency, linkToGoal)
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = personaColor),
-                enabled = title.isNotBlank()
+                enabled = title.isNotBlank() && !isStandaloneLimitReached && !isSubmitting
             ) {
-                Text("Create Habit", fontWeight = FontWeight.Bold)
+                if (isSubmitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
+                    Text("Create Habit", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

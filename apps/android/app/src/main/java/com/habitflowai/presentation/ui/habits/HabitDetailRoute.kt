@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,8 +55,8 @@ fun HabitDetailRoute(
         isLoading = uiState.isLoading,
         errorMessage = uiState.errorMessage,
         onBack = onBack,
-        onComplete = { isPublic ->
-            viewModel.completeHabit(habitId, isPublic) { success ->
+        onComplete = { note, isPublic ->
+            viewModel.completeHabit(habitId, note, isPublic) { success ->
                 if (success) onBack()
             }
         }
@@ -71,7 +72,7 @@ fun HabitDetailContent(
     isLoading: Boolean = false,
     errorMessage: String? = null,
     onBack: () -> Unit,
-    onComplete: (Boolean) -> Unit = {}
+    onComplete: (String?, Boolean) -> Unit = { _, _ -> }
 ) {
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -128,6 +129,32 @@ fun HabitDetailContent(
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.DarkGray
                         )
+                        
+                        if (!habit.relevanceWarning.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.SmartToy,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        text = habit.relevanceWarning,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -155,6 +182,7 @@ fun HabitDetailContent(
                 }
 
                 if (!habit.completed) {
+                    var completionNote by remember { mutableStateOf("") }
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -169,6 +197,16 @@ fun HabitDetailContent(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
+                            
+                            OutlinedTextField(
+                                value = completionNote,
+                                onValueChange = { completionNote = it },
+                                label = { Text("What did you do? (Note)") },
+                                placeholder = { Text("AI will check for plausibility") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
                             Text(
                                 text = "Record this completion and save your location on the map.",
                                 style = MaterialTheme.typography.bodySmall,
@@ -200,8 +238,35 @@ fun HabitDetailContent(
                                     )
                                 )
                             }
+                            
+                            if (!habit.verificationWarning.isNullOrEmpty()) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.SmartToy,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = habit.verificationWarning,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                    }
+                                }
+                            }
+
                             Button(
-                                onClick = { onComplete(shareOnPublicMap) },
+                                onClick = { onComplete(completionNote.trim().ifBlank { null }, shareOnPublicMap) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(52.dp),
@@ -422,7 +487,7 @@ fun HabitDetailAchieverPreview() {
             ),
             stats = mapOf("consistency" to "85%", "total completions" to 12),
             personaType = "Achiever",
-            onComplete = {},
+            onComplete = { _, _ -> },
             onBack = {}
         )
     }
@@ -449,7 +514,7 @@ fun HabitDetailGrowerPreview() {
             ),
             stats = mapOf("streak" to 5),
             personaType = "Grower",
-            onComplete = {},
+            onComplete = { _, _ -> },
             onBack = {}
         )
     }
@@ -477,7 +542,7 @@ fun HabitDetailRegulatorPreview() {
             ),
             stats = mapOf("on time" to "90%"),
             personaType = "Regulator",
-            onComplete = {},
+            onComplete = { _, _ -> },
             onBack = {}
         )
     }

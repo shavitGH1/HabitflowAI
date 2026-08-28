@@ -51,7 +51,9 @@ data class RegisterResponse(
     val userId: String,
     val success: Boolean,
     val personaType: String? = null,
-    val motivationalMessage: String? = null
+    val motivationalMessage: String? = null,
+    val portfolioSummary: String? = null,
+    val coreGoals: List<HomeGoalTask>? = emptyList()
 )
 
 data class GoogleAuthRequest(val idToken: String)
@@ -84,7 +86,9 @@ data class GoogleRegisterResponse(
     val accessToken: String,
     val refreshToken: String,
     val personaType: String? = null,
-    val motivationalMessage: String? = null
+    val motivationalMessage: String? = null,
+    val portfolioSummary: String? = null,
+    val coreGoals: List<HomeGoalTask>? = emptyList()
 )
 
 data class UpdateProfilePictureRequest(

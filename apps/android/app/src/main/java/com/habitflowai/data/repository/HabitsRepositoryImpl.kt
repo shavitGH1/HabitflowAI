@@ -45,7 +45,10 @@ class HabitsRepositoryImpl @Inject constructor(
                     completed = res.completed,
                     syncStatus = SyncStatus.SYNCED,
                     serverId = res.id,
-                    completionHistory = res.completionHistory ?: emptyList()
+                    goalId = res.goalId,
+                    completionHistory = res.completionHistory ?: emptyList(),
+                    relevanceWarning = res.relevanceWarning,
+                    verificationWarning = res.verificationWarning
                 )
                 habitDao.insert(entity)
             }
@@ -54,20 +57,26 @@ class HabitsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createHabit(habit: HabitEntity): Result<Unit> {
+    override suspend fun createHabit(habit: HabitEntity, goalId: String?): Result<HabitEntity> {
         return try {
-            val request = HabitRequest(habit.title, habit.description, habit.frequency)
+            val request = HabitRequest(habit.title, habit.description, habit.frequency, goalId = goalId)
             val response = api.createHabit(request)
-            habitDao.insert(
-                habit.copy(
-                    serverId = response.id,
-                    completed = response.completed,
-                    completionHistory = response.completionHistory ?: emptyList(),
-                    syncStatus = SyncStatus.SYNCED
-                )
+            val entity = habit.copy(
+                id = response.id, // Use server ID as local primary key immediately
+                serverId = response.id,
+                goalId = response.goalId, // Trust the server's decision (might be null if unrelated)
+                completed = response.completed,
+                completionHistory = response.completionHistory ?: emptyList(),
+                relevanceWarning = response.relevanceWarning,
+                verificationWarning = response.verificationWarning,
+                syncStatus = SyncStatus.SYNCED
             )
+            
+            // Use transaction to atomically remove temporary UUID and insert server record
+            habitDao.replaceHabit(habit, entity)
+            
             try { refreshHabits() } catch (_: Exception) {}
-            Result.success(Unit)
+            Result.success(entity)
         } catch (e: Exception) {
             habitDao.insert(habit.copy(syncStatus = SyncStatus.PENDING_CREATE))
             enqueueSync()
@@ -101,18 +110,27 @@ class HabitsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun completeHabit(habit: HabitEntity): Boolean {
+    override suspend fun completeHabit(habit: HabitEntity, note: String?): Boolean {
         val today = java.time.LocalDate.now().toString()
         val updatedHistory = (habit.completionHistory + today).distinct()
         
         return try {
             val idToComplete = habit.serverId ?: habit.id
-            val response = api.completeHabit(idToComplete, mapOf("date" to today))
+            val params = mutableMapOf("date" to today)
+            note?.let { params["note"] = it }
+            val response = api.completeHabit(idToComplete, params)
             
             if (response.isSuccessful) {
+                val body = response.body()
                 // Update locally immediately with the server-returned data (via refresh)
                 // but also ensure our local state is updated right now.
-                habitDao.update(habit.copy(completed = true, completionHistory = updatedHistory, syncStatus = SyncStatus.SYNCED))
+                habitDao.update(habit.copy(
+                    completed = true, 
+                    completionHistory = body?.completionHistory ?: updatedHistory,
+                    relevanceWarning = body?.relevanceWarning,
+                    verificationWarning = body?.verificationWarning,
+                    syncStatus = SyncStatus.SYNCED
+                ))
                 try { refreshHabits() } catch (_: Exception) {}
                 true
             } else {

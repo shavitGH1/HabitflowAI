@@ -26,7 +26,7 @@ import com.habitflowai.data.local.entity.UserEntity
         ChatEntity::class,
         MessageEntity::class,
     ],
-    version = 10
+    version = 12
 )
 @TypeConverters(Converters::class)
 abstract class HabitFlowDatabase : RoomDatabase() {
@@ -37,6 +37,18 @@ abstract class HabitFlowDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
 
     companion object {
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_habits_serverId` ON `habits` (`serverId`)")
+            }
+        }
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `habits` ADD COLUMN `goalId` TEXT")
+                db.execSQL("ALTER TABLE `habits` ADD COLUMN `relevanceWarning` TEXT")
+                db.execSQL("ALTER TABLE `habits` ADD COLUMN `verificationWarning` TEXT")
+            }
+        }
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `chats` ADD COLUMN `pinnedBy` TEXT NOT NULL DEFAULT '[]'")

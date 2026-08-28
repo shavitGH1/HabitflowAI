@@ -95,6 +95,14 @@ class OnboardingViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(navigateToHome = false)
     }
 
+    fun onSuggestionsNavigated() {
+        _uiState.value = _uiState.value.copy(navigateToSuggestions = false)
+    }
+
+    fun finishOnboarding() {
+        _uiState.value = _uiState.value.copy(navigateToHome = true)
+    }
+
     fun onOnboardingNavigated() {
         _uiState.value = _uiState.value.copy(proceedToOnboarding = false)
     }
@@ -200,6 +208,7 @@ class OnboardingViewModel @Inject constructor(
                         success = true,
                         userId = response.userId
                     ),
+                    suggestedHabits = response.coreGoals ?: emptyList(),
                     errorMessage = null,
                     navigateToHome = true
                 )
@@ -374,6 +383,7 @@ class OnboardingViewModel @Inject constructor(
                             success = true,
                             userId = response.userId
                         ),
+                        suggestedHabits = response.coreGoals ?: emptyList(),
                         errorMessage = null,
                         navigateToHome = true
                     )
