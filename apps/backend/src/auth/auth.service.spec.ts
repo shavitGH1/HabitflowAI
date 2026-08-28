@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { AiService } from '../ai/ai.service';
+import { GoalRepository } from '../goals/goal.repository';
 import { HabitRepository } from '../habits/habit.repository';
 import { UserRepository } from '../users/user.repository';
 import { AuthService } from './auth.service';
@@ -41,6 +42,10 @@ const mockHabitRepository = {
   createHabit: jest.fn(),
 };
 
+const mockGoalRepository = {
+  createGoal: jest.fn(),
+};
+
 const mockAiService = {
   classifyPersonaWeighted: jest.fn(),
   generatePortfolio: jest.fn(),
@@ -68,6 +73,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: UserRepository, useValue: mockUserRepository },
         { provide: HabitRepository, useValue: mockHabitRepository },
+        { provide: GoalRepository, useValue: mockGoalRepository },
         { provide: AiService, useValue: mockAiService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
@@ -108,7 +114,7 @@ describe('AuthService', () => {
       expect(result).toMatchObject({ userId: 'user-123', portfolioSummary: 'You are driven by results and measurable progress.', success: true });
     });
 
-    it('seeds a daily habit from the stated goal so the coach recognizes it immediately', async () => {
+    it('creates an active goal record from the stated goal so it is actionable on the client', async () => {
       mockUserRepository.findUserByEmail.mockResolvedValue(null);
       mockAiService.classifyPersonaWeighted.mockResolvedValue({
         isValid: true,
@@ -130,11 +136,11 @@ describe('AuthService', () => {
 
       await service.register({ email: 'test@example.com', password: 'password123', goal: GOAL, openAnswers: OPEN_ANSWERS });
 
-      expect(mockHabitRepository.createHabit).toHaveBeenCalledTimes(1);
-      expect(mockHabitRepository.createHabit).toHaveBeenCalledWith({
+      expect(mockGoalRepository.createGoal).toHaveBeenCalledTimes(1);
+      expect(mockGoalRepository.createGoal).toHaveBeenCalledWith({
         userId: 'user-123',
         title: GOAL,
-        frequency: 'daily',
+        targetDate: expect.any(Date),
       });
     });
 

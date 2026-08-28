@@ -13,6 +13,7 @@ const mockGoalRepository = {
 
 const mockUserRepository = {
   addAchievement: jest.fn(),
+  findUserById: jest.fn(),
 };
 
 const USER_ID = 'user-123';
@@ -72,12 +73,14 @@ describe('GoalsService', () => {
   });
 
   describe('getActiveGoal()', () => {
-    it('returns null when the user has no active goal', async () => {
+    it('returns null when the user has no active goal and no onboarding goal string', async () => {
       mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+      mockUserRepository.findUserById.mockResolvedValue({ id: USER_ID, goal: null });
 
       const result = await service.getActiveGoal(USER_ID);
 
       expect(result).toBeNull();
+      expect(mockGoalRepository.createGoal).not.toHaveBeenCalled();
     });
 
     it('returns the active goal when one exists', async () => {
@@ -87,6 +90,23 @@ describe('GoalsService', () => {
       const result = await service.getActiveGoal(USER_ID);
 
       expect(result).toEqual(goal);
+      expect(mockUserRepository.findUserById).not.toHaveBeenCalled();
+    });
+
+    it('auto-creates a Goal from the legacy onboarding goal string when no active goal exists', async () => {
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+      mockUserRepository.findUserById.mockResolvedValue({ id: USER_ID, goal: 'Run a marathon' });
+      const created = makeGoal();
+      mockGoalRepository.createGoal.mockResolvedValue(created);
+
+      const result = await service.getActiveGoal(USER_ID);
+
+      expect(mockGoalRepository.createGoal).toHaveBeenCalledWith({
+        userId: USER_ID,
+        title: 'Run a marathon',
+        targetDate: expect.any(Date),
+      });
+      expect(result).toEqual(created);
     });
   });
 

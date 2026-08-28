@@ -228,7 +228,11 @@ fun HabitFlowNavGraph(
                         onHabitClick = { habitId ->
                             navController.navigate(NavRoute.HabitDetail.createRoute(habitId))
                         },
-                        onToggleChat = { chatViewModel.toggleChat() }
+                        onToggleChat = { chatViewModel.toggleChat() },
+                        onSetGoal = {
+                            onboardingViewModel.startRetake()
+                            navController.navigate(NavRoute.Onboarding.route)
+                        }
                     )
                 }
                 composable(NavRoute.HabitDetail.route) { backStackEntry ->

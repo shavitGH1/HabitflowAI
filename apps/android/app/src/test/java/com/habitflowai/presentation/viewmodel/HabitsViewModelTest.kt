@@ -2,6 +2,7 @@ package com.habitflowai.presentation.viewmodel
 
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.SyncStatus
+import com.habitflowai.data.model.ActiveGoalResponse
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.GoalsRepository
 import com.habitflowai.domain.repository.HabitsRepository
@@ -59,12 +60,21 @@ class HabitsViewModelTest {
         )
     )
 
+    private val testActiveGoal = ActiveGoalResponse(
+        id = "goal-1",
+        title = "Run a marathon",
+        description = null,
+        targetDate = null,
+        progress = null
+    )
+
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         every { authManager.currentUserId } returns MutableStateFlow("local_user")
         every { habitsRepository.getHabits(any()) } returns flowOf(testHabits)
-        coEvery { habitsRepository.createHabit(any()) } returns Result.success(Unit)
+        coEvery { habitsRepository.createHabit(any(), any()) } returns Result.success(testHabits[0])
+        coEvery { goalsRepository.getActiveGoal() } returns testActiveGoal
         coEvery { habitsRepository.deleteHabit(any()) } just runs
         coEvery { habitsRepository.completeHabit(any()) } returns true
         coEvery { locationRepository.captureAndSaveLocation(any(), any(), any()) } just runs
@@ -96,10 +106,11 @@ class HabitsViewModelTest {
                 entity.description == "Description" &&
                 entity.frequency == "weekly" &&
                 entity.userId == "local_user" &&
+                entity.goalId == "goal-1" &&
                 !entity.completed &&
-                entity.syncStatus == SyncStatus.PENDING_CREATE &&
+                entity.syncStatus == SyncStatus.SYNCED &&
                 entity.completionHistory.isEmpty()
-            })
+            }, "goal-1")
         }
     }
 
@@ -108,13 +119,14 @@ class HabitsViewModelTest {
         viewModel.addHabit("Habit A", "Desc", "DAILY")
         viewModel.addHabit("Habit B", "Desc", "WEEKLY")
 
-        coVerify(exactly = 2) { habitsRepository.createHabit(any()) }
+        coVerify(exactly = 2) { habitsRepository.createHabit(any(), any()) }
 
         // Capture the first two calls and verify they have different IDs
         val habitSlot = mutableListOf<HabitEntity>()
-        coEvery { habitsRepository.createHabit(any()) } answers {
-            habitSlot.add(firstArg())
-            Result.success(Unit)
+        coEvery { habitsRepository.createHabit(any(), any()) } answers {
+            val habit: HabitEntity = firstArg()
+            habitSlot.add(habit)
+            Result.success(habit)
         }
 
         viewModel.addHabit("Habit C", "Desc", "MONTHLY")
