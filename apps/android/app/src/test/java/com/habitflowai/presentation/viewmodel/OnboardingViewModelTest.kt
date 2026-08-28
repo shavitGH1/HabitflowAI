@@ -5,6 +5,7 @@ import com.habitflowai.data.model.LoginRequest
 import com.habitflowai.data.model.LoginResponse
 import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.model.RegisterResponse
+import com.habitflowai.data.local.HabitFlowDatabase
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.AuthRepository
@@ -38,6 +39,7 @@ class OnboardingViewModelTest {
     private val userRepository: UserRepository = mockk()
     private val api: HabitFlowApi = mockk()
     private val authManager: AuthManager = mockk()
+    private val database: HabitFlowDatabase = mockk()
 
     private lateinit var viewModel: OnboardingViewModel
 
@@ -45,18 +47,29 @@ class OnboardingViewModelTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         every { authManager.updateTokens(any(), any()) } just runs
+        every { authManager.clearTokens() } just runs
+        every { database.clearAllTables() } just runs
         viewModel = OnboardingViewModel(
             repository = personaRepository,
             authRepository = authRepository,
             userRepository = userRepository,
             api = api,
-            authManager = authManager
+            authManager = authManager,
+            database = database
         )
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `logout clears tokens and wipes locally cached data`() {
+        viewModel.logout()
+
+        verify { authManager.clearTokens() }
+        verify(timeout = 1000) { database.clearAllTables() }
     }
 
     @Test

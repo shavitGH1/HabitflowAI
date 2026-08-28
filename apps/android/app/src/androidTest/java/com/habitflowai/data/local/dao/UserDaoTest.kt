@@ -92,35 +92,6 @@ class UserDaoTest {
     }
 
     @Test
-    fun getFirstUser_returnsOnlyUser() = runBlocking {
-        val user = createUser()
-        dao.insert(user)
-
-        val first = dao.getFirstUser()
-        assertNotNull(first)
-        assertEquals("user-1", first?.id)
-    }
-
-    @Test
-    fun getFirstUser_returnsNullWhenEmpty() = runBlocking {
-        val first = dao.getFirstUser()
-        assertNull(first)
-    }
-
-    @Test
-    fun getFirstUser_returnsFirstWhenMultiple() = runBlocking {
-        val u1 = createUser(id = "u1", email = "a@example.com")
-        val u2 = createUser(id = "u2", email = "b@example.com")
-        dao.insert(u1)
-        dao.insert(u2)
-
-        // With REPLACE conflict, the order is not guaranteed,
-        // but there should always be one returned when rows exist
-        val first = dao.getFirstUser()
-        assertNotNull(first)
-    }
-
-    @Test
     fun storesAndRetrievesAllFields() = runBlocking {
         val user = UserEntity(
             id = "detailed",

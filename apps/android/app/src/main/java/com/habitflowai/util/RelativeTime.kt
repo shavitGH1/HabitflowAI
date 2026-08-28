@@ -7,6 +7,7 @@ import java.time.format.DateTimeParseException
 
 private val FULL_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy")
 private val CLOCK_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm")
+private val SHORT_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yy")
 
 /**
  * Compact relative time for posts: seconds/minutes/hours, "Yesterday", days up to a
@@ -97,6 +98,16 @@ fun formatChatDateSeparator(timestampMillis: Long): String {
         daysBetween in 2..6 -> messageDate.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
         else -> FULL_DATE_FORMATTER.withZone(zone).format(instant)
     }
+}
+
+/** Chat-list row timestamp: clock time ("18:03") for today, else "DD/MM/YY". */
+fun formatChatListTime(isoDate: String?): String {
+    if (isoDate.isNullOrBlank()) return ""
+    val instant = try { Instant.parse(isoDate) } catch (e: DateTimeParseException) { return "" }
+    val zone = ZoneId.systemDefault()
+    val messageDate = instant.atZone(zone).toLocalDate()
+    val today = java.time.LocalDate.now(zone)
+    return if (messageDate == today) formatClockTime(instant) else SHORT_DATE_FORMATTER.withZone(zone).format(instant)
 }
 
 /** True when two message timestamps fall on different calendar days (for date-separator placement). */

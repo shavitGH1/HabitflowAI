@@ -58,7 +58,9 @@ data class ChatResponse(
     val unreadCount: Map<String, Int> = emptyMap(),
     val isPublic: Boolean = false,
     val pinnedBy: List<String> = emptyList(),
-    val mutedBy: List<String> = emptyList()
+    val mutedBy: List<String> = emptyList(),
+    val lastMessageAt: String? = null,
+    val lastMessageSenderId: String? = null
 )
 
 data class CreateChatRequest(

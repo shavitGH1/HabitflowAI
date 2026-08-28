@@ -36,6 +36,9 @@ export class Chat {
   @Prop()
   lastMessageAt?: Date;
 
+  @Prop()
+  lastMessageSenderId?: string;
+
   @Prop({ type: Map, of: Number, default: {} })
   unreadCount: Map<string, number>;
 

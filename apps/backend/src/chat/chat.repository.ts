@@ -17,6 +17,7 @@ export interface ChatData {
   imageUrl?: string;
   lastMessage?: string;
   lastMessageAt?: string;
+  lastMessageSenderId?: string;
   unreadCount: Record<string, number>;
   pinnedBy: string[];
   mutedBy: string[];
@@ -52,6 +53,7 @@ export interface UpdateChatInput {
   owner?: string;
   lastMessage?: string;
   lastMessageAt?: Date;
+  lastMessageSenderId?: string;
   unreadCount?: Record<string, number>;
   pinnedBy?: string[];
   mutedBy?: string[];
@@ -162,6 +164,7 @@ export class ChatRepository {
       imageUrl: doc.imageUrl,
       lastMessage: doc.lastMessage,
       lastMessageAt: doc.lastMessageAt?.toISOString(),
+      lastMessageSenderId: doc.lastMessageSenderId,
       unreadCount: Object.fromEntries(doc.unreadCount ?? new Map()),
       pinnedBy: doc.pinnedBy ?? [],
       mutedBy: doc.mutedBy ?? [],

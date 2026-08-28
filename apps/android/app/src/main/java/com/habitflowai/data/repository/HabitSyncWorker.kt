@@ -34,7 +34,8 @@ class HabitSyncWorker @AssistedInject constructor(
     }
 
     private suspend fun pushPendingChanges() {
-        val unsynced = habitDao.getUnsyncedHabits()
+        val userId = authManager.currentUserId.value ?: return
+        val unsynced = habitDao.getUnsyncedHabits(userId)
         for (habit in unsynced) {
             when (habit.syncStatus) {
                 SyncStatus.PENDING_CREATE -> pushCreate(habit)
@@ -86,9 +87,11 @@ class HabitSyncWorker @AssistedInject constructor(
 
     private suspend fun pullServerChanges() {
         try {
+            val userIdAtRequestTime = authManager.currentUserId.value ?: return
             val remoteHabits = api.getHabits()
-            val currentUserId = authManager.currentUserId.value ?: ""
-            
+            val currentUserId = authManager.currentUserId.value ?: return
+            if (currentUserId != userIdAtRequestTime) return
+
             for (remote in remoteHabits) {
                 val localByServerId = habitDao.getHabitByServerId(remote.id)
                 val localById = habitDao.getHabitById(remote.id)
@@ -106,7 +109,7 @@ class HabitSyncWorker @AssistedInject constructor(
                 )
                 habitDao.insert(entity)
             }
-            habitDao.deleteBySyncStatus(SyncStatus.PENDING_DELETE)
+            habitDao.deleteBySyncStatus(currentUserId, SyncStatus.PENDING_DELETE)
         } catch (_: Exception) {
             // Server pull failed, will retry
         }

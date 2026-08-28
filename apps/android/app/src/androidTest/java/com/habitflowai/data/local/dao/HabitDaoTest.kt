@@ -43,7 +43,8 @@ class HabitDaoTest {
     private fun createHabit(
         id: String = UUID.randomUUID().toString(),
         title: String = "Test Habit",
-        syncStatus: SyncStatus = SyncStatus.SYNCED
+        syncStatus: SyncStatus = SyncStatus.SYNCED,
+        userId: String = this.userId
     ) = HabitEntity(
         id = id,
         title = title,
@@ -132,7 +133,19 @@ class HabitDaoTest {
         dao.insert(synced)
         dao.insert(pending)
 
-        val unsynced = dao.getUnsyncedHabits()
+        val unsynced = dao.getUnsyncedHabits(userId)
+        assertEquals(1, unsynced.size)
+        assertEquals("p1", unsynced.first().id)
+    }
+
+    @Test
+    fun getUnsyncedHabits_excludesOtherUsersPendingHabits() = runBlocking {
+        val ownPending = createHabit(id = "p1", syncStatus = SyncStatus.PENDING_CREATE)
+        val otherUsersPending = createHabit(id = "p2", syncStatus = SyncStatus.PENDING_CREATE, userId = "other-user")
+        dao.insert(ownPending)
+        dao.insert(otherUsersPending)
+
+        val unsynced = dao.getUnsyncedHabits(userId)
         assertEquals(1, unsynced.size)
         assertEquals("p1", unsynced.first().id)
     }
@@ -155,11 +168,24 @@ class HabitDaoTest {
         dao.insert(toDelete)
         dao.insert(keep)
 
-        dao.deleteBySyncStatus(SyncStatus.PENDING_DELETE)
+        dao.deleteBySyncStatus(userId, SyncStatus.PENDING_DELETE)
 
         val all = dao.getHabitsByUserId(userId).first()
         assertEquals(1, all.size)
         assertEquals("k1", all.first().id)
+    }
+
+    @Test
+    fun deleteBySyncStatus_leavesOtherUsersMatchingHabitsAlone() = runBlocking {
+        val ownPendingDelete = createHabit(id = "d1", syncStatus = SyncStatus.PENDING_DELETE)
+        val othersPendingDelete = createHabit(id = "d2", syncStatus = SyncStatus.PENDING_DELETE, userId = "other-user")
+        dao.insert(ownPendingDelete)
+        dao.insert(othersPendingDelete)
+
+        dao.deleteBySyncStatus(userId, SyncStatus.PENDING_DELETE)
+
+        assertNull(dao.getHabitById("d1"))
+        assertNotNull(dao.getHabitById("d2"))
     }
 
     @Test
@@ -176,13 +202,15 @@ class HabitDaoTest {
     }
 
     @Test
-    fun getAll_returnsAllHabits() = runBlocking {
+    fun getAllForUser_returnsOnlyThatUsersHabits() = runBlocking {
         val h1 = createHabit(id = "h1")
         val h2 = createHabit(id = "h2")
+        val otherUsersHabit = createHabit(id = "h3", userId = "other-user")
         dao.insert(h1)
         dao.insert(h2)
+        dao.insert(otherUsersHabit)
 
-        val all = dao.getAll()
+        val all = dao.getAllForUser(userId)
         assertEquals(2, all.size)
     }
 }

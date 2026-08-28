@@ -14,6 +14,7 @@ import com.habitflowai.data.model.OnboardingSuggestionsRequest
 import com.habitflowai.data.model.ReclassifyRequest
 import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.network.HabitFlowApi
+import com.habitflowai.data.local.HabitFlowDatabase
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.AuthRepository
 import com.habitflowai.domain.repository.PersonaRepository
@@ -22,6 +23,7 @@ import com.habitflowai.util.Resource
 import com.habitflowai.util.extractErrorMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,7 +40,8 @@ class OnboardingViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val api: HabitFlowApi,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
+    private val database: HabitFlowDatabase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
@@ -326,6 +329,9 @@ class OnboardingViewModel @Inject constructor(
     fun logout() {
         _uiState.value = OnboardingUiState()
         authManager.clearTokens()
+        viewModelScope.launch(Dispatchers.IO) {
+            database.clearAllTables()
+        }
     }
 
     fun registerUser() {

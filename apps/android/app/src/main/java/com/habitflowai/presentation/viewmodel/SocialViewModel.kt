@@ -1,5 +1,6 @@
 package com.habitflowai.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -414,21 +415,13 @@ class SocialViewModel @Inject constructor(
         }
     }
 
-    /** Loads all app users (excluding self) for the member picker. */
-    private suspend fun loadKnownUsers(chats: List<ChatResponse> = emptyList()) {
+    private suspend fun loadKnownUsers() {
         val uid = currentUserId
         try {
             val users = repository.getAllUsers().filter { it.id != uid }
             _uiState.update { it.copy(allUsers = users) }
         } catch (e: Exception) {
-            // Log or handle exception if needed
-            // Fallback: build from chat participants
-            val fromChats = chats.asSequence().flatMap { it.participantIds }.toMutableSet()
-            fromChats.remove(uid)
-            val fallbackUsers = fromChats.map { id -> AppUser(id, id) }
-            if (fallbackUsers.isNotEmpty()) {
-                _uiState.update { it.copy(allUsers = fallbackUsers) }
-            }
+            Log.e("SocialViewModel", "getAllUsers() failed; keeping previous allUsers list", e)
         }
     }
 
