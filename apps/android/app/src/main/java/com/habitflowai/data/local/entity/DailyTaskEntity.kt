@@ -20,5 +20,6 @@ data class DailyTaskEntity(
     val habitTitle: String,
     val date: String, // format: yyyy-MM-dd
     val description: String,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    val genre: String = "persona"
 )

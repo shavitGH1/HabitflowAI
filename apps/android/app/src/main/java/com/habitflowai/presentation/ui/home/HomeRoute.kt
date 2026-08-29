@@ -93,7 +93,8 @@ fun HomeRoute(
         onDateSelected = { viewModel.onDateSelected(it) },
         onDismissDriftBanner = { viewModel.dismissDriftBanner() },
         onStartReassessment = onNavigateToReassessment,
-        onToggleChat = onToggleChat
+        onToggleChat = onToggleChat,
+        onRefreshPlan = { viewModel.refreshHomeData() }
     )
 }
 
@@ -107,7 +108,8 @@ fun HomeScreen(
     onDateSelected: (LocalDate) -> Unit,
     onDismissDriftBanner: () -> Unit,
     onStartReassessment: () -> Unit,
-    onToggleChat: () -> Unit
+    onToggleChat: () -> Unit,
+    onRefreshPlan: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val today = remember { LocalDate.now() }
@@ -240,6 +242,25 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
+            if (!uiState.isRefreshing) {
+                TextButton(
+                    onClick = onRefreshPlan,
+                    colors = ButtonDefaults.textButtonColors(contentColor = endColor)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Star, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Refresh AI Plan", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            } else {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp).padding(vertical = 8.dp),
+                    strokeWidth = 2.dp,
+                    color = endColor
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
@@ -310,10 +331,10 @@ fun HomeScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            val message = if (isViewingHistory) 
-                                "No tasks were recorded for this date." 
+                            val message = if (isViewingHistory)
+                                "No tasks were recorded for this date."
                             else "No tasks generated for today yet."
-                            
+
                             Text(
                                 text = message,
                                 style = MaterialTheme.typography.bodyLarge,
@@ -374,9 +395,14 @@ fun GoalPlanSection(
     val formatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy") }
     val dateText = if (selectedDate == today) "Today's Checklist" else "Checklist for ${selectedDate.format(formatter)}"
     
-    // Group tasks by habitTitle
+    // Group tasks by habitTitle, exclude "General", and ensure priority ones are at the top
     val groupedTasks = remember(tasks) {
-        tasks.groupBy { it.habitTitle }
+        tasks.filter { it.habitTitle != "General" }
+            .groupBy { it.habitTitle }
+            .entries
+            .sortedBy { entry ->
+                if (entry.key == "Main Goal") 0 else 1
+            }
     }
 
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -388,17 +414,20 @@ fun GoalPlanSection(
         )
         if (selectedDate == today) {
             Text(
-                text = "AI-generated based on your persona and habits.",
+                text = "AI-optimized: Up to 5 general tasks + 3 per habit.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         groupedTasks.forEach { (habitTitle, habitTasks) ->
+            val subtitle = if (habitTitle == "Main Goal") "Strategic Goal Progress" else "Targeted Habit Actions"
+            val accentColor = if (habitTitle == "Main Goal") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+
             HabitGroup(
                 title = habitTitle,
-                subtitle = if (habitTitle == "General") "Persona-based growth" else "Habit-specific tasks",
-                accentColor = if (habitTitle == "General") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                subtitle = subtitle,
+                accentColor = accentColor,
                 tasks = habitTasks,
                 onTaskToggled = onTaskToggled,
                 isPastDate = selectedDate < today
@@ -876,7 +905,8 @@ fun HomeWithChatPreview() {
                 onDateSelected = {},
                 onDismissDriftBanner = {},
                 onStartReassessment = {},
-                onToggleChat = {}
+                onToggleChat = {},
+                onRefreshPlan = {}
             )
             ChatOverlay(
                 uiState = ChatUiState(personaType = personaType),
@@ -921,7 +951,8 @@ fun HomePersonaPreview(personaType: String) {
             onDateSelected = {},
             onDismissDriftBanner = {},
             onStartReassessment = {},
-            onToggleChat = {}
+            onToggleChat = {},
+            onRefreshPlan = {}
         )
     }
 }

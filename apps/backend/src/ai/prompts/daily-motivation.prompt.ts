@@ -29,50 +29,53 @@ export const buildDailyVariationsPrompt = (
   goal: string,
   dayOfWeek: number,
   habits: { id: string; title: string }[] = [],
-  // STOPGAP (Nir): bias wording owned by Yaron — the `difficultyBias` param itself (called from
-  // PersonasService.applyDifficultyAdjustment) is the shared contract; tune the sentences below freely.
   difficultyBias?: 'increase' | 'decrease',
-): string => `
+): string => {
+  const habitCount = habits.length;
+
+  return `
 You are an expert productivity and habit-tracking coach.
 
-Based on the user's persona, goal, and current habits, generate a new set of daily variation tasks for the specified day.
+USER PROFILE:
+- Primary Goal: "${goal}"
+- Personality Type: "${personaType}"
+- Target Day: "${DAYS[dayOfWeek]}"
 
-User Persona: "${personaType}"
-User's Goal: "${goal}"
-Target Day of the Week: "${DAYS[dayOfWeek]}"
-${habits.length > 0 ? `User's Active Habits:\n${habits.map((h) => `- ${h.title} (ID: ${h.id})`).join('\n')}` : ''}
+USER'S CURRENT HABITS:
+${habits.length > 0
+    ? habits.map((h, i) => `- [ID: ${h.id}] Title: "${h.title}"`).join('\n')
+    : 'None'}
 
-${
-  difficultyBias === 'increase'
-    ? 'The user has been completing tasks consistently — make today\'s tasks moderately more challenging than usual (harder targets, slightly more effort), while staying realistic for one day.'
-    : difficultyBias === 'decrease'
-      ? 'The user has been missing tasks recently — make today\'s tasks easier and smaller in scope than usual, to help rebuild momentum.'
-      : ''
-}
+INSTRUCTIONS:
+Generate a set of tasks for today. Every task must be directly related to the user's specific goal ("${goal}") or their existing habits.
 
-Task Generation Rules:
-1. Generate exactly 2 tasks with "genre": "goal" (concrete actions that directly advance "${goal}").
-2. Generate exactly 2 tasks with "genre": "persona" (general habits that build the ${personaType} persona's strengths, independent of the specific goal).
-${
-  habits.length > 0
-    ? `3. For each of the user's active habits listed above, generate 1 to 2 small, actionable sub-tasks for today. These must have "genre": "habit" and include the correct "habitId" matching the habit's ID.`
-    : ''
-}
+TASK TYPES TO GENERATE:
 
-All tasks should have a "description" and "points" (between 5 and 50).
+1. STRATEGIC GOAL TASKS (Between 3 and 5 tasks):
+   - Genre: "goal"
+   - habitId: null
+   - Requirement: High-impact actions that move the needle specifically on "${goal}".
+   - FORBIDDEN: Do not suggest general health/life advice (e.g. broccoli, water, sleep, vitamins) unless "${goal}" is about those things.
+
+2. HABIT-LINKED TASKS (Exactly 3 tasks per habit):
+   - For EACH habit listed in the "USER'S CURRENT HABITS" section, generate 3 unique sub-tasks.
+   - Genre: "habit"
+   - habitId: MUST be the exact ID provided for that habit.
+   - Requirement: Granular, one-time actions to practice that specific habit today.
+   - FORBIDDEN: Do not use the habit title as the task description.
+
+STRICT CONSTRAINTS:
+- No Hallucinations: If a task is not about "${goal}" or an active habit, delete it.
+- Full Coverage: You MUST generate 3 tasks for EVERY habit ID provided. Do not skip any.
+- No Persona Fillers: Do not generate any generic persona or mindset tasks. Focus only on concrete actions.
 
 OUTPUT FORMAT:
-Return the response STRICTLY as a valid JSON object containing only the "dailyVariations" array.
+Return a JSON object with a "dailyVariations" array.
 {
   "dailyVariations": [
-    { "description": "Goal task 1", "points": 30, "genre": "goal" },
-    { "description": "Goal task 2", "points": 15, "genre": "goal" },
-    { "description": "Persona task 1", "points": 20, "genre": "persona" },
-    { "description": "Persona task 2", "points": 10, "genre": "persona" }${
-      habits.length > 0
-        ? `,\n    { "description": "Habit task for ${habits[0].title}", "points": 15, "genre": "habit", "habitId": "${habits[0].id}" }`
-        : ''
-    }
+    { "description": "Specific goal-related action", "points": 30, "genre": "goal", "habitId": null },
+    { "description": "Specific habit sub-task", "points": 20, "genre": "habit", "habitId": "HABIT_ID_FROM_LIST" }
   ]
 }
-`;
+`.trim();
+};

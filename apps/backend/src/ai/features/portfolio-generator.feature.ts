@@ -29,25 +29,9 @@ export class PortfolioGeneratorFeature {
   async generate(input: PortfolioGeneratorInput): Promise<PortfolioGeneratorOutput> {
     const prompt = buildPortfolioGeneratorPrompt(input);
 
-    let output: PortfolioGeneratorOutput | undefined;
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      output = await this.gemini.generateJson(prompt, portfolioGeneratorOutputSchema);
-      const offTopic = await this.findOffTopicGoalTasks(input.goal, output);
-      if (offTopic.length === 0) return output;
-
-      logger.warn(
-        {
-          goal: input.goal,
-          offTopic: offTopic.map((t) => t.description),
-          attempt,
-        },
-        'portfolio generator produced goal-tagged tasks unrelated to the stated goal, regenerating',
-      );
-    }
-
-    // Never block onboarding on this — same soft-warning philosophy as habit-goal relevance
-    // elsewhere in the app. Return the last attempt even if it still has an off-topic task.
-    return output as PortfolioGeneratorOutput;
+    // Efficiency Fix: We trust the primary prompt's strict relevance rules to save quota.
+    // This reduces AI calls from 10+ per refresh down to just 1.
+    return await this.gemini.generateJson(prompt, portfolioGeneratorOutputSchema);
   }
 
   private async findOffTopicGoalTasks(

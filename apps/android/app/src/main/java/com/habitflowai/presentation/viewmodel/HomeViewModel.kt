@@ -17,6 +17,7 @@ import javax.inject.Inject
 data class HomeUiState(
     val homeData: HomeResponse? = null,
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val errorMessage: String? = null,
     val portfolioSummary: String? = null,
     val tips: List<String>? = null,
@@ -41,6 +42,7 @@ class HomeViewModel @Inject constructor(
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     private val _isDriftBannerDismissed = MutableStateFlow(false)
     private val _isLoading = MutableStateFlow(false)
+    private val _isRefreshing = MutableStateFlow(false)
     private val _errorMessage = MutableStateFlow<String?>(null)
     private val _homeData = MutableStateFlow<HomeResponse?>(null)
 
@@ -60,6 +62,7 @@ class HomeViewModel @Inject constructor(
         _selectedDate,
         _isDriftBannerDismissed,
         _isLoading,
+        _isRefreshing,
         _errorMessage,
         _homeData,
         _datesWithCompletions,
@@ -68,14 +71,16 @@ class HomeViewModel @Inject constructor(
         val selectedDate = args[0] as LocalDate
         val driftDismissed = args[1] as Boolean
         val loading = args[2] as Boolean
-        val error = args[3] as? String
-        val home = args[4] as? HomeResponse
-        val completions = args[5] as List<String>
-        val tasks = args[6] as List<DailyTaskEntity>
+        val refreshing = args[3] as Boolean
+        val error = args[4] as? String
+        val home = args[5] as? HomeResponse
+        val completions = args[6] as List<String>
+        val tasks = args[7] as List<DailyTaskEntity>
 
         HomeUiState(
             homeData = home,
             isLoading = loading,
+            isRefreshing = refreshing,
             errorMessage = error,
             portfolioSummary = home?.portfolioSummary,
             tips = home?.tips,
@@ -134,18 +139,31 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            try {
-                // Force sync tasks for today to overwrite old "General" records
-                goalsRepository.syncDailyTasks(LocalDate.now().toString())
-                
-                val data = goalsRepository.getHomeData()
-                _homeData.value = data
+            loadData(force = false)
+            _isLoading.value = false
+        }
+    }
 
-                _isLoading.value = false
-            } catch (e: Exception) {
-                _isLoading.value = false
+    fun refreshHomeData() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            _errorMessage.value = null
+            loadData(force = true)
+            _isRefreshing.value = false
+        }
+    }
+
+    private suspend fun loadData(force: Boolean) {
+        try {
+            // One call to sync handles both DB update and HomeData StateFlow
+            val result = goalsRepository.syncDailyTasks(LocalDate.now().toString(), force)
+            result.onSuccess { data ->
+                _homeData.value = data
+            }.onFailure { e ->
                 _errorMessage.value = e.message
             }
+        } catch (e: Exception) {
+            _errorMessage.value = e.message
         }
     }
 

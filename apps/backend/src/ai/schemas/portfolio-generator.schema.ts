@@ -4,19 +4,18 @@ export const goalTaskSchema = z.object({
   description: z.string().min(1),
   points: z.number().int().min(0),
   genre: z.enum(['goal', 'persona', 'habit']),
-  habitId: z.string().optional(),
+  habitId: z.string().nullable().optional(),
 });
 
 export const dailyVariationsSchema = z
   .array(goalTaskSchema)
-  .min(4)
+  .min(3)
   .refine(
     (tasks) => {
       const goalCount = tasks.filter((t) => t.genre === 'goal').length;
-      const personaCount = tasks.filter((t) => t.genre === 'persona').length;
-      return goalCount === 2 && personaCount === 2;
+      return goalCount >= 3 && goalCount <= 5;
     },
-    { message: 'dailyVariations must contain exactly 2 "goal" tasks and 2 "persona" tasks, plus habit tasks' },
+    { message: 'dailyVariations must contain between 3 and 5 "goal" tasks' },
   );
 
 export const portfolioGeneratorOutputSchema = z.object({

@@ -32,8 +32,8 @@ class GoalsRepositoryImpl @Inject constructor(
         return response.toGoalPairList()
     }
 
-    override suspend fun getHomeData(): HomeResponse {
-        val response = api.getHome()
+    override suspend fun getHomeData(force: Boolean): HomeResponse {
+        val response = api.getHome(if (force) true else null)
         savePortfolioToRoom(response)
         return response
     }
@@ -63,7 +63,7 @@ class GoalsRepositoryImpl @Inject constructor(
         return dailyTaskDao.getTasksForDate(userId, date)
     }
 
-    override suspend fun syncDailyTasks(date: String): Result<Unit> {
+    override suspend fun syncDailyTasks(date: String, force: Boolean): Result<HomeResponse> {
         return try {
             val userId = authManager.currentUserId.value ?: throw Exception("Not logged in")
             
@@ -88,19 +88,35 @@ class GoalsRepositoryImpl @Inject constructor(
                 // If habit refresh fails, continue with local habits
             }
 
-            val homeData = getHomeData()
+            val homeData = getHomeData(force)
             val userHabits = habitDao.getAllForUser(userId)
             val habitMap = userHabits.associateBy { it.id }
+            val habitMapByTitle = userHabits.associateBy { it.title.lowercase().trim() }
+
+            // Clear old tasks for this date before inserting new ones to avoid stale data/hallucinations
+            dailyTaskDao.deleteTasksForDate(userId, date)
 
             val dailyTasks = (homeData.coreGoals + homeData.dailyVariations).map { task ->
+                val habitById = if (!task.habitId.isNullOrBlank()) habitMap[task.habitId] else null
+                
+                // Flexible matching: Try ID first, then try matching description to a habit title
+                val habit = habitById ?: habitMapByTitle[task.description.lowercase().trim()]
+                
+                val resolvedHabitTitle = when {
+                    habit != null -> habit.title
+                    task.genre == "goal" -> "Main Goal"
+                    else -> "Goal Task" // Final fallback
+                }
+
                 DailyTaskEntity(
                     id = task.id,
                     userId = userId,
-                    habitId = task.habitId ?: "",
-                    habitTitle = task.habitId?.let { habitMap[it]?.title } ?: "General",
+                    habitId = habit?.id ?: task.habitId ?: "",
+                    habitTitle = resolvedHabitTitle,
                     date = date,
                     description = task.description,
-                    isCompleted = task.completed
+                    isCompleted = task.completed,
+                    genre = task.genre
                 )
             }
             
@@ -110,7 +126,7 @@ class GoalsRepositoryImpl @Inject constructor(
             val threshold = LocalDate.now().minusDays(28).toString()
             dailyTaskDao.deleteOldTasks(userId, threshold)
             
-            Result.success(Unit)
+            Result.success(homeData)
         } catch (e: Exception) {
             Result.failure(e)
         }

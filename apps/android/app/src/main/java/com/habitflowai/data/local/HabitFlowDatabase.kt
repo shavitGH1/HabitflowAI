@@ -29,7 +29,7 @@ import com.habitflowai.data.local.entity.UserEntity
         MessageEntity::class,
         DailyTaskEntity::class
     ],
-    version = 13
+    version = 14
 )
 @TypeConverters(Converters::class)
 abstract class HabitFlowDatabase : RoomDatabase() {
@@ -41,6 +41,11 @@ abstract class HabitFlowDatabase : RoomDatabase() {
     abstract fun dailyTaskDao(): DailyTaskDao
 
     companion object {
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `daily_tasks` ADD COLUMN `genre` TEXT NOT NULL DEFAULT 'persona'")
+            }
+        }
         val MIGRATION_12_13 = object : Migration(12, 13) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(

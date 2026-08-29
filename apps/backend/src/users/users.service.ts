@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { AiService } from '../ai/ai.service';
@@ -11,6 +11,8 @@ const NAME_CHANGE_COOLDOWN_MONTHS = 3;
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly habitRepository: HabitRepository,
@@ -24,53 +26,90 @@ export class UsersService {
     return users.map(u => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, profilePicture: u.profilePicture }));
   }
 
-  async getHomePageData(userId: string) {
+  async getHomePageData(userId: string, forceRegenerate = false) {
     const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
     const habits = await this.habitRepository.findByUserId(userId);
     const today = new Date().toISOString().split('T')[0];
-    if (user.tasksLastGeneratedDate !== today) {
+
+    if (user.tasksLastGeneratedDate !== today || forceRegenerate) {
       const habitInputs = habits.map(h => ({ id: h.id, title: h.title }));
+      this.logger.log(`[AI SYNC] Preparing prompt with ${habits.length} habits: ${JSON.stringify(habitInputs)}`);
+      this.logger.log(`[AI SYNC] Triggering regeneration for user ${userId}. Force: ${forceRegenerate}`);
+
+      // If forcing, also refresh the core portfolio to clean up old hallucinations
+      if (forceRegenerate) {
+        this.logger.log(`[AI SYNC] Force cleaning portfolio for ${userId}`);
+        const portfolio = await this.ai.generatePortfolio({
+          goal: user.goal,
+          personaType: user.personaType as any,
+          openAnswers: (user as any).openAnswers || [],
+          weightedBreakdown: (user as any).weightedScores || { Achievement: 100 },
+        });
+        user.coreGoals = portfolio.coreGoals.map(g => ({ ...g, id: uuidv4(), completed: false }));
+        user.motivationalMessage = portfolio.summary;
+        user.tips = portfolio.tips;
+        user.failurePatterns = portfolio.failurePatterns;
+
+        await this.userRepository.updateUserPersona(userId, {
+          coreGoals: user.coreGoals,
+          motivationalMessage: user.motivationalMessage,
+          tips: user.tips,
+          failurePatterns: user.failurePatterns,
+        });
+      }
+
       const newDailyTasks = await this.ai.generateDailyVariations(user, new Date().getDay(), habitInputs);
+      this.logger.log(`[AI SYNC] AI returned ${newDailyTasks.length} tasks. Raw Samples: ${JSON.stringify(newDailyTasks.slice(0, 3))}`);
+
       const updatedTasks = newDailyTasks.map(t => ({ ...t, id: uuidv4(), completed: false }));
       const updated = await this.userRepository.updateUserDailyTasks(userId, updatedTasks);
       user.dailyVariations = updated?.dailyVariations ?? updatedTasks;
+      user.tasksLastGeneratedDate = today;
+
+      // Save the date to avoid repeated loops
+      await this.userRepository.updateUserPersona(userId, { tasksLastGeneratedDate: today });
     }
 
-    // Dynamic mapping for "General" header issue:
-    // If a task description exactly matches a habit title, it's a redundant high-level task;
-    // we filter it out to prevent duplicates.
+    const habitIdSet = new Set(habits.map(h => h.id));
     const habitMapByTitle = new Map(habits.map(h => [h.title.toLowerCase().trim(), h.id]));
     const seenDescriptions = new Set<string>();
 
     const enrichTask = (t: any) => {
       if (!t) return null;
+
+      // Drop persona tasks (the "General" section the user doesn't want)
+      if (t.genre === 'persona' && !t.habitId) {
+        return null;
+      }
+
       const descTrimmed = t.description.toLowerCase().trim();
 
-      // 1. Remove tasks that are exactly the habit title (duplicates)
-      if (habitMapByTitle.has(descTrimmed)) {
-        return null;
-      }
-
-      // 2. Remove duplicate descriptions within the same response
-      if (seenDescriptions.has(descTrimmed)) {
-        return null;
-      }
+      // Avoid duplicates
+      if (seenDescriptions.has(descTrimmed)) return null;
       seenDescriptions.add(descTrimmed);
 
-      // 3. If already has habitId, keep it
-      if (t.habitId) return t;
+      // 1. Trust verified habit mapping first
+      if (t.habitId && habitIdSet.has(t.habitId)) {
+         return t;
+      }
 
-      // 4. Smart linking for "General" (Goal/Persona) tasks that mention a habit
+      // 2. Fallback: if AI provided a habitId that doesn't exist, try matching by habit title in the description
       for (const habit of habits) {
         const titleLower = habit.title.toLowerCase().trim();
-        // If the description contains the habit title, link it to that habit
         if (descTrimmed.includes(titleLower)) {
           return { ...t, habitId: habit.id, genre: 'habit' };
         }
       }
-      return t;
+
+      // 3. If it's a goal task but no habit mapping found, let it through as a main goal task
+      if (t.genre === 'goal') {
+        return t;
+      }
+
+      // Discard unmapped or hallucinated habit tasks
+      return null;
     };
 
     const coreGoals = user.coreGoals.map(enrichTask).filter(t => t !== null);

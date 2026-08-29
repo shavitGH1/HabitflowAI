@@ -15,6 +15,9 @@ interface DailyTaskDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTasks(tasks: List<DailyTaskEntity>)
 
+    @Query("DELETE FROM daily_tasks WHERE userId = :userId AND date = :date")
+    suspend fun deleteTasksForDate(userId: String, date: String)
+
     @Query("UPDATE daily_tasks SET isCompleted = :completed WHERE id = :taskId AND userId = :userId")
     suspend fun updateTaskCompletion(userId: String, taskId: String, completed: Boolean)
 
