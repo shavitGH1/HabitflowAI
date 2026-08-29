@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.work.WorkManager
 import com.habitflowai.data.local.HabitFlowDatabase
 import com.habitflowai.data.local.dao.ChatDao
+import com.habitflowai.data.local.dao.DailyTaskDao
 import com.habitflowai.data.local.dao.DriftCheckDao
 import com.habitflowai.data.local.dao.HabitDao
 import com.habitflowai.data.local.dao.LocationDao
@@ -38,7 +39,9 @@ object DatabaseModule {
             HabitFlowDatabase.MIGRATION_8_9,
             HabitFlowDatabase.MIGRATION_9_10,
             HabitFlowDatabase.MIGRATION_10_11,
-            HabitFlowDatabase.MIGRATION_11_12
+            HabitFlowDatabase.MIGRATION_11_12,
+            HabitFlowDatabase.MIGRATION_12_13,
+            HabitFlowDatabase.MIGRATION_13_14
         )
         .fallbackToDestructiveMigration()
         .build()
@@ -58,6 +61,9 @@ object DatabaseModule {
 
     @Provides
     fun provideChatDao(database: HabitFlowDatabase): ChatDao = database.chatDao()
+
+    @Provides
+    fun provideDailyTaskDao(database: HabitFlowDatabase): DailyTaskDao = database.dailyTaskDao()
 
     @Provides
     @Singleton

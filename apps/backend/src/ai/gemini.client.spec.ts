@@ -31,8 +31,8 @@ describe('GeminiClient fallback chain', () => {
 
     await expect(client.generateJson<{ ok: boolean }>('prompt')).resolves.toEqual({ ok: true });
     expect(mockGenerateContent).toHaveBeenCalledTimes(2);
-    expect(mockGenerateContent.mock.calls[0][0].model).toBe('gemini-3.5-flash-lite');
-    expect(mockGenerateContent.mock.calls[1][0].model).toBe('gemini-flash-lite-latest');
+    expect(mockGenerateContent.mock.calls[0][0].model).toBe('gemini-3.6-flash');
+    expect(mockGenerateContent.mock.calls[1][0].model).toBe('gemini-2.5-flash');
   });
 
   it('walks the whole chain and throws a friendly error when every model fails', async () => {
@@ -43,10 +43,10 @@ describe('GeminiClient fallback chain', () => {
     await expect(client.generateJson('prompt')).rejects.toBeInstanceOf(
       InternalServerErrorException,
     );
-    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
+    expect(mockGenerateContent).toHaveBeenCalledTimes(4);
   });
 
-  it('uses only the configured model and fails clearly when that model name is dead', async () => {
+  it('tries the configured model first, then still falls back through the default chain if it is dead too', async () => {
     mockGenerateContent.mockRejectedValue(new Error('404 model not found: dead-model'));
 
     const client = new GeminiClient(makeConfig({ GEMINI_MODEL: 'dead-model' }));
@@ -54,7 +54,8 @@ describe('GeminiClient fallback chain', () => {
     await expect(client.generateJson('prompt')).rejects.toBeInstanceOf(
       InternalServerErrorException,
     );
-    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+    // configured model + the 4 defaults it still falls through
+    expect(mockGenerateContent).toHaveBeenCalledTimes(5);
     expect(mockGenerateContent.mock.calls[0][0].model).toBe('dead-model');
   });
 

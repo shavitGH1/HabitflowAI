@@ -1,4 +1,4 @@
-export type GoalTaskGenre = 'goal' | 'persona';
+export type GoalTaskGenre = 'goal' | 'persona' | 'habit';
 
 export interface GoalTask {
   id: string;
@@ -6,6 +6,7 @@ export interface GoalTask {
   points: number;
   completed: boolean;
   genre: GoalTaskGenre;
+  habitId?: string;
 }
 
 export interface GenerateGoalsResponse {

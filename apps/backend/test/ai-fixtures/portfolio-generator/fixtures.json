@@ -22,7 +22,7 @@
       }
     },
     "expectedOutput": {
-      "summary": "You are an Achiever — measurable wins and beating your own benchmarks keep you moving.",
+      "summary": "You are an Achiever \u2014 measurable wins and beating your own benchmarks keep you moving.",
       "tips": [
         "Set a concrete weekly pace target",
         "Log every split to see progress",
@@ -63,12 +63,12 @@
         {
           "description": "Review one metric that matters to you",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Take a 5-minute recovery break",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -136,12 +136,12 @@
         {
           "description": "Review one metric that matters to you",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Take a 5-minute recovery break",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -169,7 +169,7 @@
       }
     },
     "expectedOutput": {
-      "summary": "You are a Grower — mastery and steady self-improvement matter more than the finish line.",
+      "summary": "You are a Grower \u2014 mastery and steady self-improvement matter more than the finish line.",
       "tips": [
         "Track skill depth, not just streaks",
         "Reflect weekly on what improved",
@@ -209,12 +209,12 @@
         {
           "description": "Reflect on one lesson from today",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Read something outside your comfort zone",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -282,12 +282,12 @@
         {
           "description": "Reflect on one lesson from today",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Read something outside your comfort zone",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -315,7 +315,7 @@
       }
     },
     "expectedOutput": {
-      "summary": "You are a Socializer — accountability and shared progress make habits stick.",
+      "summary": "You are a Socializer \u2014 accountability and shared progress make habits stick.",
       "tips": [
         "Find a workout buddy",
         "Share progress publicly",
@@ -355,12 +355,12 @@
         {
           "description": "Check in with someone you care about",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Share something positive with your circle",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -428,12 +428,12 @@
         {
           "description": "Check in with someone you care about",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Share something positive with your circle",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -461,7 +461,7 @@
       }
     },
     "expectedOutput": {
-      "summary": "You are an Explorer — novelty and variety keep your motivation alive.",
+      "summary": "You are an Explorer \u2014 novelty and variety keep your motivation alive.",
       "tips": [
         "Rotate activities often",
         "Gamify with new challenges",
@@ -501,12 +501,12 @@
         {
           "description": "Notice one small new thing today",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Take a different route or approach today",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -574,12 +574,12 @@
         {
           "description": "Notice one small new thing today",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Take a different route or approach today",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -607,7 +607,7 @@
       }
     },
     "expectedOutput": {
-      "summary": "You are an Altruist — habits stick when they serve the people and causes you love.",
+      "summary": "You are an Altruist \u2014 habits stick when they serve the people and causes you love.",
       "tips": [
         "Anchor habits to your why",
         "Frame goals around who benefits",
@@ -647,12 +647,12 @@
         {
           "description": "Do one small kind thing for someone else",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Take a moment to rest so you can keep giving",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -720,12 +720,12 @@
         {
           "description": "Do one small kind thing for someone else",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Take a moment to rest so you can keep giving",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -753,7 +753,7 @@
       }
     },
     "expectedOutput": {
-      "summary": "You are an Architect — systems, schedules, and clear rules make habits effortless.",
+      "summary": "You are an Architect \u2014 systems, schedules, and clear rules make habits effortless.",
       "tips": [
         "Design a repeatable daily template",
         "Track routines with checklists",
@@ -793,12 +793,12 @@
         {
           "description": "Tidy your workspace for tomorrow",
           "points": 8,
-          "genre": "persona"
+          "genre": "goal"
         },
         {
           "description": "Review tomorrow's schedule tonight",
           "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }
@@ -864,14 +864,9 @@
           "genre": "goal"
         },
         {
-          "description": "Tidy your workspace for tomorrow",
+          "description": "Categorize any uncategorized transactions",
           "points": 8,
-          "genre": "persona"
-        },
-        {
-          "description": "Review tomorrow's schedule tonight",
-          "points": 5,
-          "genre": "persona"
+          "genre": "goal"
         }
       ]
     }

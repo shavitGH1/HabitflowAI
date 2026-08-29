@@ -3,15 +3,20 @@ import { z } from 'zod';
 export const goalTaskSchema = z.object({
   description: z.string().min(1),
   points: z.number().int().min(0),
-  genre: z.enum(['goal', 'persona']),
+  genre: z.enum(['goal', 'persona', 'habit']),
+  habitId: z.string().nullable().optional().transform((v) => v ?? undefined),
 });
 
 export const dailyVariationsSchema = z
   .array(goalTaskSchema)
-  .length(4)
+  .min(3)
+  .max(30)
   .refine(
-    (tasks) => tasks.filter((t) => t.genre === 'goal').length === 2,
-    { message: 'dailyVariations must contain exactly 2 "goal" tasks and 2 "persona" tasks' },
+    (tasks) => {
+      const goalCount = tasks.filter((t) => t.genre === 'goal').length;
+      return goalCount >= 3 && goalCount <= 5;
+    },
+    { message: 'dailyVariations must contain between 3 and 5 "goal" tasks' },
   );
 
 export const portfolioGeneratorOutputSchema = z.object({

@@ -143,7 +143,7 @@ export class UserRepository {
 
   async updateUserPersona(
     userId: string,
-    updates: Partial<Pick<UserData, 'goal' | 'personaType' | 'motivationalMessage' | 'coreGoals' | 'dailyVariations' | 'tasksLastGeneratedDate' | 'personaBreakdown' | 'weightedScores'>>,
+    updates: Partial<Pick<UserData, 'goal' | 'personaType' | 'motivationalMessage' | 'coreGoals' | 'dailyVariations' | 'tasksLastGeneratedDate' | 'personaBreakdown' | 'weightedScores' | 'tips' | 'failurePatterns'>>,
   ): Promise<UserData | null> {
     const doc = await this.userModel.findByIdAndUpdate(userId, updates, { new: true });
     return doc ? this.toUserData(doc) : null;
@@ -185,8 +185,8 @@ export class UserRepository {
       goal: doc.goal,
       personaType: doc.personaType,
       motivationalMessage: doc.motivationalMessage,
-      coreGoals: doc.coreGoals.map(g => ({ id: g.id, description: g.description, points: g.points, completed: g.completed, genre: g.genre })),
-      dailyVariations: doc.dailyVariations.map(g => ({ id: g.id, description: g.description, points: g.points, completed: g.completed, genre: g.genre })),
+      coreGoals: doc.coreGoals.map(g => ({ id: g.id, description: g.description, points: g.points, completed: g.completed, genre: g.genre, habitId: g.habitId })),
+      dailyVariations: doc.dailyVariations.map(g => ({ id: g.id, description: g.description, points: g.points, completed: g.completed, genre: g.genre, habitId: g.habitId })),
       tasksLastGeneratedDate: doc.tasksLastGeneratedDate,
       refreshToken: doc.refreshToken,
       personaBreakdown: doc.personaBreakdown,
