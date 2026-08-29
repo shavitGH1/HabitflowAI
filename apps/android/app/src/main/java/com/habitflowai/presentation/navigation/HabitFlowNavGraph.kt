@@ -280,9 +280,6 @@ fun HabitFlowNavGraph(
                 }
                 composable(NavRoute.SuccessJournal.route) {
                     SuccessJournalRoute(
-                        onUserClick = { userId ->
-                            navController.navigate(NavRoute.PublicProfile.createRoute(userId))
-                        },
                         onBack = { navController.popBackStack() }
                     )
                 }

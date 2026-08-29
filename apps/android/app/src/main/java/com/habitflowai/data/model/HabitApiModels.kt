@@ -19,7 +19,8 @@ data class HabitResponse(
     @SerializedName("completionHistory") val completionHistory: List<String>? = emptyList(),
     @SerializedName("goalId") val goalId: String? = null,
     @SerializedName("relevanceWarning") val relevanceWarning: String? = null,
-    @SerializedName("verificationWarning") val verificationWarning: String? = null
+    @SerializedName("verificationWarning") val verificationWarning: String? = null,
+    @SerializedName("implementedAt") val implementedAt: String? = null
 ) {
     val completed: Boolean
         get() = completionHistory?.contains(java.time.LocalDate.now().toString()) == true

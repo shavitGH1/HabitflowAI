@@ -48,7 +48,8 @@ class HabitsRepositoryImpl @Inject constructor(
                     goalId = res.goalId,
                     completionHistory = res.completionHistory ?: emptyList(),
                     relevanceWarning = res.relevanceWarning,
-                    verificationWarning = res.verificationWarning
+                    verificationWarning = res.verificationWarning,
+                    implementedAt = res.implementedAt
                 )
                 habitDao.insert(entity)
             }
@@ -69,9 +70,10 @@ class HabitsRepositoryImpl @Inject constructor(
                 completionHistory = response.completionHistory ?: emptyList(),
                 relevanceWarning = response.relevanceWarning,
                 verificationWarning = response.verificationWarning,
+                implementedAt = response.implementedAt,
                 syncStatus = SyncStatus.SYNCED
             )
-            
+
             // Use transaction to atomically remove temporary UUID and insert server record
             habitDao.replaceHabit(habit, entity)
             
@@ -133,6 +135,7 @@ class HabitsRepositoryImpl @Inject constructor(
                     completionHistory = body?.completionHistory ?: updatedHistory,
                     relevanceWarning = body?.relevanceWarning,
                     verificationWarning = body?.verificationWarning,
+                    implementedAt = body?.implementedAt ?: habit.implementedAt,
                     syncStatus = SyncStatus.SYNCED
                 ))
                 try { refreshHabits() } catch (_: Exception) {}

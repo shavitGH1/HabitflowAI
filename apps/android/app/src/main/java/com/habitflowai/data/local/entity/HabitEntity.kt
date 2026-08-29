@@ -23,5 +23,6 @@ data class HabitEntity(
     val goalId: String? = null,
     val completionHistory: List<String> = emptyList(),
     val relevanceWarning: String? = null,
-    val verificationWarning: String? = null
+    val verificationWarning: String? = null,
+    val implementedAt: String? = null
 )

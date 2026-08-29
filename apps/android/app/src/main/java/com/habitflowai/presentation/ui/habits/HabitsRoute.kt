@@ -880,7 +880,29 @@ fun HabitCreateBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
-            
+
+            Column {
+                Text(
+                    text = "Frequency",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("daily" to "Daily", "weekly" to "Weekly").forEach { (value, label) ->
+                        FilterChip(
+                            selected = frequency == value,
+                            onClick = { frequency = value },
+                            label = { Text(label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = personaColor.copy(alpha = 0.2f),
+                                selectedLabelColor = personaColor
+                            )
+                        )
+                    }
+                }
+            }
+
             if (hasActiveGoal) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),

@@ -3,6 +3,7 @@ package com.habitflowai.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habitflowai.data.local.entity.HabitEntity
+import com.habitflowai.data.local.entity.LocationEntity
 import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.data.model.ActiveGoalResponse
 import com.habitflowai.domain.repository.HabitsRepository
@@ -26,6 +27,7 @@ data class HabitsUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val habitStats: Map<String, Map<String, Any>> = emptyMap(),
+    val habitLocations: Map<String, List<LocationEntity>> = emptyMap(),
     val congratulationMessage: String? = null,
     val suggestions: List<com.habitflowai.data.model.HomeGoalTask> = emptyList(),
     val relevanceWarning: String? = null
@@ -202,6 +204,15 @@ class HabitsViewModel @Inject constructor(
             val currentStats = _uiState.value.habitStats.toMutableMap()
             currentStats[habitId] = stats
             _uiState.value = _uiState.value.copy(habitStats = currentStats)
+        }
+    }
+
+    fun fetchHabitLocations(habitId: String) {
+        viewModelScope.launch {
+            val locations = locationRepository.getLocationsForHabit(habitId)
+            val currentLocations = _uiState.value.habitLocations.toMutableMap()
+            currentLocations[habitId] = locations
+            _uiState.value = _uiState.value.copy(habitLocations = currentLocations)
         }
     }
 

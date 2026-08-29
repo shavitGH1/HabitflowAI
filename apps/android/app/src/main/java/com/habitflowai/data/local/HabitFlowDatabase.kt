@@ -26,7 +26,7 @@ import com.habitflowai.data.local.entity.UserEntity
         ChatEntity::class,
         MessageEntity::class,
     ],
-    version = 12
+    version = 13
 )
 @TypeConverters(Converters::class)
 abstract class HabitFlowDatabase : RoomDatabase() {
@@ -37,6 +37,11 @@ abstract class HabitFlowDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
 
     companion object {
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `habits` ADD COLUMN `implementedAt` TEXT")
+            }
+        }
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_habits_serverId` ON `habits` (`serverId`)")

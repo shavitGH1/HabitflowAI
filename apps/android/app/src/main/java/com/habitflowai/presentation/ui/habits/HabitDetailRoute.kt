@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.habitflowai.data.local.entity.HabitEntity
+import com.habitflowai.data.local.entity.LocationEntity
 import com.habitflowai.data.local.entity.SyncStatus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -27,6 +28,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import java.time.LocalDate
 import java.time.ZonedDateTime
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import com.habitflowai.presentation.ui.persona.PersonaDetails
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
@@ -43,14 +51,17 @@ fun HabitDetailRoute(
     val uiState by viewModel.uiState.collectAsState()
     val habit = uiState.habits.find { it.id == habitId }
     val stats = uiState.habitStats[habitId]
+    val locations = uiState.habitLocations[habitId] ?: emptyList()
 
     LaunchedEffect(habitId) {
         viewModel.fetchHabitStats(habitId)
+        viewModel.fetchHabitLocations(habitId)
     }
 
     HabitDetailContent(
         habit = habit,
         stats = stats,
+        locations = locations,
         personaType = personaType,
         isLoading = uiState.isLoading,
         errorMessage = uiState.errorMessage,
@@ -59,6 +70,10 @@ fun HabitDetailRoute(
             viewModel.completeHabit(habitId, note, isPublic) { success ->
                 if (success) onBack()
             }
+        },
+        onAbandon = {
+            viewModel.deleteHabit(habitId)
+            onBack()
         }
     )
 }
@@ -68,14 +83,17 @@ fun HabitDetailRoute(
 fun HabitDetailContent(
     habit: HabitEntity?,
     stats: Map<String, Any>?,
+    locations: List<LocationEntity> = emptyList(),
     personaType: String,
     isLoading: Boolean = false,
     errorMessage: String? = null,
     onBack: () -> Unit,
-    onComplete: (String?, Boolean) -> Unit = { _, _ -> }
+    onComplete: (String?, Boolean) -> Unit = { _, _ -> },
+    onAbandon: () -> Unit = {}
 ) {
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
     val snackbarHostState = remember { SnackbarHostState() }
+    var showAbandonConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
@@ -127,7 +145,7 @@ fun HabitDetailContent(
                         Text(
                             text = habit.description.orEmpty(),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color.DarkGray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         
                         if (!habit.relevanceWarning.isNullOrEmpty()) {
@@ -186,7 +204,7 @@ fun HabitDetailContent(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
@@ -197,7 +215,7 @@ fun HabitDetailContent(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            
+
                             OutlinedTextField(
                                 value = completionNote,
                                 onValueChange = { completionNote = it },
@@ -210,7 +228,7 @@ fun HabitDetailContent(
                             Text(
                                 text = "Record this completion and save your location on the map.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -226,7 +244,7 @@ fun HabitDetailContent(
                                     Text(
                                         text = "Off = private, only visible to you",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color.Gray
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Switch(
@@ -318,7 +336,7 @@ fun HabitDetailContent(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -337,7 +355,7 @@ fun HabitDetailContent(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -352,7 +370,87 @@ fun HabitDetailContent(
                         )
                     }
                 }
+
+                if (locations.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Completion Locations",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HabitLocationsMap(locations = locations)
+                        }
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = { showAbandonConfirm = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Abandon Habit", fontWeight = FontWeight.Bold)
+                }
             }
+
+            if (showAbandonConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showAbandonConfirm = false },
+                    title = { Text("Abandon this habit?") },
+                    text = { Text("This will delete \"${habit.title}\" and its completion history. This can't be undone.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showAbandonConfirm = false
+                            onAbandon()
+                        }) {
+                            Text("Abandon", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showAbandonConfirm = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun HabitLocationsMap(locations: List<LocationEntity>) {
+    val centerLat = locations.map { it.latitude }.average()
+    val centerLng = locations.map { it.longitude }.average()
+
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(LatLng(centerLat, centerLng), 13f)
+    }
+
+    GoogleMap(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clip(RoundedCornerShape(12.dp)),
+        cameraPositionState = cameraPositionState,
+        uiSettings = MapUiSettings(
+            zoomControlsEnabled = false,
+            scrollGesturesEnabled = false,
+            zoomGesturesEnabled = false,
+            rotationGesturesEnabled = false,
+            tiltGesturesEnabled = false
+        )
+    ) {
+        locations.forEach { location ->
+            Marker(state = MarkerState(position = LatLng(location.latitude, location.longitude)))
         }
     }
 }
@@ -401,7 +499,7 @@ fun CompletionCalendar(
             Text(
                 text = "Last 28 Days",
                 style = MaterialTheme.typography.labelMedium,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "${completionMap.values.count { it }}/${days.size} Completed",
@@ -424,7 +522,7 @@ fun CompletionCalendar(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f)
                 )
