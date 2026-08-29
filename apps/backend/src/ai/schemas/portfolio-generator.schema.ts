@@ -4,12 +4,13 @@ export const goalTaskSchema = z.object({
   description: z.string().min(1),
   points: z.number().int().min(0),
   genre: z.enum(['goal', 'persona', 'habit']),
-  habitId: z.string().nullable().optional(),
+  habitId: z.string().nullable().optional().transform((v) => v ?? undefined),
 });
 
 export const dailyVariationsSchema = z
   .array(goalTaskSchema)
   .min(3)
+  .max(30)
   .refine(
     (tasks) => {
       const goalCount = tasks.filter((t) => t.genre === 'goal').length;

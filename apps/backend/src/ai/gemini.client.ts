@@ -33,17 +33,14 @@ export class GeminiClient {
     const rawKey = this.config.get<string>('GEMINI_API_KEY') || '';
     const apiKey = rawKey.trim();
 
-    this.ai = new GoogleGenAI({
-      apiKey,
-      apiVersion: 'v1beta'
-    });
+    this.ai = new GoogleGenAI({ apiKey });
 
     const configured = this.config.get<string>('GEMINI_MODEL');
     const defaultModels = [
       'gemini-3.6-flash',
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-8b',
-      'gemini-1.5-pro'
+      'gemini-2.5-flash',
+      'gemini-flash-lite-latest',
+      'gemini-3.5-flash-lite'
     ];
 
     this.models = configured && !defaultModels.includes(configured)
@@ -60,7 +57,8 @@ export class GeminiClient {
       if (!values || values.length === 0) throw new Error('Empty embedding response');
       return values;
     } catch (error) {
-      this.logger.error(`Embedding failed: ${error.message}`);
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Embedding failed: ${msg}`);
       throw new InternalServerErrorException('AI Service overloaded.');
     }
   }
@@ -136,9 +134,12 @@ export class GeminiClient {
       try {
         return await run(model);
       } catch (error) {
-        this.logger.warn(`Model ${model} failed: ${error.message}`);
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Model ${model} failed: ${msg}`);
         if (i === this.models.length - 1) {
-          throw new InternalServerErrorException(`AI Service Error: ${error.message}`);
+          throw new InternalServerErrorException(
+            'AI Service is currently overloaded. Please try again in a few seconds.',
+          );
         }
       }
     }
