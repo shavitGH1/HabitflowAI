@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.habitflowai.data.model.ClassifyPersonaResponse
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Info
 import java.time.LocalDate
@@ -51,7 +52,7 @@ import com.habitflowai.presentation.ui.chat.ChatOverlay
 import com.habitflowai.data.model.ChatUiState
 import com.habitflowai.presentation.ui.profile.PresetAvatars
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
-
+import com.habitflowai.data.local.entity.DailyTaskEntity
 import com.habitflowai.presentation.viewmodel.HomeUiState
 import com.habitflowai.data.model.HomeResponse
 import com.habitflowai.data.model.resolveProfilePicture
@@ -89,6 +90,7 @@ fun HomeRoute(
         personaResult = personaResult,
         profilePicture = profilePicture,
         onCompleteTask = { viewModel.completeTask(it) },
+        onDateSelected = { viewModel.onDateSelected(it) },
         onDismissDriftBanner = { viewModel.dismissDriftBanner() },
         onStartReassessment = onNavigateToReassessment,
         onToggleChat = onToggleChat
@@ -102,13 +104,13 @@ fun HomeScreen(
     personaResult: ClassifyPersonaResponse?,
     profilePicture: String? = null,
     onCompleteTask: (String) -> Unit,
+    onDateSelected: (LocalDate) -> Unit,
     onDismissDriftBanner: () -> Unit,
     onStartReassessment: () -> Unit,
     onToggleChat: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val today = remember { LocalDate.now() }
-    var selectedDate by remember { mutableStateOf(today) }
 
     if (uiState.isLoading && uiState.homeData == null) {
         HomeSkeleton()
@@ -116,7 +118,7 @@ fun HomeScreen(
     }
 
     val homeData = uiState.homeData
-    if (homeData == null) {
+    if (homeData == null && uiState.dailyTasks.isEmpty()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -134,26 +136,9 @@ fun HomeScreen(
     }
 
     val actualPersonaTypeRaw = homeData?.personaType ?: personaResult?.personaType
-
-    if (actualPersonaTypeRaw == null) {
-        HomeSkeleton()
-        return
-    }
-
-    val actualPersonaType = actualPersonaTypeRaw.replaceFirstChar {
+    val actualPersonaType = actualPersonaTypeRaw?.replaceFirstChar {
         if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString()
-    }
-
-    val goalsForSelectedDate = remember(homeData) {
-        val core = homeData?.coreGoals ?: emptyList()
-        val daily = homeData?.dailyVariations ?: emptyList()
-        core + daily
-    }
-
-    var checklistState by remember(goalsForSelectedDate) {
-        val map = goalsForSelectedDate.associate { it.id to it.completed }
-        mutableStateOf(map)
-    }
+    } ?: "Achiever"
 
     val (startColor, endColor) = when (actualPersonaType) {
         "Achiever" -> Color(0xFFFFD54F) to Color(0xFFFF8A65)
@@ -165,7 +150,7 @@ fun HomeScreen(
         else -> Color(0xFF81D4FA) to Color(0xFFCE93D8)
     }
 
-    val isViewingHistory = selectedDate != today
+    val isViewingHistory = uiState.selectedDate != today
 
     Scaffold(
         topBar = {
@@ -292,24 +277,20 @@ fun HomeScreen(
                 Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                     HistoryCalendarSection(
                         today = today,
-                        selectedDate = selectedDate,
-                        onDateSelected = { selectedDate = it },
-                        completionHistory = homeData.completionHistory ?: emptyList()
+                        selectedDate = uiState.selectedDate,
+                        onDateSelected = onDateSelected,
+                        completionHistory = uiState.datesWithCompletions
                     )
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    if (!isViewingHistory) {
+                    if (uiState.dailyTasks.isNotEmpty()) {
                         GoalPlanSection(
-                            goals = goalsForSelectedDate,
-                            selectedDate = selectedDate,
+                            tasks = uiState.dailyTasks,
+                            selectedDate = uiState.selectedDate,
                             today = today,
-                            checkedGoals = checklistState,
-                            onGoalToggled = { taskId, isChecked ->
-                                if (isChecked) {
-                                    val newState = checklistState.toMutableMap()
-                                    newState[taskId] = true
-                                    checklistState = newState
+                            onTaskToggled = { taskId, isChecked ->
+                                if (isChecked && !isViewingHistory) {
                                     onCompleteTask(taskId)
                                 }
                             },
@@ -329,16 +310,14 @@ fun HomeScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
+                            val message = if (isViewingHistory) 
+                                "No tasks were recorded for this date." 
+                            else "No tasks generated for today yet."
+                            
                             Text(
-                                text = "Historical task details are not available for this date.",
+                                text = message,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                            Text(
-                                text = "Check the calendar checkmarks above to see if you reached your goal.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -386,17 +365,19 @@ fun Modifier.shimmerEffect(): Modifier = this.then(
 
 @Composable
 fun GoalPlanSection(
-    goals: List<HomeGoalTask>,
+    tasks: List<DailyTaskEntity>,
     selectedDate: LocalDate,
     today: LocalDate,
-    checkedGoals: Map<String, Boolean>,
-    onGoalToggled: (String, Boolean) -> Unit,
+    onTaskToggled: (String, Boolean) -> Unit,
     personaType: String
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy") }
     val dateText = if (selectedDate == today) "Today's Checklist" else "Checklist for ${selectedDate.format(formatter)}"
-    val goalHabits = remember(goals) { goals.filter { it.genre == "goal" } }
-    val personaHabits = remember(goals) { goals.filter { it.genre != "goal" } }
+    
+    // Group tasks by habitTitle
+    val groupedTasks = remember(tasks) {
+        tasks.groupBy { it.habitTitle }
+    }
 
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
@@ -405,44 +386,35 @@ fun GoalPlanSection(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Text(
-            text = "AI-generated based on your persona. To add your own custom habits, go to the Habits tab.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        if (goalHabits.isNotEmpty()) {
-            HabitGenreGroup(
-                title = "Goal Habits",
-                subtitle = "Moves you directly toward your goal",
-                accentColor = MaterialTheme.colorScheme.primary,
-                tasks = goalHabits,
-                checkedGoals = checkedGoals,
-                onGoalToggled = onGoalToggled
+        if (selectedDate == today) {
+            Text(
+                text = "AI-generated based on your persona and habits.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        if (personaHabits.isNotEmpty()) {
-            HabitGenreGroup(
-                title = "Persona Habits",
-                subtitle = "Builds your $personaType strengths",
-                accentColor = MaterialTheme.colorScheme.secondary,
-                tasks = personaHabits,
-                checkedGoals = checkedGoals,
-                onGoalToggled = onGoalToggled
+        groupedTasks.forEach { (habitTitle, habitTasks) ->
+            HabitGroup(
+                title = habitTitle,
+                subtitle = if (habitTitle == "General") "Persona-based growth" else "Habit-specific tasks",
+                accentColor = if (habitTitle == "General") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                tasks = habitTasks,
+                onTaskToggled = onTaskToggled,
+                isPastDate = selectedDate < today
             )
         }
     }
 }
 
 @Composable
-fun HabitGenreGroup(
+fun HabitGroup(
     title: String,
     subtitle: String,
     accentColor: Color,
-    tasks: List<HomeGoalTask>,
-    checkedGoals: Map<String, Boolean>,
-    onGoalToggled: (String, Boolean) -> Unit
+    tasks: List<DailyTaskEntity>,
+    onTaskToggled: (String, Boolean) -> Unit,
+    isPastDate: Boolean
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -467,11 +439,11 @@ fun HabitGenreGroup(
         )
 
         tasks.forEach { task ->
-            val isChecked = checkedGoals[task.id] ?: task.completed
             InteractiveGoalItem(
                 goalText = task.description,
-                isChecked = isChecked,
-                onCheckedChange = { onGoalToggled(task.id, it) }
+                isChecked = task.isCompleted,
+                onCheckedChange = { onTaskToggled(task.id, it) },
+                enabled = !isPastDate && !task.isCompleted
             )
         }
     }
@@ -484,27 +456,39 @@ fun HistoryCalendarSection(
     onDateSelected: (LocalDate) -> Unit,
     completionHistory: List<String>
 ) {
-    val startOfWeek = today.with(DayOfWeek.MONDAY)
-    val weekDates = (0..6).map { startOfWeek.plusDays(it.toLong()) }
+    // Show 28 days of history
+    val startOfHistory = today.minusDays(27)
+    val dates = (0..27).map { startOfHistory.plusDays(it.toLong()) }
+    
     val dayFormatter = remember { DateTimeFormatter.ofPattern("EEE\nd") }
     val historySet = remember(completionHistory) { completionHistory.toSet() }
+    
+    val scrollState = rememberLazyListState()
+    
+    // Auto-scroll to end (today) on first launch
+    LaunchedEffect(Unit) {
+        scrollState.scrollToItem(dates.size - 1)
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Weekly History & Tracking",
+            text = "Activity History",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            text = "Tap any day to review your progress.",
+            text = "Review your progress over the last 28 days.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(weekDates) { date ->
+        LazyRow(
+            state = scrollState,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(dates) { date ->
                 val isToday = date == today
                 val isSelected = date == selectedDate
                 val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -631,7 +615,8 @@ fun PlanExplanationSection(personaType: String, portfolioSummary: String?) {
 fun InteractiveGoalItem(
     goalText: String,
     isChecked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true
 ) {
     val backgroundColor by animateColorAsState(
         targetValue = if (isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
@@ -649,7 +634,7 @@ fun InteractiveGoalItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable(enabled = !isChecked) { onCheckedChange(true) },
+            .clickable(enabled = enabled) { onCheckedChange(true) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isChecked) 0.dp else 4.dp)
@@ -661,7 +646,7 @@ fun InteractiveGoalItem(
             Checkbox(
                 checked = isChecked,
                 onCheckedChange = { if (it) onCheckedChange(true) },
-                enabled = !isChecked,
+                enabled = enabled,
                 colors = CheckboxDefaults.colors(
                     checkedColor = MaterialTheme.colorScheme.primary,
                     uncheckedColor = MaterialTheme.colorScheme.outline,
@@ -888,6 +873,7 @@ fun HomeWithChatPreview() {
                 uiState = uiState,
                 personaResult = null,
                 onCompleteTask = {},
+                onDateSelected = {},
                 onDismissDriftBanner = {},
                 onStartReassessment = {},
                 onToggleChat = {}
@@ -932,6 +918,7 @@ fun HomePersonaPreview(personaType: String) {
             uiState = uiState,
             personaResult = samplePersona,
             onCompleteTask = {},
+            onDateSelected = {},
             onDismissDriftBanner = {},
             onStartReassessment = {},
             onToggleChat = {}
