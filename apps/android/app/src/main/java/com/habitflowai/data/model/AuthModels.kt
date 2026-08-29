@@ -106,7 +106,8 @@ data class HomeGoalTask(
     val points: Int,
     val id: String,
     val completed: Boolean,
-    val genre: String = "persona"
+    val genre: String = "persona",
+    @SerializedName("habitId") val habitId: String? = null
 )
 
 data class HomeAchievement(
