@@ -38,6 +38,44 @@ export class UsersService {
       user.dailyVariations = updated?.dailyVariations ?? updatedTasks;
     }
 
+    // Dynamic mapping for "General" header issue:
+    // If a task description exactly matches a habit title, it's a redundant high-level task;
+    // we filter it out to prevent duplicates.
+    const habitMapByTitle = new Map(habits.map(h => [h.title.toLowerCase().trim(), h.id]));
+    const seenDescriptions = new Set<string>();
+
+    const enrichTask = (t: any) => {
+      if (!t) return null;
+      const descTrimmed = t.description.toLowerCase().trim();
+
+      // 1. Remove tasks that are exactly the habit title (duplicates)
+      if (habitMapByTitle.has(descTrimmed)) {
+        return null;
+      }
+
+      // 2. Remove duplicate descriptions within the same response
+      if (seenDescriptions.has(descTrimmed)) {
+        return null;
+      }
+      seenDescriptions.add(descTrimmed);
+
+      // 3. If already has habitId, keep it
+      if (t.habitId) return t;
+
+      // 4. Smart linking for "General" (Goal/Persona) tasks that mention a habit
+      for (const habit of habits) {
+        const titleLower = habit.title.toLowerCase().trim();
+        // If the description contains the habit title, link it to that habit
+        if (descTrimmed.includes(titleLower)) {
+          return { ...t, habitId: habit.id, genre: 'habit' };
+        }
+      }
+      return t;
+    };
+
+    const coreGoals = user.coreGoals.map(enrichTask).filter(t => t !== null);
+    const dailyVariations = user.dailyVariations.map(enrichTask).filter(t => t !== null);
+
     let consistencyScore = 0.0;
     let goalHabitHistory: string[] = [];
 
@@ -68,8 +106,8 @@ export class UsersService {
       goal: user.goal,
       personaType: user.personaType,
       motivationalMessage: user.motivationalMessage,
-      coreGoals: user.coreGoals,
-      dailyVariations: user.dailyVariations,
+      coreGoals: coreGoals,
+      dailyVariations: dailyVariations,
       portfolioSummary: user.portfolioSummary,
       tips: user.tips,
       failurePatterns: user.failurePatterns,

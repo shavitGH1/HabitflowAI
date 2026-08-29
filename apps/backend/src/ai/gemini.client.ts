@@ -30,11 +30,17 @@ export class GeminiClient {
   private readonly models: string[];
 
   constructor(private readonly config: ConfigService) {
-    this.ai = new GoogleGenAI({ apiKey: this.config.get<string>('GEMINI_API_KEY') });
+    const rawKey = this.config.get<string>('GEMINI_API_KEY') || '';
+    const apiKey = rawKey.trim();
+    this.ai = new GoogleGenAI({
+      apiKey,
+      apiVersion: 'v1'
+    });
     const configured = this.config.get<string>('GEMINI_MODEL');
     this.models = configured
       ? [configured]
-      : ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
+      : ['gemini-3.6-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    logger.info({ models: this.models }, 'GeminiClient initialized with models');
   }
 
   async embedContent(text: string): Promise<number[]> {
