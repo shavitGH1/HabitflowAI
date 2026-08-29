@@ -44,6 +44,16 @@ class HabitsViewModel @Inject constructor(
     private val userId: String
         get() = authManager.currentUserId.value ?: "local_user"
 
+    // Suggestions only need a fresh network fetch when the active goal changes;
+    // re-filtering against an updated habits list (so a just-added habit drops
+    // out of the suggestion row) is done locally from the cached source.
+    private var suggestionSource: List<com.habitflowai.data.model.HomeGoalTask> = emptyList()
+    private var suggestionSourceGoalId: Any? = UNFETCHED
+
+    companion object {
+        private val UNFETCHED = Any()
+    }
+
     init {
         fetchActiveGoal()
         viewModelScope.launch {
@@ -58,7 +68,7 @@ class HabitsViewModel @Inject constructor(
                         }
                         .collect { entities ->
                             _uiState.update { it.copy(habits = entities, isLoading = false) }
-                            fetchSuggestions() // Refresh suggestions when habits change
+                            applySuggestionFilter() // re-filter locally, no network call
                         }
                 }
             }
@@ -216,19 +226,31 @@ class HabitsViewModel @Inject constructor(
                     _uiState.update { it.copy(onboardingGoal = homeData.goal) }
                 } catch (_: Exception) {}
             }
+            refreshSuggestionsIfNeeded()
         }
     }
 
-    fun fetchSuggestions() {
+    private fun refreshSuggestionsIfNeeded() {
+        val currentGoalId = _uiState.value.activeGoal?.id
+        if (currentGoalId == suggestionSourceGoalId) {
+            applySuggestionFilter()
+            return
+        }
         viewModelScope.launch {
             try {
                 val homeData = goalsRepository.getHomeData()
-                val suggestions = homeData.coreGoals.filter { task ->
-                    // Only suggest if not already added as a habit
-                    _uiState.value.habits.none { it.title.contains(task.description, ignoreCase = true) }
-                }
-                _uiState.update { it.copy(suggestions = suggestions) }
+                suggestionSource = homeData.coreGoals
+                suggestionSourceGoalId = currentGoalId
             } catch (_: Exception) {}
+            applySuggestionFilter()
         }
+    }
+
+    private fun applySuggestionFilter() {
+        val suggestions = suggestionSource.filter { task ->
+            // Only suggest if not already added as a habit
+            _uiState.value.habits.none { it.title.contains(task.description, ignoreCase = true) }
+        }
+        _uiState.update { it.copy(suggestions = suggestions) }
     }
 }

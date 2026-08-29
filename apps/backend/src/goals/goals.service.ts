@@ -18,11 +18,20 @@ export class GoalsService {
       throw new BadRequestException('You already have an active goal — forfeit it before starting a new one');
     }
 
-    return this.goalRepository.createGoal({
-      userId,
-      title: dto.title,
-      targetDate: new Date(dto.targetDate),
-    });
+    try {
+      return await this.goalRepository.createGoal({
+        userId,
+        title: dto.title,
+        targetDate: new Date(dto.targetDate),
+      });
+    } catch (error) {
+      // Two concurrent requests both passed the check above — the unique
+      // partial index on {userId, status: 'active'} stops the loser here.
+      if (this.isDuplicateActiveGoalError(error)) {
+        throw new BadRequestException('You already have an active goal — forfeit it before starting a new one');
+      }
+      throw error;
+    }
   }
 
   async getActiveGoal(userId: string): Promise<GoalData | null> {
@@ -32,17 +41,19 @@ export class GoalsService {
     // Transition logic: if no formal Goal record exists but the user has a goal
     // string in their profile (from onboarding or old version), create it now.
     const user = await this.userRepository.findUserById(userId);
-    if (user?.goal) {
-      const targetDate = new Date();
-      targetDate.setMonth(targetDate.getMonth() + 3); // Default 3 month window
-      return this.goalRepository.createGoal({
-        userId,
-        title: user.goal,
-        targetDate,
-      });
-    }
+    if (!user?.goal) return null;
 
-    return null;
+    const targetDate = new Date();
+    targetDate.setMonth(targetDate.getMonth() + 3); // Default 3 month window
+    return this.goalRepository.findOrCreateActiveGoal({
+      userId,
+      title: user.goal,
+      targetDate,
+    });
+  }
+
+  private isDuplicateActiveGoalError(error: unknown): boolean {
+    return typeof error === 'object' && error !== null && (error as { code?: number }).code === 11000;
   }
 
   async forfeitGoal(userId: string, id: string): Promise<GoalData> {

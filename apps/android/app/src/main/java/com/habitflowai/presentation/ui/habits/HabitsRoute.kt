@@ -347,7 +347,9 @@ fun HabitsRoute(
             if (showCreateSheet) {
                 val activeGoalId = uiState.activeGoal?.id
                 val hasGoal = activeGoalId != null || !uiState.onboardingGoal.isNullOrEmpty()
-                val goalHabitCount = uiState.habits.count { it.goalId != null }
+                val goalHabitCount = uiState.habits.count {
+                    it.goalId != null && (activeGoalId == null || it.goalId == activeGoalId)
+                }
                 val standaloneHabitCount = uiState.habits.count { it.goalId == null }
 
                 HabitCreateBottomSheet(

@@ -6,6 +6,7 @@ import { GoalsService, GOAL_ACHIEVEMENT_MEDAL } from './goals.service';
 
 const mockGoalRepository = {
   createGoal: jest.fn(),
+  findOrCreateActiveGoal: jest.fn(),
   findActiveByUserId: jest.fn(),
   findById: jest.fn(),
   updateStatus: jest.fn(),
@@ -97,16 +98,43 @@ describe('GoalsService', () => {
       mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
       mockUserRepository.findUserById.mockResolvedValue({ id: USER_ID, goal: 'Run a marathon' });
       const created = makeGoal();
-      mockGoalRepository.createGoal.mockResolvedValue(created);
+      mockGoalRepository.findOrCreateActiveGoal.mockResolvedValue(created);
 
       const result = await service.getActiveGoal(USER_ID);
 
-      expect(mockGoalRepository.createGoal).toHaveBeenCalledWith({
+      expect(mockGoalRepository.findOrCreateActiveGoal).toHaveBeenCalledWith({
         userId: USER_ID,
         title: 'Run a marathon',
         targetDate: expect.any(Date),
       });
       expect(result).toEqual(created);
+    });
+
+    it('is race-safe: concurrent auto-creates for the same user resolve to the same goal via the atomic upsert', async () => {
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+      mockUserRepository.findUserById.mockResolvedValue({ id: USER_ID, goal: 'Run a marathon' });
+      const winner = makeGoal();
+      // findOrCreateActiveGoal is atomic at the DB level (unique partial
+      // index) — both concurrent callers get the same winning document
+      // back rather than one throwing or creating a duplicate.
+      mockGoalRepository.findOrCreateActiveGoal.mockResolvedValue(winner);
+
+      const [a, b] = await Promise.all([service.getActiveGoal(USER_ID), service.getActiveGoal(USER_ID)]);
+
+      expect(a).toEqual(winner);
+      expect(b).toEqual(winner);
+      expect(mockGoalRepository.createGoal).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createGoal() race safety', () => {
+    it('converts a duplicate-key error (E11000) from a raced concurrent create into the same friendly rejection', async () => {
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+      mockGoalRepository.createGoal.mockRejectedValue(Object.assign(new Error('duplicate key'), { code: 11000 }));
+
+      await expect(
+        service.createGoal(USER_ID, { title: 'Learn guitar', targetDate: '2026-12-31' }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
