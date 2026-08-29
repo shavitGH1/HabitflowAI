@@ -66,6 +66,28 @@ class GoalsRepositoryImpl @Inject constructor(
     override suspend fun syncDailyTasks(date: String): Result<Unit> {
         return try {
             val userId = authManager.currentUserId.value ?: throw Exception("Not logged in")
+            
+            // CRITICAL: Refresh local habits first to ensure we can map habitIds to titles
+            try {
+                val habitsResponse = api.getHabits()
+                val habits = habitsResponse.map { res ->
+                    com.habitflowai.data.local.entity.HabitEntity(
+                        id = res.id,
+                        title = res.title,
+                        description = res.description,
+                        frequency = res.frequency,
+                        userId = userId,
+                        completed = res.completed,
+                        serverId = res.id,
+                        goalId = res.goalId,
+                        completionHistory = res.completionHistory ?: emptyList()
+                    )
+                }
+                habitDao.upsertAll(habits)
+            } catch (e: Exception) {
+                // If habit refresh fails, continue with local habits
+            }
+
             val homeData = getHomeData()
             val userHabits = habitDao.getAllForUser(userId)
             val habitMap = userHabits.associateBy { it.id }

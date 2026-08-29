@@ -135,9 +135,12 @@ class HomeViewModel @Inject constructor(
             _isLoading.value = true
             _errorMessage.value = null
             try {
+                // Force sync tasks for today to overwrite old "General" records
+                goalsRepository.syncDailyTasks(LocalDate.now().toString())
+                
                 val data = goalsRepository.getHomeData()
                 _homeData.value = data
-                goalsRepository.syncDailyTasks(LocalDate.now().toString())
+
                 _isLoading.value = false
             } catch (e: Exception) {
                 _isLoading.value = false

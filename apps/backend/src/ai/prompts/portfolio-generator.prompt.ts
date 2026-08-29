@@ -64,7 +64,7 @@ Return STRICT JSON only — no prose, no markdown fences. Schema:
     { "description": "<habit description>", "points": <integer 10-50>, "genre": "goal" }
   ],
   "dailyVariations": [                                   // exactly 4 day-one daily tasks
-    { "description": "<task>", "points": <integer 5-30>, "genre": "goal" | "persona" }
+    { "description": "<task>", "points": <integer 5-30>, "genre": "goal" | "persona" | "habit" }
   ]
 }
 

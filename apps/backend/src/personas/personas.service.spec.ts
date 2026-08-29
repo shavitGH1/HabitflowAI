@@ -167,6 +167,7 @@ describe('PersonasService', () => {
       expect(mockAiService.generateDailyVariations).toHaveBeenCalledWith(
         expect.objectContaining({ id: USER_ID }),
         expect.any(Number),
+        expect.any(Array),
         'increase',
       );
       expect(result.type).toBe('adjustDifficulty');

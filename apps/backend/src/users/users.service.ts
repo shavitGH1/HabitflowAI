@@ -28,15 +28,16 @@ export class UsersService {
     const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
+    const habits = await this.habitRepository.findByUserId(userId);
     const today = new Date().toISOString().split('T')[0];
     if (user.tasksLastGeneratedDate !== today) {
-      const newDailyTasks = await this.ai.generateDailyVariations(user, new Date().getDay());
+      const habitInputs = habits.map(h => ({ id: h.id, title: h.title }));
+      const newDailyTasks = await this.ai.generateDailyVariations(user, new Date().getDay(), habitInputs);
       const updatedTasks = newDailyTasks.map(t => ({ ...t, id: uuidv4(), completed: false }));
       const updated = await this.userRepository.updateUserDailyTasks(userId, updatedTasks);
       user.dailyVariations = updated?.dailyVariations ?? updatedTasks;
     }
 
-    const habits = await this.habitRepository.findByUserId(userId);
     let consistencyScore = 0.0;
     let goalHabitHistory: string[] = [];
 
