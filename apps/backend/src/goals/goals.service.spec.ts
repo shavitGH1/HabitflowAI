@@ -114,9 +114,6 @@ describe('GoalsService', () => {
       mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
       mockUserRepository.findUserById.mockResolvedValue({ id: USER_ID, goal: 'Run a marathon' });
       const winner = makeGoal();
-      // findOrCreateActiveGoal is atomic at the DB level (unique partial
-      // index) — both concurrent callers get the same winning document
-      // back rather than one throwing or creating a duplicate.
       mockGoalRepository.findOrCreateActiveGoal.mockResolvedValue(winner);
 
       const [a, b] = await Promise.all([service.getActiveGoal(USER_ID), service.getActiveGoal(USER_ID)]);

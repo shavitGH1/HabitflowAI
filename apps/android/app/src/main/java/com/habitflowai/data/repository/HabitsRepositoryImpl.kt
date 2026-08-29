@@ -79,9 +79,6 @@ class HabitsRepositoryImpl @Inject constructor(
             Result.success(entity)
         } catch (e: Exception) {
             if (e is retrofit2.HttpException && e.code() in 400..499) {
-                // The server definitively rejected this (e.g. the 3-habits-per-goal
-                // cap) — retrying later can't fix it, so don't queue a doomed
-                // PENDING_CREATE row; just surface the real error.
                 Result.failure(e)
             } else {
                 habitDao.insert(habit.copy(syncStatus = SyncStatus.PENDING_CREATE))

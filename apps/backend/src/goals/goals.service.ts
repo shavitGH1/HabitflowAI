@@ -25,8 +25,6 @@ export class GoalsService {
         targetDate: new Date(dto.targetDate),
       });
     } catch (error) {
-      // Two concurrent requests both passed the check above — the unique
-      // partial index on {userId, status: 'active'} stops the loser here.
       if (this.isDuplicateActiveGoalError(error)) {
         throw new BadRequestException('You already have an active goal — forfeit it before starting a new one');
       }

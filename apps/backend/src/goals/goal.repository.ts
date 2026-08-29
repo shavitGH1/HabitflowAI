@@ -33,13 +33,6 @@ export class GoalRepository {
     }
   }
 
-  /**
-   * Atomically returns the user's active goal, creating it from the given
-   * fallback fields if none exists yet. Safe under concurrent callers: the
-   * unique partial index on {userId, status: 'active'} means at most one
-   * upsert can win, and everyone else's findOneAndUpdate just returns the
-   * winner's doc instead of racing past it into a duplicate.
-   */
   async findOrCreateActiveGoal(input: CreateGoalInput): Promise<GoalData> {
     const doc = await this.goalModel.findOneAndUpdate(
       { userId: input.userId, status: 'active' },

@@ -44,9 +44,6 @@ class HabitsViewModel @Inject constructor(
     private val userId: String
         get() = authManager.currentUserId.value ?: "local_user"
 
-    // Suggestions only need a fresh network fetch when the active goal changes;
-    // re-filtering against an updated habits list (so a just-added habit drops
-    // out of the suggestion row) is done locally from the cached source.
     private var suggestionSource: List<com.habitflowai.data.model.HomeGoalTask> = emptyList()
     private var suggestionSourceGoalId: Any? = UNFETCHED
 
@@ -68,7 +65,7 @@ class HabitsViewModel @Inject constructor(
                         }
                         .collect { entities ->
                             _uiState.update { it.copy(habits = entities, isLoading = false) }
-                            applySuggestionFilter() // re-filter locally, no network call
+                            applySuggestionFilter()
                         }
                 }
             }
