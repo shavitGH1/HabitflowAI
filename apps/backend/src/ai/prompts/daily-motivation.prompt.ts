@@ -28,37 +28,54 @@ export const buildDailyVariationsPrompt = (
   personaType: string,
   goal: string,
   dayOfWeek: number,
-  // STOPGAP (Nir): bias wording owned by Yaron — the `difficultyBias` param itself (called from
-  // PersonasService.applyDifficultyAdjustment) is the shared contract; tune the sentences below freely.
+  habits: { id: string; title: string }[] = [],
   difficultyBias?: 'increase' | 'decrease',
-): string => `
+): string => {
+  const habitCount = habits.length;
+
+  return `
 You are an expert productivity and habit-tracking coach.
 
-Based on the user's persona and goal, generate a new set of daily variation tasks for the specified day.
+USER PROFILE:
+- Primary Goal: "${goal}"
+- Personality Type: "${personaType}"
+- Target Day: "${DAYS[dayOfWeek]}"
 
-User Persona: "${personaType}"
-User's Goal: "${goal}"
-Target Day of the Week: "${DAYS[dayOfWeek]}"
-${
-  difficultyBias === 'increase'
-    ? 'The user has been completing tasks consistently — make today\'s tasks moderately more challenging than usual (harder targets, slightly more effort), while staying realistic for one day.'
-    : difficultyBias === 'decrease'
-      ? 'The user has been missing tasks recently — make today\'s tasks easier and smaller in scope than usual, to help rebuild momentum.'
-      : ''
-}
+USER'S CURRENT HABITS:
+${habits.length > 0
+    ? habits.map((h, i) => `- [ID: ${h.id}] Title: "${h.title}"`).join('\n')
+    : 'None'}
 
-The array must contain exactly 4 tasks: 2 tagged "genre": "goal" (concrete actions that directly
-advance "${goal}") and 2 tagged "genre": "persona" (general habits that build the ${personaType}
-persona's strengths, independent of the specific goal).
+INSTRUCTIONS:
+Generate a set of tasks for today. Every task must be directly related to the user's specific goal ("${goal}") or their existing habits.
+
+TASK TYPES TO GENERATE:
+
+1. STRATEGIC GOAL TASKS (Between 3 and 5 tasks):
+   - Genre: "goal"
+   - habitId: null
+   - Requirement: High-impact actions that move the needle specifically on "${goal}".
+   - FORBIDDEN: Do not suggest general health/life advice (e.g. broccoli, water, sleep, vitamins) unless "${goal}" is about those things.
+
+2. HABIT-LINKED TASKS (Exactly 3 tasks per habit):
+   - For EACH habit listed in the "USER'S CURRENT HABITS" section, generate 3 unique sub-tasks.
+   - Genre: "habit"
+   - habitId: MUST be the exact ID provided for that habit.
+   - Requirement: Granular, one-time actions to practice that specific habit today.
+   - FORBIDDEN: Do not use the habit title as the task description.
+
+STRICT CONSTRAINTS:
+- No Hallucinations: If a task is not about "${goal}" or an active habit, delete it.
+- Full Coverage: You MUST generate 3 tasks for EVERY habit ID provided. Do not skip any.
+- No Persona Fillers: Do not generate any generic persona or mindset tasks. Focus only on concrete actions.
 
 OUTPUT FORMAT:
-Return the response STRICTLY as a valid JSON object containing only the "dailyVariations" array.
+Return a JSON object with a "dailyVariations" array.
 {
   "dailyVariations": [
-    { "description": "New day-specific task 1", "points": 30, "genre": "goal" },
-    { "description": "New day-specific task 2", "points": 15, "genre": "goal" },
-    { "description": "New day-specific task 3", "points": 20, "genre": "persona" },
-    { "description": "New day-specific task 4", "points": 10, "genre": "persona" }
+    { "description": "Specific goal-related action", "points": 30, "genre": "goal", "habitId": null },
+    { "description": "Specific habit sub-task", "points": 20, "genre": "habit", "habitId": "HABIT_ID_FROM_LIST" }
   ]
 }
-`;
+`.trim();
+};

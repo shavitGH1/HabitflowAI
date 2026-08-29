@@ -78,9 +78,10 @@ export class AiService {
   generateDailyVariations(
     user: UserData,
     dayOfWeek: number,
+    habits: { id: string; title: string }[] = [],
     difficultyBias?: 'increase' | 'decrease',
   ): Promise<Omit<GoalTask, 'id' | 'completed'>[]> {
-    return generateDailyVariations(this.client, user, dayOfWeek, difficultyBias);
+    return generateDailyVariations(this.client, user, dayOfWeek, habits, difficultyBias);
   }
 
   getDailyMotivation(input: DailyMotivationInput): Promise<DailyMotivationOutput> {

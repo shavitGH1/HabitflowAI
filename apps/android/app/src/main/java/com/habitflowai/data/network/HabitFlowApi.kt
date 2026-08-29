@@ -66,7 +66,7 @@ interface HabitFlowApi {
     suspend fun getOnboardingSuggestions(@Body request: OnboardingSuggestionsRequest): OnboardingSuggestionsResponse
 
     @GET("api/v1/users/me/home")
-    suspend fun getHome(): HomeResponse
+    suspend fun getHome(@Query("force") force: Boolean? = null): HomeResponse
 
     @PATCH("api/v1/users/me/profile")
     suspend fun updateProfilePicture(@Body request: com.habitflowai.data.model.UpdateProfilePictureRequest): com.habitflowai.data.model.UpdateProfileResponse

@@ -15,8 +15,11 @@ class GoalTask {
   @Prop({ default: false })
   completed: boolean;
 
-  @Prop({ required: true, enum: ['goal', 'persona'], default: 'persona' })
-  genre: 'goal' | 'persona';
+  @Prop({ required: true, enum: ['goal', 'persona', 'habit'], default: 'persona' })
+  genre: 'goal' | 'persona' | 'habit';
+
+  @Prop()
+  habitId?: string;
 }
 
 const GoalTaskSchema = SchemaFactory.createForClass(GoalTask);

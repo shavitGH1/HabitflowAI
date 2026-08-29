@@ -19,10 +19,11 @@ export const generateDailyVariations = async (
   client: GeminiClient,
   user: UserData,
   dayOfWeek: number,
+  habits: { id: string; title: string }[] = [],
   difficultyBias?: 'increase' | 'decrease',
 ): Promise<Omit<GoalTask, 'id' | 'completed'>[]> => {
   const response = await client.generateJson(
-    buildDailyVariationsPrompt(user.personaType, user.goal, dayOfWeek, difficultyBias),
+    buildDailyVariationsPrompt(user.personaType, user.goal, dayOfWeek, habits, difficultyBias),
     dailyVariationsOutputSchema,
   );
   return response.dailyVariations;

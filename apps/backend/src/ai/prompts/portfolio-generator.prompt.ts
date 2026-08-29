@@ -63,21 +63,20 @@ Return STRICT JSON only — no prose, no markdown fences. Schema:
   "coreGoals": [                                         // 3 to 5 long-term habits supporting the goal
     { "description": "<habit description>", "points": <integer 10-50>, "genre": "goal" }
   ],
-  "dailyVariations": [                                   // exactly 4 day-one daily tasks
-    { "description": "<task>", "points": <integer 5-30>, "genre": "goal" | "persona" }
+  "dailyVariations": [                                   // 3 to 5 day-one daily tasks
+    { "description": "<task>", "points": <integer 5-30>, "genre": "goal" }
   ]
 }
 
 RULES
+- STRICT RELEVANCE: coreGoals and goal-tagged dailyVariations must be laser-focused on "${goal}".
+- FORBIDDEN: Do not suggest generic health advice (broccoli, water, sleep) unless "${goal}" is about those things.
+- No Persona Fillers: Do not generate any generic persona or mindset tasks. Focus only on concrete actions.
 - Tips must reference details from the user's background answers — not generic advice.
 - Failure patterns must reflect typical weaknesses of the ${personaType} persona.
-- coreGoals are long-term habits (multi-week) that directly support the PRIMARY GOAL above,
-  in subject matter and wording — tag every coreGoals entry "genre": "goal". If a background
-  answer's topic has no connection to the primary goal, it must not appear in any coreGoals entry.
-- dailyVariations must contain exactly 4 entries: 2 tagged "genre": "goal" (concrete day-one
-  actions that directly advance the PRIMARY GOAL above — never the subject of a background
-  answer) and 2 tagged "genre": "persona" (general habits that build the ${personaType}
-  persona's strengths — these may draw on the background answers, independent of the specific goal).
+- coreGoals are long-term habits (multi-week) that directly support the PRIMARY GOAL above.
+- dailyVariations must contain between 3 and 5 entries: all tagged "genre": "goal" (concrete day-one
+  actions that directly advance "${goal}").
 - Points reflect difficulty/importance — keep them roughly proportional.
 - Write in plain English, second person, no emojis, no markdown formatting inside strings.
 `.trim();

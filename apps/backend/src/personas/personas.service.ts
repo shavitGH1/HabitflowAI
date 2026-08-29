@@ -158,7 +158,9 @@ export class PersonasService {
     const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
-    const newTasks = await this.ai.generateDailyVariations(user, new Date().getDay(), direction);
+    const habits = await this.habitRepository.findByUserId(userId);
+    const habitInputs = habits.map(h => ({ id: h.id, title: h.title }));
+    const newTasks = await this.ai.generateDailyVariations(user, new Date().getDay(), habitInputs, direction);
     const updatedTasks = newTasks.map((t) => ({ ...t, id: uuidv4(), completed: false }));
     await this.userRepository.updateUserDailyTasks(userId, updatedTasks);
     return { type: 'adjustDifficulty', dailyVariations: updatedTasks };

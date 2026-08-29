@@ -184,7 +184,9 @@ export class AuthService {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     if (user.tasksLastGeneratedDate !== todayStr) {
-      const newDailyTasks = await this.ai.generateDailyVariations(user, today.getDay());
+      const habits = await this.habitRepository.findByUserId(user.id);
+      const habitInputs = habits.map(h => ({ id: h.id, title: h.title }));
+      const newDailyTasks = await this.ai.generateDailyVariations(user, today.getDay(), habitInputs);
       await this.userRepository.updateUserDailyTasks(
         user.id,
         newDailyTasks.map(t => ({ ...t, id: uuidv4(), completed: false })),

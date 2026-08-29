@@ -6,11 +6,13 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.habitflowai.data.local.dao.ChatDao
+import com.habitflowai.data.local.dao.DailyTaskDao
 import com.habitflowai.data.local.dao.DriftCheckDao
 import com.habitflowai.data.local.dao.HabitDao
 import com.habitflowai.data.local.dao.LocationDao
 import com.habitflowai.data.local.dao.UserDao
 import com.habitflowai.data.local.entity.ChatEntity
+import com.habitflowai.data.local.entity.DailyTaskEntity
 import com.habitflowai.data.local.entity.DriftCheckEntity
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.LocationEntity
@@ -25,8 +27,9 @@ import com.habitflowai.data.local.entity.UserEntity
         DriftCheckEntity::class,
         ChatEntity::class,
         MessageEntity::class,
+        DailyTaskEntity::class
     ],
-    version = 13
+    version = 15
 )
 @TypeConverters(Converters::class)
 abstract class HabitFlowDatabase : RoomDatabase() {
@@ -35,11 +38,42 @@ abstract class HabitFlowDatabase : RoomDatabase() {
     abstract fun locationDao(): LocationDao
     abstract fun driftCheckDao(): DriftCheckDao
     abstract fun chatDao(): ChatDao
+    abstract fun dailyTaskDao(): DailyTaskDao
 
     companion object {
+        // Version collision: fix/habits-page and fix/homescreen_tasks (merged to master) both
+        // independently used 12->13 for unrelated changes. Renumbered on merge so both survive:
+        // 12->13 stays this branch's habits.implementedAt column; the daily_tasks migrations
+        // from master are shifted up to 13->14 and 14->15.
         val MIGRATION_12_13 = object : Migration(12, 13) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `habits` ADD COLUMN `implementedAt` TEXT")
+            }
+        }
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `daily_tasks` (
+                        `id` TEXT NOT NULL,
+                        `userId` TEXT NOT NULL,
+                        `habitId` TEXT NOT NULL,
+                        `habitTitle` TEXT NOT NULL,
+                        `date` TEXT NOT NULL,
+                        `description` TEXT NOT NULL,
+                        `isCompleted` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_daily_tasks_userId` ON `daily_tasks` (`userId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_daily_tasks_habitId` ON `daily_tasks` (`habitId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_daily_tasks_date` ON `daily_tasks` (`date`)")
+            }
+        }
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `daily_tasks` ADD COLUMN `genre` TEXT NOT NULL DEFAULT 'persona'")
             }
         }
         val MIGRATION_11_12 = object : Migration(11, 12) {
