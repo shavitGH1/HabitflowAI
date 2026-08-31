@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.SmartToy
 
 @Composable
@@ -35,6 +36,7 @@ fun ProfileRoute(
     viewModel: OnboardingViewModel,
     onRetakeAssessment: () -> Unit,
     onNavigateToSuccessJournal: () -> Unit,
+    onNavigateToFollowing: () -> Unit,
     onLogout: () -> Unit,
     onToggleChat: () -> Unit
 ) {
@@ -44,6 +46,7 @@ fun ProfileRoute(
         uiState = uiState,
         onRetakeAssessment = onRetakeAssessment,
         onNavigateToSuccessJournal = onNavigateToSuccessJournal,
+        onNavigateToFollowing = onNavigateToFollowing,
         onLogout = onLogout,
         onToggleChat = onToggleChat,
         onSelectPresetAvatar = viewModel::selectPresetAvatar,
@@ -60,6 +63,7 @@ fun ProfileContent(
     uiState: OnboardingUiState,
     onRetakeAssessment: () -> Unit,
     onNavigateToSuccessJournal: () -> Unit,
+    onNavigateToFollowing: () -> Unit,
     onLogout: () -> Unit,
     onToggleChat: () -> Unit,
     onSelectPresetAvatar: (String) -> Unit = {},
@@ -193,6 +197,45 @@ fun ProfileContent(
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                onClick = onNavigateToFollowing
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Rounded.People,
+                        contentDescription = null,
+                        tint = details.endColor
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Following",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "See who you're keeping up with",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.Rounded.ChevronRight,
+                        contentDescription = null,
+                        tint = Color.Gray
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             TipsSection(details)
@@ -275,6 +318,7 @@ fun ProfileWithChatPreview() {
                 ),
                 onRetakeAssessment = {},
                 onNavigateToSuccessJournal = {},
+                onNavigateToFollowing = {},
                 onLogout = {},
                 onToggleChat = {}
             )
@@ -302,6 +346,7 @@ fun ProfilePreview() {
         ),
         onRetakeAssessment = {},
         onNavigateToSuccessJournal = {},
+        onNavigateToFollowing = {},
         onLogout = {},
         onToggleChat = {}
     )

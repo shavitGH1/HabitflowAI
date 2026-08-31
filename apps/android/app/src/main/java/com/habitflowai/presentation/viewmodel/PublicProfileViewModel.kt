@@ -29,6 +29,7 @@ data class PublicProfileUiState(
     val isMe: Boolean = false,
     val isCreatingChat: Boolean = false,
     val isFollowLoading: Boolean = false,
+    val personaType: String? = null,
     val error: String? = null
 )
 
@@ -62,9 +63,11 @@ class PublicProfileViewModel @Inject constructor(
             // Get user info
             val allUsers = try { repository.getAllUsers() } catch (e: Exception) { emptyList() }
             val user = allUsers.find { it.id == targetUserId }
-            var name = user?.email?.substringBefore('@') ?: targetUserId
-            
-            _uiState.update { it.copy(username = name, profilePicture = user?.profilePicture) }
+            var name = listOfNotNull(user?.firstName, user?.lastName)
+                .joinToString(" ")
+                .ifBlank { user?.email?.substringBefore('@') ?: targetUserId }
+
+            _uiState.update { it.copy(username = name, profilePicture = user?.profilePicture, personaType = user?.personaType) }
 
             // Get followers/following info
             launch {

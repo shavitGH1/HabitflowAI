@@ -23,9 +23,9 @@ export class UsersService {
     @Inject(STORAGE_ADAPTER) private readonly storage: IStorageAdapter,
   ) {}
 
-  async getAllUsers(): Promise<{ id: string; email: string; firstName: string; lastName: string; profilePicture?: string }[]> {
+  async getAllUsers(): Promise<{ id: string; email: string; firstName: string; lastName: string; profilePicture?: string; personaType?: string }[]> {
     const users = await this.userRepository.findAllUsers();
-    return users.map(u => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, profilePicture: u.profilePicture }));
+    return users.map(u => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, profilePicture: u.profilePicture, personaType: u.personaType }));
   }
 
   async getHomePageData(userId: string, forceRegenerate = false, clientDate?: string) {

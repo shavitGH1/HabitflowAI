@@ -105,5 +105,6 @@ data class AppUser(
     val firstName: String? = null,
     val lastName: String? = null,
     @JsonAdapter(ProfilePictureDeserializer::class)
-    val profilePicture: String? = null
+    val profilePicture: String? = null,
+    val personaType: String? = null
 )

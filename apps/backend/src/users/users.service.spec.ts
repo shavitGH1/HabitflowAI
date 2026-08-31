@@ -114,8 +114,8 @@ describe('UsersService', () => {
       const result = await service.getAllUsers();
 
       expect(result).toEqual([
-        { id: USER_ID, email: 'user@example.com', firstName: 'Test', lastName: 'User', profilePicture: 'preset:3' },
-        { id: 'user-456', email: 'other@example.com', firstName: 'Test', lastName: 'User', profilePicture: undefined },
+        { id: USER_ID, email: 'user@example.com', firstName: 'Test', lastName: 'User', profilePicture: 'preset:3', personaType: 'Achiever' },
+        { id: 'user-456', email: 'other@example.com', firstName: 'Test', lastName: 'User', profilePicture: undefined, personaType: 'Achiever' },
       ]);
     });
   });
