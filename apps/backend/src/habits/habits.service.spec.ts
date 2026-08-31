@@ -356,6 +356,13 @@ describe('HabitsService', () => {
       await expect(service.deleteHabit(USER_ID, HABIT_ID)).rejects.toThrow(ForbiddenException);
       expect(mockHabitRepository.deleteHabit).not.toHaveBeenCalled();
     });
+
+    it('rejects abandoning an already-achieved habit', async () => {
+      mockHabitRepository.findById.mockResolvedValue(makeHabit({ implementedAt: new Date().toISOString() }));
+
+      await expect(service.deleteHabit(USER_ID, HABIT_ID)).rejects.toThrow(BadRequestException);
+      expect(mockHabitRepository.deleteHabit).not.toHaveBeenCalled();
+    });
   });
 
   describe('completeHabit()', () => {

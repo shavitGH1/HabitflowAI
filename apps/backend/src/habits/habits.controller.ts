@@ -64,6 +64,7 @@ export class HabitsController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Soft-delete (archive) a habit' })
   @ApiResponse({ status: 200, description: 'Habit archived' })
+  @ApiResponse({ status: 400, description: 'Habit is already achieved and cannot be abandoned' })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 403, description: 'Habit belongs to a different user' })
   @ApiResponse({ status: 404, description: 'Habit not found' })

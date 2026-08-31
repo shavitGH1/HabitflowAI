@@ -5,15 +5,18 @@ import { HabitRepository } from '../habits/habit.repository';
 import { AiService } from '../ai/ai.service';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { TransitionGoalDto } from './dto/transition-goal.dto';
+import { ResolveHabitsDto } from './dto/resolve-habits.dto';
 
 export const GOAL_ACHIEVEMENT_MEDAL = 'goal-achiever';
 
 export interface TransitionGoalResult {
   oldGoal: GoalData;
   newGoal: GoalData;
-  relinkedHabitIds: string[];
-  archivedHabitIds: string[];
 }
+
+export type ResolveHabitsResult =
+  | { outcome: 'resolved'; relinkedHabitIds: string[]; archivedHabitIds: string[] }
+  | { outcome: 'needs_decision'; pendingHabitIds: string[] };
 
 @Injectable()
 export class GoalsService {
@@ -105,22 +108,55 @@ export class GoalsService {
       targetDate: dto.newGoalTargetDate,
     });
 
-    const { isRelated } = await this.ai.checkGoalRelevance({
+    return { oldGoal, newGoal };
+  }
+
+  async resolveHabits(userId: string, oldGoalId: string, dto: ResolveHabitsDto): Promise<ResolveHabitsResult> {
+    if (dto.decision) {
+      return this.applyHabitDecision(userId, oldGoalId, dto.newGoalId, dto.decision);
+    }
+
+    const oldGoal = await this.goalRepository.findById(oldGoalId);
+    if (!oldGoal) throw new NotFoundException('Goal not found');
+    if (oldGoal.userId !== userId) throw new ForbiddenException('You do not own this goal');
+
+    const newGoal = await this.goalRepository.findById(dto.newGoalId);
+    if (!newGoal) throw new NotFoundException('New goal not found');
+    if (newGoal.userId !== userId) throw new ForbiddenException('You do not own the new goal');
+
+    const { succeeded, isRelated } = await this.ai.checkGoalRelevance({
       oldGoalTitle: oldGoal.title,
       newGoalTitle: newGoal.title,
     });
 
-    // Only active (not-yet-achieved) habits under the old goal move - already-achieved
-    // ones stay put, still visible under the old goal's history either way.
+    if (!succeeded) {
+      const habits = await this.habitRepository.findByUserId(userId);
+      const pendingHabitIds = habits
+        .filter(h => h.goalId === oldGoalId && !h.implementedAt)
+        .map(h => h.id);
+      return { outcome: 'needs_decision', pendingHabitIds };
+    }
+
+    return this.applyHabitDecision(userId, oldGoalId, dto.newGoalId, isRelated ? 'link' : 'archive');
+  }
+
+  // Only active (not-yet-achieved) habits under the old goal move - already-achieved
+  // ones stay put, still visible under the old goal's history either way.
+  private async applyHabitDecision(
+    userId: string,
+    oldGoalId: string,
+    newGoalId: string,
+    decision: 'link' | 'archive',
+  ): Promise<ResolveHabitsResult> {
     const habits = await this.habitRepository.findByUserId(userId);
-    const carryoverHabits = habits.filter(h => h.goalId === id && !h.implementedAt);
+    const carryoverHabits = habits.filter(h => h.goalId === oldGoalId && !h.implementedAt);
 
     const relinkedHabitIds: string[] = [];
     const archivedHabitIds: string[] = [];
 
     for (const habit of carryoverHabits) {
-      if (isRelated) {
-        await this.habitRepository.updateHabit(habit.id, { goalId: newGoal.id });
+      if (decision === 'link') {
+        await this.habitRepository.updateHabit(habit.id, { goalId: newGoalId });
         relinkedHabitIds.push(habit.id);
       } else {
         await this.habitRepository.deleteHabit(habit.id);
@@ -128,6 +164,6 @@ export class GoalsService {
       }
     }
 
-    return { oldGoal, newGoal, relinkedHabitIds, archivedHabitIds };
+    return { outcome: 'resolved', relinkedHabitIds, archivedHabitIds };
   }
 }

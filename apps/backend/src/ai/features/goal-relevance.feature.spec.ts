@@ -20,7 +20,7 @@ describe('GoalRelevanceFeature', () => {
 
     const result = await feature.check(input);
 
-    expect(result).toEqual({ isRelated: true, reason: 'Same pursuit, longer distance.' });
+    expect(result).toEqual({ succeeded: true, isRelated: true, reason: 'Same pursuit, longer distance.' });
   });
 
   it('can flag a new goal as unrelated', async () => {
@@ -28,14 +28,15 @@ describe('GoalRelevanceFeature', () => {
 
     const result = await feature.check({ oldGoalTitle: 'Run a marathon', newGoalTitle: 'Learn to paint' });
 
+    expect(result.succeeded).toBe(true);
     expect(result.isRelated).toBe(false);
   });
 
-  it('falls back to isRelated: true when the AI call fails — never blocks the caller', async () => {
+  it('reports succeeded: false when the AI call fails — never throws, but the caller can tell', async () => {
     gemini.generateJson.mockRejectedValue(new Error('Gemini overloaded'));
 
     const result = await feature.check(input);
 
-    expect(result).toEqual({ isRelated: true, reason: '' });
+    expect(result).toEqual({ succeeded: false, isRelated: true, reason: '' });
   });
 });

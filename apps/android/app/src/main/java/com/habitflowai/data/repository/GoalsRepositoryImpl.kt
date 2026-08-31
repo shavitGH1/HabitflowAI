@@ -10,6 +10,7 @@ import com.habitflowai.data.model.HomeResponse
 import com.habitflowai.data.model.toGoalPairList
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.GoalsRepository
+import com.habitflowai.domain.repository.ResolveHabitsOutcome
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import javax.inject.Inject
@@ -33,7 +34,7 @@ class GoalsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getHomeData(force: Boolean): HomeResponse {
-        val response = api.getHome(if (force) true else null)
+        val response = api.getHome(if (force) true else null, LocalDate.now().toString())
         savePortfolioToRoom(response)
         return response
     }
@@ -80,12 +81,26 @@ class GoalsRepositoryImpl @Inject constructor(
         resolution: String,
         newGoalTitle: String,
         newGoalTargetDate: String
-    ): Boolean {
+    ): String? {
         return try {
             val request = com.habitflowai.data.model.TransitionGoalRequest(resolution, newGoalTitle, newGoalTargetDate)
-            api.transitionGoal(goalId, request).isSuccessful
+            api.transitionGoal(goalId, request).newGoal.id
         } catch (e: Exception) {
-            false
+            null
+        }
+    }
+
+    override suspend fun resolveHabits(oldGoalId: String, newGoalId: String, decision: String?): ResolveHabitsOutcome {
+        return try {
+            val request = com.habitflowai.data.model.ResolveHabitsRequest(newGoalId, decision)
+            val response = api.resolveHabits(oldGoalId, request)
+            when (response.outcome) {
+                "resolved" -> ResolveHabitsOutcome.Resolved
+                "needs_decision" -> ResolveHabitsOutcome.NeedsDecision(response.pendingHabitIds?.size ?: 0)
+                else -> ResolveHabitsOutcome.Failed
+            }
+        } catch (e: Exception) {
+            ResolveHabitsOutcome.Failed
         }
     }
 

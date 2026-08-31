@@ -18,7 +18,7 @@ import {
   HabitGoalRelevanceInput,
 } from './features/habit-goal-relevance.feature';
 import { TaskVerificationFeature, TaskVerificationInput } from './features/task-verification.feature';
-import { GoalRelevanceFeature, GoalRelevanceInput } from './features/goal-relevance.feature';
+import { GoalRelevanceFeature, GoalRelevanceInput, GoalRelevanceCheckResult } from './features/goal-relevance.feature';
 import { OnboardingSuggestionsFeature } from './features/onboarding-suggestions.feature';
 import { RagSearchFeature, RagSearchInput, RankedArticle } from './features/rag-search.feature';
 import {
@@ -37,7 +37,6 @@ import { DailyMotivationOutput } from './schemas/daily-motivation.schema';
 import { HabitInsightsOutput } from './schemas/habit-insights.schema';
 import { HabitGoalRelevanceOutput } from './schemas/habit-goal-relevance.schema';
 import { TaskVerificationOutput } from './schemas/task-verification.schema';
-import { GoalRelevanceOutput } from './schemas/goal-relevance.schema';
 import { OnboardingSuggestionsOutput } from './schemas/onboarding-suggestions.schema';
 import { GeminiClient } from './gemini.client';
 
@@ -107,7 +106,7 @@ export class AiService {
     return this.habitGoalRelevance.check(input);
   }
 
-  checkGoalRelevance(input: GoalRelevanceInput): Promise<GoalRelevanceOutput> {
+  checkGoalRelevance(input: GoalRelevanceInput): Promise<GoalRelevanceCheckResult> {
     return this.goalRelevance.check(input);
   }
 

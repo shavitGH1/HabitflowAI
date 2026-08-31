@@ -26,12 +26,15 @@ export class UsersService {
     return users.map(u => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, profilePicture: u.profilePicture }));
   }
 
-  async getHomePageData(userId: string, forceRegenerate = false) {
+  async getHomePageData(userId: string, forceRegenerate = false, clientDate?: string) {
     const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
     const habits = await this.habitRepository.findByUserId(userId);
-    const today = new Date().toISOString().split('T')[0];
+    // Prefer the client's local date over server UTC - avoids delaying regeneration for
+    // timezones ahead of UTC, same reasoning as CompleteTaskDto's date field.
+    const isValidClientDate = clientDate != null && /^\d{4}-\d{2}-\d{2}$/.test(clientDate);
+    const today = isValidClientDate ? clientDate! : new Date().toISOString().split('T')[0];
 
     if (user.tasksLastGeneratedDate !== today || forceRegenerate) {
       const habitInputs = habits.map(h => ({ id: h.id, title: h.title }));

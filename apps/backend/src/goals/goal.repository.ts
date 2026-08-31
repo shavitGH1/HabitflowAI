@@ -37,7 +37,7 @@ export class GoalRepository {
     const doc = await this.goalModel.findOneAndUpdate(
       { userId: input.userId, status: 'active' },
       { $setOnInsert: { userId: input.userId, title: input.title, targetDate: input.targetDate, status: 'active' } },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
     );
     return this.toGoalData(doc);
   }

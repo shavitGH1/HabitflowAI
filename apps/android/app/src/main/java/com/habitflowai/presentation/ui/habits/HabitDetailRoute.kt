@@ -321,16 +321,18 @@ fun HabitDetailContent(
                     }
                 }
 
-                OutlinedButton(
-                    onClick = { showAbandonConfirm = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Abandon Habit", fontWeight = FontWeight.Bold)
+                if (habit.implementedAt == null) {
+                    OutlinedButton(
+                        onClick = { showAbandonConfirm = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Abandon Habit", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 

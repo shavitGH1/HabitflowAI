@@ -48,8 +48,9 @@ export class UsersController {
   getHome(
     @Req() req: { user: { id: string } },
     @Query('force') force?: string,
+    @Query('date') date?: string,
   ) {
-    return this.usersService.getHomePageData(req.user.id, force === 'true');
+    return this.usersService.getHomePageData(req.user.id, force === 'true', date);
   }
 
   @Patch('me/profile')

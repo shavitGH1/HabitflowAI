@@ -49,18 +49,23 @@ fun SuccessJournalRoute(
 
     var selectedFilter by remember { mutableStateOf(JournalFilter.ALL) }
 
-    val journalItems = remember(habitsState.habits, onboardingState.achievements, selectedFilter) {
-        val achievedHabits = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.HABITS) {
-            habitsState.habits.mapNotNull { habit ->
-                habit.implementedAt?.let { implementedAt ->
-                    JournalItem.HabitAchievement(
-                        habitId = habit.id,
-                        habitName = habit.title,
-                        description = habit.description,
-                        implementedAt = implementedAt
-                    )
-                }
+    val achievedHabitItems = remember(habitsState.habits) {
+        habitsState.habits.mapNotNull { habit ->
+            habit.implementedAt?.let { implementedAt ->
+                JournalItem.HabitAchievement(
+                    habitId = habit.id,
+                    habitName = habit.title,
+                    description = habit.description,
+                    goalId = habit.goalId,
+                    implementedAt = implementedAt
+                )
             }
+        }
+    }
+
+    val journalItems = remember(achievedHabitItems, onboardingState.achievements, selectedFilter) {
+        val achievedHabits = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.HABITS) {
+            achievedHabitItems
         } else emptyList()
 
         val achievements = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.GOALS) {
@@ -68,6 +73,39 @@ fun SuccessJournalRoute(
         } else emptyList()
 
         (achievedHabits + achievements).sortedByDescending { it.timestamp }
+    }
+
+    // Goal title lookup used only by the Goals tab's grouping - built from data already
+    // loaded for this screen, no new fetch. Achieved goals carry their own title; the
+    // current active goal (whether achieved yet or not) is added too. Anything else
+    // (a habit under a goal that's neither, e.g. forfeited without ever being achieved)
+    // has no resolvable title and falls into "General".
+    val goalTitleById = remember(onboardingState.achievements, habitsState.activeGoal) {
+        val fromAchievements = onboardingState.achievements.associate { it.goalId to it.goalTitle }
+        val fromActiveGoal = habitsState.activeGoal?.let { mapOf(it.id to it.title) } ?: emptyMap()
+        fromAchievements + fromActiveGoal
+    }
+
+    val goalGroups = remember(achievedHabitItems, onboardingState.achievements, goalTitleById) {
+        val byGoal = achievedHabitItems.groupBy { it.goalId?.let { id -> goalTitleById[id] } ?: "General" }
+        val goalAchievementsByTitle = onboardingState.achievements.associateBy(
+            keySelector = { it.goalTitle },
+            valueTransform = { JournalItem.GoalAchievement(it) },
+        )
+        val titles = (byGoal.keys + goalAchievementsByTitle.keys).toSet()
+
+        titles.map { title ->
+            JournalGroup(
+                title = title,
+                goalAchievement = goalAchievementsByTitle[title],
+                habitAchievements = byGoal[title].orEmpty().sortedByDescending { it.timestamp }
+            )
+        }.sortedByDescending { group ->
+            maxOf(
+                group.goalAchievement?.timestamp ?: 0L,
+                group.habitAchievements.maxOfOrNull { it.timestamp } ?: 0L
+            )
+        }
     }
 
     Scaffold(
@@ -117,8 +155,10 @@ fun SuccessJournalRoute(
                 }
             }
 
+            val isEmpty = if (selectedFilter == JournalFilter.GOALS) goalGroups.isEmpty() else journalItems.isEmpty()
+
             Box(modifier = Modifier.weight(1f)) {
-                if (journalItems.isEmpty()) {
+                if (isEmpty) {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.Center,
@@ -140,6 +180,29 @@ fun SuccessJournalRoute(
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 32.dp)
                         )
+                    }
+                } else if (selectedFilter == JournalFilter.GOALS) {
+                    LazyColumn(
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(goalGroups) { group ->
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = group.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = personaDetails.endColor
+                                )
+                                group.goalAchievement?.let {
+                                    GoalAchievementCard(achievement = it, personaColor = personaDetails.endColor)
+                                }
+                                group.habitAchievements.forEach { habit ->
+                                    HabitAchievementCard(achievement = habit, personaColor = personaDetails.endColor)
+                                }
+                            }
+                        }
                     }
                 } else {
                     LazyColumn(
@@ -185,11 +248,18 @@ sealed class JournalItem {
         val habitId: String,
         val habitName: String,
         val description: String?,
+        val goalId: String?,
         val implementedAt: String
     ) : JournalItem() {
         override val timestamp: Long = parseIsoToMillis(implementedAt)
     }
 }
+
+data class JournalGroup(
+    val title: String,
+    val goalAchievement: JournalItem.GoalAchievement?,
+    val habitAchievements: List<JournalItem.HabitAchievement>
+)
 
 @Composable
 fun HabitAchievementCard(

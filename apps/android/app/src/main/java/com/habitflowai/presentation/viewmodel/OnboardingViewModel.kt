@@ -228,7 +228,7 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
-                val homeData = api.getHome()
+                val homeData = api.getHome(date = java.time.LocalDate.now().toString())
                 if (homeData.success) {
                     authManager.currentUserId.value?.let { userId ->
                         userRepository.cacheProfile(
@@ -468,7 +468,7 @@ class OnboardingViewModel @Inject constructor(
                 )
 
                 if (response is Resource.Success && response.data != null) {
-                    val homeData = api.getHome()
+                    val homeData = api.getHome(date = java.time.LocalDate.now().toString())
                     _uiState.value = currentState.copy(
                         isLoading = false,
                         isRetakeMode = false,

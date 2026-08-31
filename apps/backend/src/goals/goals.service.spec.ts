@@ -234,6 +234,39 @@ describe('GoalsService', () => {
     const NEW_GOAL_ID = 'goal-new';
     const dto = { resolution: 'achieve' as const, newGoalTitle: 'Run 20km', newGoalTargetDate: '2027-06-30' };
 
+    beforeEach(() => {
+      mockGoalRepository.findById.mockResolvedValue(makeGoal());
+      mockGoalRepository.updateStatus.mockResolvedValue(makeGoal({ status: 'achieved' }));
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+      mockGoalRepository.createGoal.mockResolvedValue(makeGoal({ id: NEW_GOAL_ID, title: dto.newGoalTitle }));
+      mockUserRepository.addAchievement.mockResolvedValue(undefined);
+    });
+
+    it('resolves the old goal and creates the new one, without touching any habits', async () => {
+      const result = await service.transitionGoal(USER_ID, GOAL_ID, dto);
+
+      expect(mockGoalRepository.updateStatus).toHaveBeenCalledWith(GOAL_ID, 'achieved');
+      expect(mockGoalRepository.createGoal).toHaveBeenCalledWith({
+        userId: USER_ID,
+        title: dto.newGoalTitle,
+        targetDate: new Date(dto.newGoalTargetDate),
+      });
+      expect(result.newGoal.id).toEqual(NEW_GOAL_ID);
+      expect(mockAiService.checkGoalRelevance).not.toHaveBeenCalled();
+      expect(mockHabitRepository.findByUserId).not.toHaveBeenCalled();
+    });
+
+    it('forfeits the old goal instead of achieving it when resolution is forfeit', async () => {
+      await service.transitionGoal(USER_ID, GOAL_ID, { ...dto, resolution: 'forfeit' });
+
+      expect(mockGoalRepository.updateStatus).toHaveBeenCalledWith(GOAL_ID, 'forfeited');
+      expect(mockUserRepository.addAchievement).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resolveHabits()', () => {
+    const NEW_GOAL_ID = 'goal-new';
+
     const makeHabit = (overrides: Record<string, unknown> = {}) => ({
       id: 'habit-1',
       userId: USER_ID,
@@ -244,58 +277,85 @@ describe('GoalsService', () => {
     });
 
     beforeEach(() => {
-      mockGoalRepository.findById.mockResolvedValue(makeGoal());
-      mockGoalRepository.updateStatus.mockResolvedValue(makeGoal({ status: 'achieved' }));
-      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
-      mockGoalRepository.createGoal.mockResolvedValue(makeGoal({ id: NEW_GOAL_ID, title: dto.newGoalTitle }));
-      mockUserRepository.addAchievement.mockResolvedValue(undefined);
+      mockGoalRepository.findById.mockImplementation((id: string) =>
+        Promise.resolve(id === NEW_GOAL_ID ? makeGoal({ id: NEW_GOAL_ID, title: 'Run 20km' }) : makeGoal()),
+      );
       mockHabitRepository.findByUserId.mockResolvedValue([]);
     });
 
-    it('relinks active goal-linked habits to the new goal when related', async () => {
-      mockAiService.checkGoalRelevance.mockResolvedValue({ isRelated: true, reason: 'Same pursuit.' });
+    it('relinks active goal-linked habits to the new goal when the AI reports related', async () => {
+      mockAiService.checkGoalRelevance.mockResolvedValue({ succeeded: true, isRelated: true, reason: 'Same pursuit.' });
       mockHabitRepository.findByUserId.mockResolvedValue([makeHabit()]);
 
-      const result = await service.transitionGoal(USER_ID, GOAL_ID, dto);
+      const result = await service.resolveHabits(USER_ID, GOAL_ID, { newGoalId: NEW_GOAL_ID });
 
       expect(mockHabitRepository.updateHabit).toHaveBeenCalledWith('habit-1', { goalId: NEW_GOAL_ID });
       expect(mockHabitRepository.deleteHabit).not.toHaveBeenCalled();
-      expect(result.relinkedHabitIds).toEqual(['habit-1']);
-      expect(result.archivedHabitIds).toEqual([]);
+      expect(result).toEqual({ outcome: 'resolved', relinkedHabitIds: ['habit-1'], archivedHabitIds: [] });
     });
 
-    it('archives active goal-linked habits instead when unrelated', async () => {
-      mockAiService.checkGoalRelevance.mockResolvedValue({ isRelated: false, reason: 'Different pursuit.' });
+    it('archives active goal-linked habits instead when the AI reports unrelated', async () => {
+      mockAiService.checkGoalRelevance.mockResolvedValue({ succeeded: true, isRelated: false, reason: 'Different pursuit.' });
       mockHabitRepository.findByUserId.mockResolvedValue([makeHabit()]);
 
-      const result = await service.transitionGoal(USER_ID, GOAL_ID, dto);
+      const result = await service.resolveHabits(USER_ID, GOAL_ID, { newGoalId: NEW_GOAL_ID });
 
       expect(mockHabitRepository.deleteHabit).toHaveBeenCalledWith('habit-1');
       expect(mockHabitRepository.updateHabit).not.toHaveBeenCalled();
-      expect(result.archivedHabitIds).toEqual(['habit-1']);
+      expect(result).toEqual({ outcome: 'resolved', relinkedHabitIds: [], archivedHabitIds: ['habit-1'] });
     });
 
     it('leaves already-achieved habits under the old goal untouched either way', async () => {
-      mockAiService.checkGoalRelevance.mockResolvedValue({ isRelated: true, reason: '' });
+      mockAiService.checkGoalRelevance.mockResolvedValue({ succeeded: true, isRelated: true, reason: '' });
       mockHabitRepository.findByUserId.mockResolvedValue([
         makeHabit({ implementedAt: new Date().toISOString() }),
       ]);
 
-      const result = await service.transitionGoal(USER_ID, GOAL_ID, dto);
+      const result = await service.resolveHabits(USER_ID, GOAL_ID, { newGoalId: NEW_GOAL_ID });
 
       expect(mockHabitRepository.updateHabit).not.toHaveBeenCalled();
       expect(mockHabitRepository.deleteHabit).not.toHaveBeenCalled();
-      expect(result.relinkedHabitIds).toEqual([]);
-      expect(result.archivedHabitIds).toEqual([]);
+      expect(result).toEqual({ outcome: 'resolved', relinkedHabitIds: [], archivedHabitIds: [] });
     });
 
-    it('forfeits the old goal instead of achieving it when resolution is forfeit', async () => {
-      mockAiService.checkGoalRelevance.mockResolvedValue({ isRelated: true, reason: '' });
+    it('returns needs_decision and touches no habits when the AI call fails', async () => {
+      mockAiService.checkGoalRelevance.mockResolvedValue({ succeeded: false, isRelated: true, reason: '' });
+      mockHabitRepository.findByUserId.mockResolvedValue([makeHabit()]);
 
-      await service.transitionGoal(USER_ID, GOAL_ID, { ...dto, resolution: 'forfeit' });
+      const result = await service.resolveHabits(USER_ID, GOAL_ID, { newGoalId: NEW_GOAL_ID });
 
-      expect(mockGoalRepository.updateStatus).toHaveBeenCalledWith(GOAL_ID, 'forfeited');
-      expect(mockUserRepository.addAchievement).not.toHaveBeenCalled();
+      expect(result).toEqual({ outcome: 'needs_decision', pendingHabitIds: ['habit-1'] });
+      expect(mockHabitRepository.updateHabit).not.toHaveBeenCalled();
+      expect(mockHabitRepository.deleteHabit).not.toHaveBeenCalled();
+    });
+
+    it('applies an explicit link decision directly, without calling the AI', async () => {
+      mockHabitRepository.findByUserId.mockResolvedValue([makeHabit()]);
+
+      const result = await service.resolveHabits(USER_ID, GOAL_ID, { newGoalId: NEW_GOAL_ID, decision: 'link' });
+
+      expect(mockAiService.checkGoalRelevance).not.toHaveBeenCalled();
+      expect(mockHabitRepository.updateHabit).toHaveBeenCalledWith('habit-1', { goalId: NEW_GOAL_ID });
+      expect(result).toEqual({ outcome: 'resolved', relinkedHabitIds: ['habit-1'], archivedHabitIds: [] });
+    });
+
+    it('applies an explicit archive decision directly, without calling the AI', async () => {
+      mockHabitRepository.findByUserId.mockResolvedValue([makeHabit()]);
+
+      const result = await service.resolveHabits(USER_ID, GOAL_ID, { newGoalId: NEW_GOAL_ID, decision: 'archive' });
+
+      expect(mockAiService.checkGoalRelevance).not.toHaveBeenCalled();
+      expect(mockHabitRepository.deleteHabit).toHaveBeenCalledWith('habit-1');
+      expect(result).toEqual({ outcome: 'resolved', relinkedHabitIds: [], archivedHabitIds: ['habit-1'] });
+    });
+
+    it('throws ForbiddenException when the caller does not own the old goal', async () => {
+      mockGoalRepository.findById.mockImplementation((id: string) =>
+        Promise.resolve(id === NEW_GOAL_ID ? makeGoal({ id: NEW_GOAL_ID }) : makeGoal({ userId: OTHER_USER_ID })),
+      );
+
+      await expect(service.resolveHabits(USER_ID, GOAL_ID, { newGoalId: NEW_GOAL_ID })).rejects.toThrow(ForbiddenException);
+      expect(mockAiService.checkGoalRelevance).not.toHaveBeenCalled();
     });
   });
 });

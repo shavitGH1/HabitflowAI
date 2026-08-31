@@ -9,6 +9,7 @@ import com.habitflowai.data.model.ActiveGoalResponse
 import com.habitflowai.domain.repository.HabitsRepository
 import com.habitflowai.domain.repository.GoalsRepository
 import com.habitflowai.domain.repository.LocationRepository
+import com.habitflowai.domain.repository.ResolveHabitsOutcome
 import com.habitflowai.di.AuthManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,8 +31,17 @@ data class HabitsUiState(
     val habitLocations: Map<String, List<LocationEntity>> = emptyMap(),
     val congratulationMessage: String? = null,
     val suggestions: List<com.habitflowai.data.model.HomeGoalTask> = emptyList(),
-    val relevanceWarning: String? = null
-)
+    val relevanceWarning: String? = null,
+    val pendingHabitDecision: PendingHabitDecision? = null
+) {
+    data class PendingHabitDecision(
+        val oldGoalId: String,
+        val newGoalId: String,
+        val pendingHabitCount: Int,
+        val attemptCount: Int,
+        val cooldownUntil: Long?
+    )
+}
 
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
@@ -51,6 +61,8 @@ class HabitsViewModel @Inject constructor(
 
     companion object {
         private val UNFETCHED = Any()
+        private const val MAX_RESOLVE_HABITS_ATTEMPTS = 3
+        private const val RESOLVE_HABITS_COOLDOWN_MS = 10 * 60 * 1000L
     }
 
     init {
@@ -263,15 +275,71 @@ class HabitsViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            val success = goalsRepository.transitionGoal(goalId, resolution, newGoalTitle, newGoalTargetDate)
-            if (success) {
-                fetchActiveGoal()
-                habitsRepository.refreshHabits()
-                _uiState.update { it.copy(isLoading = false) }
+            val newGoalId = goalsRepository.transitionGoal(goalId, resolution, newGoalTitle, newGoalTargetDate)
+            if (newGoalId != null) {
+                resolveHabits(goalId, newGoalId, decision = null, onResult = onResult)
             } else {
                 _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
+                onResult(false)
             }
-            onResult(success)
+        }
+    }
+
+    fun retryResolveHabits(onResult: (Boolean) -> Unit = {}) {
+        val pending = _uiState.value.pendingHabitDecision ?: return
+        if (pending.cooldownUntil != null && System.currentTimeMillis() < pending.cooldownUntil) return
+        resolveHabits(pending.oldGoalId, pending.newGoalId, decision = null, onResult = onResult)
+    }
+
+    fun decideHabits(decision: String, onResult: (Boolean) -> Unit = {}) {
+        val pending = _uiState.value.pendingHabitDecision ?: return
+        resolveHabits(pending.oldGoalId, pending.newGoalId, decision = decision, onResult = onResult)
+    }
+
+    private fun resolveHabits(
+        oldGoalId: String,
+        newGoalId: String,
+        decision: String?,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            when (val outcome = goalsRepository.resolveHabits(oldGoalId, newGoalId, decision)) {
+                is ResolveHabitsOutcome.Resolved -> {
+                    fetchActiveGoal()
+                    habitsRepository.refreshHabits()
+                    _uiState.update { it.copy(isLoading = false, pendingHabitDecision = null) }
+                    onResult(true)
+                }
+                is ResolveHabitsOutcome.NeedsDecision -> {
+                    val pending = _uiState.value.pendingHabitDecision
+                    val cooldownExpired = pending?.cooldownUntil != null && System.currentTimeMillis() >= pending.cooldownUntil
+                    val previousAttempts = if (pending == null || cooldownExpired) 0 else pending.attemptCount
+                    val attemptCount = previousAttempts + 1
+                    val cooldownUntil = if (attemptCount >= MAX_RESOLVE_HABITS_ATTEMPTS) {
+                        System.currentTimeMillis() + RESOLVE_HABITS_COOLDOWN_MS
+                    } else {
+                        null
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            pendingHabitDecision = HabitsUiState.PendingHabitDecision(
+                                oldGoalId = oldGoalId,
+                                newGoalId = newGoalId,
+                                pendingHabitCount = outcome.pendingHabitCount,
+                                attemptCount = attemptCount,
+                                cooldownUntil = cooldownUntil
+                            )
+                        )
+                    }
+                    onResult(false)
+                }
+                is ResolveHabitsOutcome.Failed -> {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
+                    onResult(false)
+                }
+            }
         }
     }
 

@@ -66,7 +66,10 @@ interface HabitFlowApi {
     suspend fun getOnboardingSuggestions(@Body request: OnboardingSuggestionsRequest): OnboardingSuggestionsResponse
 
     @GET("api/v1/users/me/home")
-    suspend fun getHome(@Query("force") force: Boolean? = null): HomeResponse
+    suspend fun getHome(
+        @Query("force") force: Boolean? = null,
+        @Query("date") date: String? = null
+    ): HomeResponse
 
     @PATCH("api/v1/users/me/profile")
     suspend fun updateProfilePicture(@Body request: com.habitflowai.data.model.UpdateProfilePictureRequest): com.habitflowai.data.model.UpdateProfileResponse
@@ -94,7 +97,13 @@ interface HabitFlowApi {
     suspend fun transitionGoal(
         @Path("id") id: String,
         @Body request: com.habitflowai.data.model.TransitionGoalRequest
-    ): Response<Unit>
+    ): com.habitflowai.data.model.TransitionGoalResponse
+
+    @POST("api/v1/goals/{id}/resolve-habits")
+    suspend fun resolveHabits(
+        @Path("id") id: String,
+        @Body request: com.habitflowai.data.model.ResolveHabitsRequest
+    ): com.habitflowai.data.model.ResolveHabitsResponse
 
     @POST("api/v1/personas/classify")
     suspend fun classifyPersona(@Body request: ClassifyPersonaRequest): ClassifyPersonaResponse

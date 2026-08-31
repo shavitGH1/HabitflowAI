@@ -33,6 +33,23 @@ data class TransitionGoalRequest(
     @SerializedName("newGoalTargetDate") val newGoalTargetDate: String
 )
 
+data class TransitionGoalResponse(
+    @SerializedName("oldGoal") val oldGoal: ActiveGoalResponse,
+    @SerializedName("newGoal") val newGoal: ActiveGoalResponse
+)
+
+data class ResolveHabitsRequest(
+    @SerializedName("newGoalId") val newGoalId: String,
+    @SerializedName("decision") val decision: String? = null
+)
+
+data class ResolveHabitsResponse(
+    @SerializedName("outcome") val outcome: String,
+    @SerializedName("relinkedHabitIds") val relinkedHabitIds: List<String>? = null,
+    @SerializedName("archivedHabitIds") val archivedHabitIds: List<String>? = null,
+    @SerializedName("pendingHabitIds") val pendingHabitIds: List<String>? = null
+)
+
 data class ActiveGoalResponse(
     @SerializedName("id") val id: String,
     @SerializedName("title") val title: String,

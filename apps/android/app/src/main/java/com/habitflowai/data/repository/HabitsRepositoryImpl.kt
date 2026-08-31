@@ -120,6 +120,10 @@ class HabitsRepositoryImpl @Inject constructor(
             api.deleteHabit(habit.id)
             habitDao.delete(habit)
         } catch (e: Exception) {
+            // A 4xx means the server actually rejected this (e.g. already achieved) -
+            // retrying it later would just fail again, so leave the habit as-is rather
+            // than hiding it locally under a PENDING_DELETE that can never resolve.
+            if (e is retrofit2.HttpException && e.code() in 400..499) return
             habitDao.updateSyncStatus(habit.id, SyncStatus.PENDING_DELETE)
             enqueueSync()
         }

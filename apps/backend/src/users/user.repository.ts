@@ -91,7 +91,7 @@ export class UserRepository {
         dailyVariations: newDailyTasks,
         tasksLastGeneratedDate: new Date().toISOString().split('T')[0],
       },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -100,7 +100,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { refreshToken: refreshToken ?? null },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -109,7 +109,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { fcmToken },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -118,7 +118,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { profilePicture },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -127,7 +127,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { firstName, lastName, nameChangedAt: new Date() },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -136,7 +136,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { password: hashedPassword },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -145,7 +145,7 @@ export class UserRepository {
     userId: string,
     updates: Partial<Pick<UserData, 'goal' | 'personaType' | 'motivationalMessage' | 'coreGoals' | 'dailyVariations' | 'tasksLastGeneratedDate' | 'personaBreakdown' | 'weightedScores' | 'tips' | 'failurePatterns'>>,
   ): Promise<UserData | null> {
-    const doc = await this.userModel.findByIdAndUpdate(userId, updates, { new: true });
+    const doc = await this.userModel.findByIdAndUpdate(userId, updates, { returnDocument: 'after' });
     return doc ? this.toUserData(doc) : null;
   }
 
@@ -153,7 +153,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { $push: { achievements: achievement } },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }

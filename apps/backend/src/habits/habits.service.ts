@@ -105,6 +105,9 @@ export class HabitsService {
     const habit = await this.habitRepository.findById(id);
     if (!habit) throw new NotFoundException('Habit not found');
     if (habit.userId !== userId) throw new ForbiddenException('You do not own this habit');
+    if (habit.implementedAt) {
+      throw new BadRequestException('An achieved habit cannot be abandoned');
+    }
     return (await this.habitRepository.deleteHabit(id))!;
   }
 

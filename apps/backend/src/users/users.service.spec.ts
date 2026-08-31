@@ -16,6 +16,8 @@ const mockUserRepository = {
   updateProfilePicture: jest.fn(),
   updateName: jest.fn(),
   updatePassword: jest.fn(),
+  updateUserDailyTasks: jest.fn(),
+  updateUserPersona: jest.fn(),
 };
 
 const mockHabitRepository = {
@@ -231,6 +233,41 @@ describe('UsersService', () => {
       const result = await service.getHomePageData(USER_ID);
 
       expect(result.achievements[0].goalTitle).toBe('Goal');
+    });
+
+    describe('client-supplied date', () => {
+      it('skips regeneration when tasksLastGeneratedDate matches the client date, even if it differs from server UTC today', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: '2026-09-01' }));
+        mockHabitRepository.findByUserId.mockResolvedValue([]);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+
+        await service.getHomePageData(USER_ID, false, '2026-09-01');
+
+        expect(mockAiService.generateDailyVariations).not.toHaveBeenCalled();
+      });
+
+      it('regenerates and persists using the client date when it differs from tasksLastGeneratedDate', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: '2026-08-30' }));
+        mockHabitRepository.findByUserId.mockResolvedValue([]);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+        mockAiService.generateDailyVariations.mockResolvedValue([]);
+        mockUserRepository.updateUserDailyTasks.mockResolvedValue(makeUser({ dailyVariations: [] }));
+
+        await service.getHomePageData(USER_ID, false, '2026-08-31');
+
+        expect(mockAiService.generateDailyVariations).toHaveBeenCalled();
+        expect(mockUserRepository.updateUserPersona).toHaveBeenCalledWith(USER_ID, { tasksLastGeneratedDate: '2026-08-31' });
+      });
+
+      it('falls back to server UTC today when the client date is malformed', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: today }));
+        mockHabitRepository.findByUserId.mockResolvedValue([]);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+
+        await service.getHomePageData(USER_ID, false, 'not-a-date');
+
+        expect(mockAiService.generateDailyVariations).not.toHaveBeenCalled();
+      });
     });
   });
 

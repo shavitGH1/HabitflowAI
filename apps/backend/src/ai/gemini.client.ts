@@ -22,6 +22,9 @@ export interface ToolTurn {
 }
 
 const EMBEDDING_MODEL = 'gemini-embedding-001';
+// Without this, a single slow/hanging model attempt blocks the whole fallback chain
+// indefinitely - observed live at 70+ seconds for one call with no timeout set.
+const REQUEST_TIMEOUT_MS = 10_000;
 
 @Injectable()
 export class GeminiClient {
@@ -52,7 +55,11 @@ export class GeminiClient {
 
   async embedContent(text: string): Promise<number[]> {
     try {
-      const response = await this.ai.models.embedContent({ model: EMBEDDING_MODEL, contents: text });
+      const response = await this.ai.models.embedContent({
+        model: EMBEDDING_MODEL,
+        contents: text,
+        config: { httpOptions: { timeout: REQUEST_TIMEOUT_MS } },
+      });
       const values = response.embeddings?.[0]?.values;
       if (!values || values.length === 0) throw new Error('Empty embedding response');
       return values;
@@ -92,6 +99,7 @@ export class GeminiClient {
         config: {
           systemInstruction,
           tools: [{ functionDeclarations }],
+          httpOptions: { timeout: REQUEST_TIMEOUT_MS },
           ...(forceToolCall && {
             toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } },
           }),
@@ -120,7 +128,7 @@ export class GeminiClient {
       const response = await this.ai.models.generateContent({
         model,
         contents: prompt,
-        config: { responseMimeType: 'application/json' },
+        config: { responseMimeType: 'application/json', httpOptions: { timeout: REQUEST_TIMEOUT_MS } },
       });
       const text = response.text;
       if (!text) throw new Error('Empty response');
