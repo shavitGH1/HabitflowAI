@@ -3,17 +3,22 @@ package com.habitflowai.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habitflowai.data.local.entity.HabitEntity
+import com.habitflowai.data.local.entity.LocationEntity
 import com.habitflowai.data.local.entity.SyncStatus
 import com.habitflowai.data.model.ActiveGoalResponse
 import com.habitflowai.domain.repository.HabitsRepository
 import com.habitflowai.domain.repository.GoalsRepository
 import com.habitflowai.domain.repository.LocationRepository
+import com.habitflowai.domain.repository.ResolveHabitsOutcome
 import com.habitflowai.di.AuthManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -26,11 +31,22 @@ data class HabitsUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val habitStats: Map<String, Map<String, Any>> = emptyMap(),
+    val habitLocations: Map<String, List<LocationEntity>> = emptyMap(),
     val congratulationMessage: String? = null,
     val suggestions: List<com.habitflowai.data.model.HomeGoalTask> = emptyList(),
-    val relevanceWarning: String? = null
-)
+    val relevanceWarning: String? = null,
+    val pendingHabitDecision: PendingHabitDecision? = null
+) {
+    data class PendingHabitDecision(
+        val oldGoalId: String,
+        val newGoalId: String,
+        val pendingHabitCount: Int,
+        val attemptCount: Int,
+        val cooldownUntil: Long?
+    )
+}
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
     private val habitsRepository: HabitsRepository,
@@ -44,24 +60,36 @@ class HabitsViewModel @Inject constructor(
     private val userId: String
         get() = authManager.currentUserId.value ?: "local_user"
 
+    private var suggestionSource: List<com.habitflowai.data.model.HomeGoalTask> = emptyList()
+    private var suggestionSourceGoalId: Any? = UNFETCHED
+
+    companion object {
+        private val UNFETCHED = Any()
+        private const val MAX_RESOLVE_HABITS_ATTEMPTS = 3
+        private const val RESOLVE_HABITS_COOLDOWN_MS = 10 * 60 * 1000L
+    }
+
     init {
         fetchActiveGoal()
         viewModelScope.launch {
             habitsRepository.refreshHabits()
         }
         viewModelScope.launch {
-            authManager.currentUserId.collect { id ->
-                id?.let {
-                    habitsRepository.getHabits(it)
-                        .catch { e ->
+            authManager.currentUserId
+                .flatMapLatest { id ->
+                    if (id == null) {
+                        flowOf(emptyList())
+                    } else {
+                        habitsRepository.getHabits(id).catch { e ->
                             _uiState.update { it.copy(errorMessage = e.message, isLoading = false) }
+                            emit(emptyList())
                         }
-                        .collect { entities ->
-                            _uiState.update { it.copy(habits = entities, isLoading = false) }
-                            fetchSuggestions() // Refresh suggestions when habits change
-                        }
+                    }
                 }
-            }
+                .collect { entities ->
+                    _uiState.update { it.copy(habits = entities, isLoading = false) }
+                    applySuggestionFilter()
+                }
         }
     }
 
@@ -137,7 +165,7 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
-    fun completeHabit(habitId: String, note: String? = null, isPublic: Boolean = true, onResult: (Boolean) -> Unit = {}) {
+    fun markHabitAchieved(habitId: String, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val habit = _uiState.value.habits.find { it.id == habitId }
@@ -146,29 +174,17 @@ class HabitsViewModel @Inject constructor(
                 onResult(false)
                 return@launch
             }
-            
-            val success = habitsRepository.completeHabit(habit, note)
+
+            val success = habitsRepository.markHabitAchieved(habit)
             if (success) {
-                val congrats = listOf(
-                    "Amazing job! One step closer to your goals! 🚀",
-                    "Habit crushed! Keep that momentum going! 💪",
-                    "Fantastic! You're becoming the best version of yourself! ✨",
-                    "Victory! Another day of consistency in the books! 🏆"
-                ).random()
-                
                 _uiState.update { state ->
                     state.copy(
                         habits = state.habits.map {
-                            if (it.id == habitId) it.copy(
-                                completed = true,
-                                completionHistory = (it.completionHistory + java.time.LocalDate.now().toString()).distinct()
-                            ) else it
+                            if (it.id == habitId) it.copy(implementedAt = java.time.Instant.now().toString()) else it
                         },
-                        isLoading = false,
-                        congratulationMessage = congrats
+                        isLoading = false
                     )
                 }
-                locationRepository.captureAndSaveLocation(habit.id, isPublic, "habit")
                 onResult(true)
             } else {
                 _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
@@ -198,6 +214,15 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
+    fun fetchHabitLocations(habitId: String) {
+        viewModelScope.launch {
+            val locations = locationRepository.getLocationsForHabit(habitId)
+            val currentLocations = _uiState.value.habitLocations.toMutableMap()
+            currentLocations[habitId] = locations
+            _uiState.value = _uiState.value.copy(habitLocations = currentLocations)
+        }
+    }
+
     fun fetchActiveGoal() {
         viewModelScope.launch {
             try {
@@ -216,19 +241,136 @@ class HabitsViewModel @Inject constructor(
                     _uiState.update { it.copy(onboardingGoal = homeData.goal) }
                 } catch (_: Exception) {}
             }
+            refreshSuggestionsIfNeeded()
         }
     }
 
-    fun fetchSuggestions() {
+    fun achieveGoal(goalId: String, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val success = goalsRepository.achieveGoal(goalId)
+            if (success) {
+                fetchActiveGoal()
+                _uiState.update { it.copy(isLoading = false) }
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
+            }
+            onResult(success)
+        }
+    }
+
+    fun forfeitGoal(goalId: String, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val success = goalsRepository.forfeitGoal(goalId)
+            if (success) {
+                fetchActiveGoal()
+                _uiState.update { it.copy(isLoading = false) }
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
+            }
+            onResult(success)
+        }
+    }
+
+    fun transitionGoal(
+        goalId: String,
+        resolution: String,
+        newGoalTitle: String,
+        newGoalTargetDate: String,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val newGoalId = goalsRepository.transitionGoal(goalId, resolution, newGoalTitle, newGoalTargetDate)
+            if (newGoalId != null) {
+                resolveHabits(goalId, newGoalId, decision = null, onResult = onResult)
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
+                onResult(false)
+            }
+        }
+    }
+
+    fun retryResolveHabits(onResult: (Boolean) -> Unit = {}) {
+        val pending = _uiState.value.pendingHabitDecision ?: return
+        if (pending.cooldownUntil != null && System.currentTimeMillis() < pending.cooldownUntil) return
+        resolveHabits(pending.oldGoalId, pending.newGoalId, decision = null, onResult = onResult)
+    }
+
+    fun decideHabits(decision: String, onResult: (Boolean) -> Unit = {}) {
+        val pending = _uiState.value.pendingHabitDecision ?: return
+        resolveHabits(pending.oldGoalId, pending.newGoalId, decision = decision, onResult = onResult)
+    }
+
+    private fun resolveHabits(
+        oldGoalId: String,
+        newGoalId: String,
+        decision: String?,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            when (val outcome = goalsRepository.resolveHabits(oldGoalId, newGoalId, decision)) {
+                is ResolveHabitsOutcome.Resolved -> {
+                    fetchActiveGoal()
+                    habitsRepository.refreshHabits()
+                    _uiState.update { it.copy(isLoading = false, pendingHabitDecision = null) }
+                    onResult(true)
+                }
+                is ResolveHabitsOutcome.NeedsDecision -> {
+                    val pending = _uiState.value.pendingHabitDecision
+                    val cooldownExpired = pending?.cooldownUntil != null && System.currentTimeMillis() >= pending.cooldownUntil
+                    val previousAttempts = if (pending == null || cooldownExpired) 0 else pending.attemptCount
+                    val attemptCount = previousAttempts + 1
+                    val cooldownUntil = if (attemptCount >= MAX_RESOLVE_HABITS_ATTEMPTS) {
+                        System.currentTimeMillis() + RESOLVE_HABITS_COOLDOWN_MS
+                    } else {
+                        null
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            pendingHabitDecision = HabitsUiState.PendingHabitDecision(
+                                oldGoalId = oldGoalId,
+                                newGoalId = newGoalId,
+                                pendingHabitCount = outcome.pendingHabitCount,
+                                attemptCount = attemptCount,
+                                cooldownUntil = cooldownUntil
+                            )
+                        )
+                    }
+                    onResult(false)
+                }
+                is ResolveHabitsOutcome.Failed -> {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
+                    onResult(false)
+                }
+            }
+        }
+    }
+
+    private fun refreshSuggestionsIfNeeded() {
+        val currentGoalId = _uiState.value.activeGoal?.id
+        if (currentGoalId == suggestionSourceGoalId) {
+            applySuggestionFilter()
+            return
+        }
         viewModelScope.launch {
             try {
                 val homeData = goalsRepository.getHomeData()
-                val suggestions = homeData.coreGoals.filter { task ->
-                    // Only suggest if not already added as a habit
-                    _uiState.value.habits.none { it.title.contains(task.description, ignoreCase = true) }
-                }
-                _uiState.update { it.copy(suggestions = suggestions) }
+                suggestionSource = homeData.coreGoals
+                suggestionSourceGoalId = currentGoalId
             } catch (_: Exception) {}
+            applySuggestionFilter()
         }
+    }
+
+    private fun applySuggestionFilter() {
+        val suggestions = suggestionSource.filter { task ->
+            // Only suggest if not already added as a habit
+            _uiState.value.habits.none { it.title.contains(task.description, ignoreCase = true) }
+        }
+        _uiState.update { it.copy(suggestions = suggestions) }
     }
 }

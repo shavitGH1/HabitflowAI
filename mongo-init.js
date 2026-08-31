@@ -13,12 +13,12 @@ const users = [
     personaType: 'Achiever',
     motivationalMessage: 'Champions are made in the moments they want to quit.',
     coreGoals: [
-      { id: 'alex-g1', description: '5km morning run', points: 25, completed: false },
-      { id: 'alex-g2', description: '100 push-ups', points: 20, completed: false },
-      { id: 'alex-g3', description: 'Log workout stats in app', points: 10, completed: false },
+      { id: 'alex-g1', description: "Beat yesterday's personal record", points: 25, completed: false, genre: 'goal' },
+      { id: 'alex-g2', description: 'Plan next race training block', points: 20, completed: false, genre: 'goal' },
+      { id: 'alex-g3', description: 'Review weekly performance metrics', points: 10, completed: false, genre: 'goal' },
     ],
     dailyVariations: [
-      { id: 'alex-v1', description: 'Cold shower', points: 10, completed: false },
+      { id: 'alex-v1', description: 'Visualize the finish line before bed', points: 10, completed: false, genre: 'goal' },
     ],
     tasksLastGeneratedDate: today,
     personaBreakdown: { Achievement: 78, Growth: 10, Connection: 4, Exploration: 4, Purpose: 2, Structure: 2 },
@@ -41,12 +41,12 @@ const users = [
     personaType: 'Achiever',
     motivationalMessage: 'Your streak is your signature.',
     coreGoals: [
-      { id: 'maya-g1', description: 'Daily meditation (15 min)', points: 15, completed: false },
-      { id: 'maya-g2', description: 'Finish daily task list', points: 20, completed: false },
-      { id: 'maya-g3', description: 'Evening walk (20 min)', points: 15, completed: false },
+      { id: 'maya-g1', description: "Keep today's streak alive", points: 15, completed: false, genre: 'goal' },
+      { id: 'maya-g2', description: 'Complete every item on the checklist', points: 20, completed: false, genre: 'goal' },
+      { id: 'maya-g3', description: "Reflect on this week's consistency", points: 15, completed: false, genre: 'goal' },
     ],
     dailyVariations: [
-      { id: 'maya-v1', description: 'Gratitude journal (5 min)', points: 10, completed: false },
+      { id: 'maya-v1', description: 'Write one line of gratitude', points: 10, completed: false, genre: 'goal' },
     ],
     tasksLastGeneratedDate: today,
     personaBreakdown: { Achievement: 72, Growth: 14, Connection: 5, Exploration: 3, Purpose: 4, Structure: 2 },
@@ -69,12 +69,12 @@ const users = [
     personaType: 'Socializer',
     motivationalMessage: 'Your energy lifts everyone around you.',
     coreGoals: [
-      { id: 'ben-g1', description: 'Check in on a friend', points: 15, completed: false },
-      { id: 'ben-g2', description: 'Group workout session', points: 20, completed: false },
-      { id: 'ben-g3', description: 'Post a habit update to the feed', points: 10, completed: false },
+      { id: 'ben-g1', description: 'Reach out to someone new this week', points: 15, completed: false, genre: 'goal' },
+      { id: 'ben-g2', description: 'Rally the squad for a shared win', points: 20, completed: false, genre: 'goal' },
+      { id: 'ben-g3', description: "Celebrate a friend's progress", points: 10, completed: false, genre: 'goal' },
     ],
     dailyVariations: [
-      { id: 'ben-v1', description: 'Share a motivational post', points: 10, completed: false },
+      { id: 'ben-v1', description: 'Share an encouraging note', points: 10, completed: false, genre: 'goal' },
     ],
     tasksLastGeneratedDate: today,
     personaBreakdown: { Achievement: 8, Growth: 10, Connection: 65, Exploration: 8, Purpose: 5, Structure: 4 },
@@ -97,12 +97,12 @@ const users = [
     personaType: 'Socializer',
     motivationalMessage: 'You grow when you grow with others.',
     coreGoals: [
-      { id: 'sara-g1', description: 'Join a community challenge', points: 20, completed: false },
-      { id: 'sara-g2', description: 'Comment or react on 3 posts', points: 10, completed: false },
-      { id: 'sara-g3', description: 'Invite someone to a habit', points: 15, completed: false },
+      { id: 'sara-g1', description: 'Show up for the community today', points: 20, completed: false, genre: 'goal' },
+      { id: 'sara-g2', description: 'Engage with three people in the app', points: 10, completed: false, genre: 'goal' },
+      { id: 'sara-g3', description: 'Invite a new member to the squad', points: 15, completed: false, genre: 'goal' },
     ],
     dailyVariations: [
-      { id: 'sara-v1', description: 'Voice note to a friend', points: 10, completed: false },
+      { id: 'sara-v1', description: 'Send a voice note to a friend', points: 10, completed: false, genre: 'goal' },
     ],
     tasksLastGeneratedDate: today,
     personaBreakdown: { Achievement: 6, Growth: 8, Connection: 68, Exploration: 10, Purpose: 4, Structure: 4 },
@@ -125,12 +125,12 @@ const users = [
     personaType: 'Grower',
     motivationalMessage: 'Progress is the point.',
     coreGoals: [
-      { id: 'tom-g1', description: 'Read 20 pages', points: 15, completed: false },
-      { id: 'tom-g2', description: 'Practice a new skill (30 min)', points: 20, completed: false },
-      { id: 'tom-g3', description: 'Watch an educational video', points: 10, completed: false },
+      { id: 'tom-g1', description: 'Learn one new concept today', points: 15, completed: false, genre: 'goal' },
+      { id: 'tom-g2', description: 'Spend focused time building a skill', points: 20, completed: false, genre: 'goal' },
+      { id: 'tom-g3', description: 'Watch or read something educational', points: 10, completed: false, genre: 'goal' },
     ],
     dailyVariations: [
-      { id: 'tom-v1', description: 'Review what you learned today', points: 10, completed: false },
+      { id: 'tom-v1', description: "Summarize today's key takeaway", points: 10, completed: false, genre: 'goal' },
     ],
     tasksLastGeneratedDate: today,
     personaBreakdown: { Achievement: 10, Growth: 70, Connection: 5, Exploration: 8, Purpose: 4, Structure: 3 },
@@ -153,12 +153,12 @@ const users = [
     personaType: 'Explorer',
     motivationalMessage: 'Variety is where you thrive.',
     coreGoals: [
-      { id: 'lena-g1', description: 'Try a new route or activity', points: 20, completed: false },
-      { id: 'lena-g2', description: 'Explore a topic you have never studied', points: 15, completed: false },
-      { id: 'lena-g3', description: 'Visit a new place', points: 15, completed: false },
+      { id: 'lena-g1', description: 'Break your usual routine today', points: 20, completed: false, genre: 'goal' },
+      { id: 'lena-g2', description: "Research something you've never studied", points: 15, completed: false, genre: 'goal' },
+      { id: 'lena-g3', description: 'Discover a new spot nearby', points: 15, completed: false, genre: 'goal' },
     ],
     dailyVariations: [
-      { id: 'lena-v1', description: 'Switch up one element of your routine', points: 10, completed: false },
+      { id: 'lena-v1', description: 'Swap one habit for something different', points: 10, completed: false, genre: 'goal' },
     ],
     tasksLastGeneratedDate: today,
     personaBreakdown: { Achievement: 8, Growth: 12, Connection: 6, Exploration: 66, Purpose: 4, Structure: 4 },
@@ -181,12 +181,12 @@ const users = [
     personaType: 'Altruist',
     motivationalMessage: 'Your habits ripple outward.',
     coreGoals: [
-      { id: 'dana-g1', description: 'Volunteer or help someone today', points: 25, completed: false },
-      { id: 'dana-g2', description: 'Write a kind message to someone', points: 10, completed: false },
-      { id: 'dana-g3', description: 'Donate or contribute to a cause', points: 15, completed: false },
+      { id: 'dana-g1', description: "Make someone's day better", points: 25, completed: false, genre: 'goal' },
+      { id: 'dana-g2', description: 'Send a message of encouragement', points: 10, completed: false, genre: 'goal' },
+      { id: 'dana-g3', description: 'Give back to a cause you care about', points: 15, completed: false, genre: 'goal' },
     ],
     dailyVariations: [
-      { id: 'dana-v1', description: 'Do one small act of service', points: 10, completed: false },
+      { id: 'dana-v1', description: 'Perform one small act of kindness', points: 10, completed: false, genre: 'goal' },
     ],
     tasksLastGeneratedDate: today,
     personaBreakdown: { Achievement: 5, Growth: 8, Connection: 12, Exploration: 5, Purpose: 66, Structure: 4 },
@@ -209,12 +209,12 @@ const users = [
     personaType: 'Architect',
     motivationalMessage: 'A good system beats motivation every time.',
     coreGoals: [
-      { id: 'ron-g1', description: 'Plan tomorrow the night before', points: 15, completed: false },
-      { id: 'ron-g2', description: 'Follow morning routine without skips', points: 20, completed: false },
-      { id: 'ron-g3', description: 'Review and update weekly plan', points: 15, completed: false },
+      { id: 'ron-g1', description: 'Plan tomorrow the night before', points: 15, completed: false, genre: 'goal' },
+      { id: 'ron-g2', description: 'Stick to your system today', points: 20, completed: false, genre: 'goal' },
+      { id: 'ron-g3', description: "Audit and refine this week's plan", points: 15, completed: false, genre: 'goal' },
     ],
     dailyVariations: [
-      { id: 'ron-v1', description: 'Weekly review (10 min)', points: 15, completed: false },
+      { id: 'ron-v1', description: 'Spend 10 minutes on your weekly review', points: 15, completed: false, genre: 'goal' },
     ],
     tasksLastGeneratedDate: today,
     personaBreakdown: { Achievement: 8, Growth: 10, Connection: 4, Exploration: 4, Purpose: 6, Structure: 68 },
@@ -550,9 +550,11 @@ if (alexId && mayaId && benId && saraId && tomId && lenaId && danaId && ronId &&
       userId: alexId, persona: 'Achiever', title: 'Log workout stats in app', frequency: 'daily',
       createdAtDaysAgo: 35, history: historyLastNDays(30), goalId: goalIds.alexAchieved,
     }),
+    // Under 28 days old so implementedAt stays unset - shows Task 77's manual
+    // "Complete Habit" button (21-day streak) instead of auto-achieving.
     buildHabit({
       userId: alexId, persona: 'Achiever', title: '100 push-ups', frequency: 'daily',
-      createdAtDaysAgo: 18, history: historyLastNDays(10, [3]), goalId: goalIds.alex,
+      createdAtDaysAgo: 25, history: historyLastNDays(25), goalId: goalIds.alex,
     }),
     buildHabit({
       userId: alexId, persona: 'Achiever', title: 'Cold shower', frequency: 'daily',
@@ -603,6 +605,68 @@ if (alexId && mayaId && benId && saraId && tomId && lenaId && danaId && ronId &&
     }),
   ];
   db.habits.insertMany(habitDefs);
+}
+
+// Gives Alex a few days of "Activity History" right away instead of waiting for a
+// real day-transition to archive one (see UsersService.getHomePageData).
+if (alexId && db.habits.countDocuments({ userId: alexId }) > 0 && !db.users.findOne({ _id: ObjectId(alexId), 'taskHistory.0': { $exists: true } })) {
+  const habitIdByTitle = (title) => {
+    const habit = db.habits.findOne({ userId: alexId, title });
+    return habit ? habit._id.toString() : undefined;
+  };
+  const runHabitId = habitIdByTitle('5km morning run');
+  const pushupsHabitId = habitIdByTitle('100 push-ups');
+  const logStatsHabitId = habitIdByTitle('Log workout stats in app');
+  const coldShowerHabitId = habitIdByTitle('Cold shower');
+
+  // completed flags below match each habit's real completionHistory above, so the
+  // streak view and this history view agree: run skips day 5 ago, cold shower skips
+  // days 1 and 4 ago, push-ups/log-stats have no gaps in this window.
+  const taskHistoryDefs = [
+    { daysAgo: 1, tasks: [
+      { id: 'hist-alex-1-1', description: "Beat yesterday's personal record", points: 25, completed: true, genre: 'goal' },
+      { id: 'hist-alex-1-2', description: 'Plan next race training block', points: 20, completed: true, genre: 'goal' },
+      { id: 'hist-alex-1-3', description: 'Review weekly performance metrics', points: 10, completed: false, genre: 'goal' },
+      { id: 'hist-alex-1-4', description: 'Run 5km at an easy recovery pace', points: 25, completed: true, genre: 'habit', habitId: runHabitId },
+      { id: 'hist-alex-1-5', description: 'Complete 3 sets of push-ups', points: 20, completed: true, genre: 'habit', habitId: pushupsHabitId },
+      { id: 'hist-alex-1-6', description: "Log today's splits in the app", points: 10, completed: true, genre: 'habit', habitId: logStatsHabitId },
+    ] },
+    { daysAgo: 2, tasks: [
+      { id: 'hist-alex-2-1', description: "Beat yesterday's personal record", points: 25, completed: true, genre: 'goal' },
+      { id: 'hist-alex-2-2', description: 'Plan next race training block', points: 20, completed: false, genre: 'goal' },
+      { id: 'hist-alex-2-3', description: 'Review weekly performance metrics', points: 10, completed: false, genre: 'goal' },
+      { id: 'hist-alex-2-4', description: 'Run 5km along the river route', points: 25, completed: true, genre: 'habit', habitId: runHabitId },
+      { id: 'hist-alex-2-5', description: 'Complete 3 sets of push-ups', points: 20, completed: true, genre: 'habit', habitId: pushupsHabitId },
+      { id: 'hist-alex-2-6', description: 'Take a 2-minute cold shower', points: 10, completed: true, genre: 'habit', habitId: coldShowerHabitId },
+    ] },
+    { daysAgo: 3, tasks: [
+      { id: 'hist-alex-3-1', description: "Beat yesterday's personal record", points: 25, completed: true, genre: 'goal' },
+      { id: 'hist-alex-3-2', description: 'Plan next race training block', points: 20, completed: true, genre: 'goal' },
+      { id: 'hist-alex-3-3', description: 'Review weekly performance metrics', points: 10, completed: true, genre: 'goal' },
+      { id: 'hist-alex-3-4', description: 'Run 5km at race pace', points: 25, completed: true, genre: 'habit', habitId: runHabitId },
+      { id: 'hist-alex-3-5', description: 'Complete 3 sets of push-ups', points: 20, completed: true, genre: 'habit', habitId: pushupsHabitId },
+      { id: 'hist-alex-3-6', description: "Log today's splits in the app", points: 10, completed: true, genre: 'habit', habitId: logStatsHabitId },
+    ] },
+    { daysAgo: 4, tasks: [
+      { id: 'hist-alex-4-1', description: "Beat yesterday's personal record", points: 25, completed: false, genre: 'goal' },
+      { id: 'hist-alex-4-2', description: 'Plan next race training block', points: 20, completed: false, genre: 'goal' },
+      { id: 'hist-alex-4-3', description: 'Review weekly performance metrics', points: 10, completed: false, genre: 'goal' },
+      { id: 'hist-alex-4-4', description: 'Run 5km at an easy recovery pace', points: 25, completed: true, genre: 'habit', habitId: runHabitId },
+      { id: 'hist-alex-4-5', description: 'Complete 3 sets of push-ups', points: 20, completed: true, genre: 'habit', habitId: pushupsHabitId },
+      { id: 'hist-alex-4-6', description: 'Take a 2-minute cold shower', points: 10, completed: false, genre: 'habit', habitId: coldShowerHabitId },
+    ] },
+    { daysAgo: 5, tasks: [
+      { id: 'hist-alex-5-1', description: "Beat yesterday's personal record", points: 25, completed: true, genre: 'goal' },
+      { id: 'hist-alex-5-2', description: 'Plan next race training block', points: 20, completed: true, genre: 'goal' },
+      { id: 'hist-alex-5-3', description: 'Review weekly performance metrics', points: 10, completed: true, genre: 'goal' },
+      { id: 'hist-alex-5-4', description: 'Run 5km along the river route', points: 25, completed: false, genre: 'habit', habitId: runHabitId },
+      { id: 'hist-alex-5-5', description: 'Complete 3 sets of push-ups', points: 20, completed: true, genre: 'habit', habitId: pushupsHabitId },
+      { id: 'hist-alex-5-6', description: "Log today's splits in the app", points: 10, completed: true, genre: 'habit', habitId: logStatsHabitId },
+    ] },
+  ];
+
+  const taskHistory = taskHistoryDefs.map(def => ({ date: daysAgoStr(def.daysAgo), tasks: def.tasks }));
+  db.users.updateOne({ _id: ObjectId(alexId) }, { $set: { taskHistory } });
 }
 
 if (alexId && mayaId && benId && saraId && db.locationrecords.countDocuments() === 0) {

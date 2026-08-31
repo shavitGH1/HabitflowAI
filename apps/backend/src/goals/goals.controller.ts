@@ -2,6 +2,8 @@ import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nest
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateGoalDto } from './dto/create-goal.dto';
+import { TransitionGoalDto } from './dto/transition-goal.dto';
+import { ResolveHabitsDto } from './dto/resolve-habits.dto';
 import { GoalsService } from './goals.service';
 
 @ApiTags('goals')
@@ -48,5 +50,46 @@ export class GoalsController {
   @ApiResponse({ status: 404, description: 'Goal not found' })
   achieve(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.goalsService.achieveGoal(req.user.id, id);
+  }
+
+  @Post(':id/transition')
+  @ApiOperation({
+    summary: 'Resolve a goal (achieve/forfeit) and start a new one in one step',
+    description:
+      'Resolves the given goal and creates a new goal. Call POST /goals/:id/resolve-habits ' +
+      "next (same :id) to decide what happens to the old goal's still-active habits.",
+  })
+  @ApiResponse({ status: 201, description: 'Goal transitioned; returns the old goal and new goal' })
+  @ApiResponse({ status: 400, description: 'Goal is not active, or invalid input' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'Goal belongs to a different user' })
+  @ApiResponse({ status: 404, description: 'Goal not found' })
+  transition(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() dto: TransitionGoalDto,
+  ) {
+    return this.goalsService.transitionGoal(req.user.id, id, dto);
+  }
+
+  @Post(':id/resolve-habits')
+  @ApiOperation({
+    summary: "Decide what happens to a resolved goal's still-active habits",
+    description:
+      'With no `decision`, runs an AI relevance check against the new goal and auto-applies the ' +
+      'result. If the AI call fails, returns `needs_decision` and touches no habits — call again ' +
+      'with an explicit `decision` (or no decision, to retry the AI) to resolve it.',
+  })
+  @ApiResponse({ status: 201, description: 'Either resolved (habits relinked/archived) or needs_decision' })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'A referenced goal belongs to a different user' })
+  @ApiResponse({ status: 404, description: 'Goal not found' })
+  resolveHabits(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() dto: ResolveHabitsDto,
+  ) {
+    return this.goalsService.resolveHabits(req.user.id, id, dto);
   }
 }

@@ -6,6 +6,8 @@ import { IStorageAdapter, STORAGE_ADAPTER } from '../storage/storage.adapter';
 import { HabitRepository } from '../habits/habit.repository';
 import { GoalRepository } from '../goals/goal.repository';
 import { UserRepository } from './user.repository';
+import { GoalTask } from '../dto/goal.dto';
+import { capGoalTasks } from './utils/goal-task-cap.utils';
 
 const NAME_CHANGE_COOLDOWN_MONTHS = 3;
 
@@ -26,14 +28,70 @@ export class UsersService {
     return users.map(u => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, profilePicture: u.profilePicture }));
   }
 
-  async getHomePageData(userId: string, forceRegenerate = false) {
+  async getHomePageData(userId: string, forceRegenerate = false, clientDate?: string) {
     const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
     const habits = await this.habitRepository.findByUserId(userId);
-    const today = new Date().toISOString().split('T')[0];
+    // Prefer the client's local date over server UTC - avoids delaying regeneration for
+    // timezones ahead of UTC, same reasoning as CompleteTaskDto's date field.
+    const isValidClientDate = clientDate != null && /^\d{4}-\d{2}-\d{2}$/.test(clientDate);
+    const today = isValidClientDate ? clientDate! : new Date().toISOString().split('T')[0];
 
-    if (user.tasksLastGeneratedDate !== today || forceRegenerate) {
+    const habitIdSet = new Set(habits.map(h => h.id));
+
+    // Fresh closure per call so `seenDescriptions` doesn't dedupe across unrelated
+    // task lists (e.g. the outgoing day's archive vs. today's live response).
+    const makeEnrichTask = () => {
+      const seenDescriptions = new Set<string>();
+
+      return (t: any) => {
+        if (!t) return null;
+
+        // Drop persona tasks (the "General" section the user doesn't want)
+        if (t.genre === 'persona' && !t.habitId) {
+          return null;
+        }
+
+        const descTrimmed = t.description.toLowerCase().trim();
+
+        // Avoid duplicates
+        if (seenDescriptions.has(descTrimmed)) return null;
+        seenDescriptions.add(descTrimmed);
+
+        // 1. Trust verified habit mapping first
+        if (t.habitId && habitIdSet.has(t.habitId)) {
+           return t;
+        }
+
+        // 2. Fallback: if AI provided a habitId that doesn't exist, try matching by habit title in the description
+        for (const habit of habits) {
+          const titleLower = habit.title.toLowerCase().trim();
+          if (descTrimmed.includes(titleLower)) {
+            return { ...t, habitId: habit.id, genre: 'habit' };
+          }
+        }
+
+        // 3. If it's a goal task but no habit mapping found, let it through as a main goal task
+        if (t.genre === 'goal') {
+          return t;
+        }
+
+        // Discard unmapped or hallucinated habit tasks
+        return null;
+      };
+    };
+
+    const isNewDay = user.tasksLastGeneratedDate !== today;
+
+    if (isNewDay || forceRegenerate) {
+      if (isNewDay && user.tasksLastGeneratedDate) {
+        const outgoing: GoalTask[] = [...user.coreGoals, ...user.dailyVariations]
+          .map(makeEnrichTask())
+          .filter((t): t is GoalTask => t !== null);
+        await this.userRepository.archiveTaskHistory(userId, user.tasksLastGeneratedDate, outgoing);
+      }
+
       const habitInputs = habits.map(h => ({ id: h.id, title: h.title }));
       this.logger.log(`[AI SYNC] Preparing prompt with ${habits.length} habits: ${JSON.stringify(habitInputs)}`);
       this.logger.log(`[AI SYNC] Triggering regeneration for user ${userId}. Force: ${forceRegenerate}`);
@@ -72,48 +130,10 @@ export class UsersService {
       await this.userRepository.updateUserPersona(userId, { tasksLastGeneratedDate: today });
     }
 
-    const habitIdSet = new Set(habits.map(h => h.id));
-    const habitMapByTitle = new Map(habits.map(h => [h.title.toLowerCase().trim(), h.id]));
-    const seenDescriptions = new Set<string>();
-
-    const enrichTask = (t: any) => {
-      if (!t) return null;
-
-      // Drop persona tasks (the "General" section the user doesn't want)
-      if (t.genre === 'persona' && !t.habitId) {
-        return null;
-      }
-
-      const descTrimmed = t.description.toLowerCase().trim();
-
-      // Avoid duplicates
-      if (seenDescriptions.has(descTrimmed)) return null;
-      seenDescriptions.add(descTrimmed);
-
-      // 1. Trust verified habit mapping first
-      if (t.habitId && habitIdSet.has(t.habitId)) {
-         return t;
-      }
-
-      // 2. Fallback: if AI provided a habitId that doesn't exist, try matching by habit title in the description
-      for (const habit of habits) {
-        const titleLower = habit.title.toLowerCase().trim();
-        if (descTrimmed.includes(titleLower)) {
-          return { ...t, habitId: habit.id, genre: 'habit' };
-        }
-      }
-
-      // 3. If it's a goal task but no habit mapping found, let it through as a main goal task
-      if (t.genre === 'goal') {
-        return t;
-      }
-
-      // Discard unmapped or hallucinated habit tasks
-      return null;
-    };
-
-    const coreGoals = user.coreGoals.map(enrichTask).filter(t => t !== null);
-    const dailyVariations = user.dailyVariations.map(enrichTask).filter(t => t !== null);
+    const liveEnrichTask = makeEnrichTask();
+    const enrichedCoreGoals: GoalTask[] = user.coreGoals.map(liveEnrichTask).filter((t): t is GoalTask => t !== null);
+    const enrichedDailyVariations: GoalTask[] = user.dailyVariations.map(liveEnrichTask).filter((t): t is GoalTask => t !== null);
+    const { coreGoals, dailyVariations } = capGoalTasks(enrichedCoreGoals, enrichedDailyVariations);
 
     let consistencyScore = 0.0;
     let goalHabitHistory: string[] = [];
@@ -157,6 +177,18 @@ export class UsersService {
       authProvider: user.authProvider,
       success: true,
     };
+  }
+
+  async getTaskHistory(userId: string, date: string): Promise<{ date: string; tasks: GoalTask[] }> {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new BadRequestException('date must be in YYYY-MM-DD format');
+    }
+
+    const user = await this.userRepository.findUserById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const entry = (user.taskHistory ?? []).find(h => h.date === date);
+    return { date, tasks: entry?.tasks ?? [] };
   }
 
   async updateProfilePicture(userId: string, profilePicture: string) {

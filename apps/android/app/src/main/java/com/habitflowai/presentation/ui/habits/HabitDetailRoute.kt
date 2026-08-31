@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.habitflowai.data.local.entity.HabitEntity
+import com.habitflowai.data.local.entity.LocationEntity
 import com.habitflowai.data.local.entity.SyncStatus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -27,10 +28,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import java.time.LocalDate
 import java.time.ZonedDateTime
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import com.habitflowai.presentation.ui.persona.PersonaDetails
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
+
+private const val MIN_STREAK_FOR_MANUAL_ACHIEVEMENT = 21
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,23 +53,26 @@ fun HabitDetailRoute(
     val uiState by viewModel.uiState.collectAsState()
     val habit = uiState.habits.find { it.id == habitId }
     val stats = uiState.habitStats[habitId]
+    val locations = uiState.habitLocations[habitId] ?: emptyList()
 
     LaunchedEffect(habitId) {
         viewModel.fetchHabitStats(habitId)
+        viewModel.fetchHabitLocations(habitId)
     }
 
     HabitDetailContent(
         habit = habit,
         stats = stats,
+        locations = locations,
         personaType = personaType,
         isLoading = uiState.isLoading,
         errorMessage = uiState.errorMessage,
         onBack = onBack,
-        onComplete = { note, isPublic ->
-            viewModel.completeHabit(habitId, note, isPublic) { success ->
-                if (success) onBack()
-            }
-        }
+        onAbandon = {
+            viewModel.deleteHabit(habitId)
+            onBack()
+        },
+        onMarkAchieved = { viewModel.markHabitAchieved(habitId) }
     )
 }
 
@@ -68,14 +81,17 @@ fun HabitDetailRoute(
 fun HabitDetailContent(
     habit: HabitEntity?,
     stats: Map<String, Any>?,
+    locations: List<LocationEntity> = emptyList(),
     personaType: String,
     isLoading: Boolean = false,
     errorMessage: String? = null,
     onBack: () -> Unit,
-    onComplete: (String?, Boolean) -> Unit = { _, _ -> }
+    onAbandon: () -> Unit = {},
+    onMarkAchieved: () -> Unit = {}
 ) {
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
     val snackbarHostState = remember { SnackbarHostState() }
+    var showAbandonConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
@@ -101,8 +117,6 @@ fun HabitDetailContent(
                 Text("Habit not found")
             }
         } else {
-            var shareOnPublicMap by remember { mutableStateOf(true) }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -127,7 +141,7 @@ fun HabitDetailContent(
                         Text(
                             text = habit.description.orEmpty(),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color.DarkGray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         
                         if (!habit.relevanceWarning.isNullOrEmpty()) {
@@ -162,7 +176,7 @@ fun HabitDetailContent(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (habit.completed) Color(0xFFC8E6C9) else Color(0xFFFFF9C4)
+                        containerColor = if (habit.implementedAt != null) Color(0xFFC8E6C9) else Color(0xFFFFF9C4)
                     )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -173,100 +187,36 @@ fun HabitDetailContent(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (habit.completed) "Completed" else "In Progress",
+                            text = if (habit.implementedAt != null) "Achieved" else "${habit.streak}-day streak",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
-                            color = if (habit.completed) Color(0xFF2E7D32) else Color(0xFFF57F17)
+                            color = if (habit.implementedAt != null) Color(0xFF2E7D32) else Color(0xFFF57F17)
                         )
                     }
                 }
 
-                if (!habit.completed) {
-                    var completionNote by remember { mutableStateOf("") }
+                if (habit.implementedAt == null && habit.streak >= MIN_STREAK_FOR_MANUAL_ACHIEVEMENT) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "Mark as Complete",
+                                text = "Complete Habit",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            
-                            OutlinedTextField(
-                                value = completionNote,
-                                onValueChange = { completionNote = it },
-                                label = { Text("What did you do? (Note)") },
-                                placeholder = { Text("AI will check for plausibility") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-
                             Text(
-                                text = "Record this completion and save your location on the map.",
+                                text = "You've kept a ${habit.streak}-day streak — mark this habit as achieved now instead of waiting.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Share location on public map",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = "Off = private, only visible to you",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.Gray
-                                    )
-                                }
-                                Switch(
-                                    checked = shareOnPublicMap,
-                                    onCheckedChange = { shareOnPublicMap = it },
-                                    colors = SwitchDefaults.colors(
-                                        checkedTrackColor = details.endColor,
-                                        checkedThumbColor = Color.White
-                                    )
-                                )
-                            }
-                            
-                            if (!habit.verificationWarning.isNullOrEmpty()) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Rounded.SmartToy,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Text(
-                                            text = habit.verificationWarning,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onErrorContainer
-                                        )
-                                    }
-                                }
-                            }
-
                             Button(
-                                onClick = { onComplete(completionNote.trim().ifBlank { null }, shareOnPublicMap) },
+                                onClick = onMarkAchieved,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(52.dp),
@@ -281,7 +231,7 @@ fun HabitDetailContent(
                                         strokeWidth = 2.dp
                                     )
                                 } else {
-                                    Text("Mark Complete", fontWeight = FontWeight.Bold)
+                                    Text("Complete Habit", fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -318,7 +268,7 @@ fun HabitDetailContent(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -337,7 +287,7 @@ fun HabitDetailContent(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -352,7 +302,89 @@ fun HabitDetailContent(
                         )
                     }
                 }
+
+                if (locations.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Completion Locations",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HabitLocationsMap(locations = locations)
+                        }
+                    }
+                }
+
+                if (habit.implementedAt == null) {
+                    OutlinedButton(
+                        onClick = { showAbandonConfirm = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Abandon Habit", fontWeight = FontWeight.Bold)
+                    }
+                }
             }
+
+            if (showAbandonConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showAbandonConfirm = false },
+                    title = { Text("Abandon this habit?") },
+                    text = { Text("This will delete \"${habit.title}\" and its completion history. This can't be undone.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showAbandonConfirm = false
+                            onAbandon()
+                        }) {
+                            Text("Abandon", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showAbandonConfirm = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun HabitLocationsMap(locations: List<LocationEntity>) {
+    val centerLat = locations.map { it.latitude }.average()
+    val centerLng = locations.map { it.longitude }.average()
+
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(LatLng(centerLat, centerLng), 13f)
+    }
+
+    GoogleMap(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clip(RoundedCornerShape(12.dp)),
+        cameraPositionState = cameraPositionState,
+        uiSettings = MapUiSettings(
+            zoomControlsEnabled = false,
+            scrollGesturesEnabled = false,
+            zoomGesturesEnabled = false,
+            rotationGesturesEnabled = false,
+            tiltGesturesEnabled = false
+        )
+    ) {
+        locations.forEach { location ->
+            Marker(state = MarkerState(position = LatLng(location.latitude, location.longitude)))
         }
     }
 }
@@ -401,7 +433,7 @@ fun CompletionCalendar(
             Text(
                 text = "Last 28 Days",
                 style = MaterialTheme.typography.labelMedium,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "${completionMap.values.count { it }}/${days.size} Completed",
@@ -424,7 +456,7 @@ fun CompletionCalendar(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f)
                 )
@@ -487,7 +519,6 @@ fun HabitDetailAchieverPreview() {
             ),
             stats = mapOf("consistency" to "85%", "total completions" to 12),
             personaType = "Achiever",
-            onComplete = { _, _ -> },
             onBack = {}
         )
     }
@@ -514,7 +545,6 @@ fun HabitDetailGrowerPreview() {
             ),
             stats = mapOf("streak" to 5),
             personaType = "Grower",
-            onComplete = { _, _ -> },
             onBack = {}
         )
     }
@@ -542,7 +572,6 @@ fun HabitDetailRegulatorPreview() {
             ),
             stats = mapOf("on time" to "90%"),
             personaType = "Regulator",
-            onComplete = { _, _ -> },
             onBack = {}
         )
     }

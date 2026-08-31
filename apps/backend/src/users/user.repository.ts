@@ -35,6 +35,7 @@ export interface UserData {
   confidenceScore?: number;
   fcmToken?: string;
   achievements?: Achievement[];
+  taskHistory?: { date: string; tasks: GoalTask[] }[];
 }
 
 @Injectable()
@@ -91,7 +92,7 @@ export class UserRepository {
         dailyVariations: newDailyTasks,
         tasksLastGeneratedDate: new Date().toISOString().split('T')[0],
       },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -100,7 +101,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { refreshToken: refreshToken ?? null },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -109,7 +110,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { fcmToken },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -118,7 +119,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { profilePicture },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -127,7 +128,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { firstName, lastName, nameChangedAt: new Date() },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -136,7 +137,7 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { password: hashedPassword },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
   }
@@ -145,7 +146,7 @@ export class UserRepository {
     userId: string,
     updates: Partial<Pick<UserData, 'goal' | 'personaType' | 'motivationalMessage' | 'coreGoals' | 'dailyVariations' | 'tasksLastGeneratedDate' | 'personaBreakdown' | 'weightedScores' | 'tips' | 'failurePatterns'>>,
   ): Promise<UserData | null> {
-    const doc = await this.userModel.findByIdAndUpdate(userId, updates, { new: true });
+    const doc = await this.userModel.findByIdAndUpdate(userId, updates, { returnDocument: 'after' });
     return doc ? this.toUserData(doc) : null;
   }
 
@@ -153,9 +154,17 @@ export class UserRepository {
     const doc = await this.userModel.findByIdAndUpdate(
       userId,
       { $push: { achievements: achievement } },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? this.toUserData(doc) : null;
+  }
+
+  async archiveTaskHistory(userId: string, date: string, tasks: GoalTask[]): Promise<void> {
+    await this.userModel.updateOne({ _id: userId }, { $pull: { taskHistory: { date } } });
+    await this.userModel.updateOne(
+      { _id: userId },
+      { $push: { taskHistory: { $each: [{ date, tasks }], $slice: -28 } } },
+    );
   }
 
   async completeTask(userId: string, taskId: string): Promise<boolean> {
@@ -197,6 +206,10 @@ export class UserRepository {
       confidenceScore: doc.confidenceScore,
       fcmToken: doc.fcmToken,
       achievements: (doc.achievements ?? []).map(a => ({ goalId: a.goalId, medal: a.medal, awardedAt: a.awardedAt.toISOString() })),
+      taskHistory: (doc.taskHistory ?? []).map(h => ({
+        date: h.date,
+        tasks: h.tasks.map(g => ({ id: g.id, description: g.description, points: g.points, completed: g.completed, genre: g.genre, habitId: g.habitId })),
+      })),
     };
   }
 }

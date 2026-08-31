@@ -35,7 +35,10 @@ data class RegisterRequest(
 data class CheckEmailRequest(val email: String)
 data class CheckEmailResponse(val available: Boolean)
 
-data class OnboardingSuggestionsRequest(val goal: String)
+data class OnboardingSuggestionsRequest(
+    val goal: String,
+    @SerializedName("answeredSoFar") val answeredSoFar: List<String>? = null
+)
 
 data class OnboardingSuggestionItem(
     @SerializedName("questionId") val questionId: Int,
@@ -108,6 +111,11 @@ data class HomeGoalTask(
     val completed: Boolean,
     val genre: String = "persona",
     @SerializedName("habitId") val habitId: String? = null
+)
+
+data class TaskHistoryResponse(
+    @SerializedName("date") val date: String,
+    @SerializedName("tasks") val tasks: List<HomeGoalTask>
 )
 
 data class HomeAchievement(

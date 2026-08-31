@@ -1,5 +1,6 @@
 package com.habitflowai.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -23,5 +24,9 @@ data class HabitEntity(
     val goalId: String? = null,
     val completionHistory: List<String> = emptyList(),
     val relevanceWarning: String? = null,
-    val verificationWarning: String? = null
+    val verificationWarning: String? = null,
+    val implementedAt: String? = null,
+    // must match MIGRATION_15_16's DEFAULT 0, or Room's migration check fails
+    @ColumnInfo(defaultValue = "0")
+    val streak: Int = 0
 )

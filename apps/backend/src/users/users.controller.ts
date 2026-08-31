@@ -48,8 +48,22 @@ export class UsersController {
   getHome(
     @Req() req: { user: { id: string } },
     @Query('force') force?: string,
+    @Query('date') date?: string,
   ) {
-    return this.usersService.getHomePageData(req.user.id, force === 'true');
+    return this.usersService.getHomePageData(req.user.id, force === 'true', date);
+  }
+
+  @Get('me/task-history')
+  @ApiOperation({ summary: "Get the authenticated user's task list as it stood on a past date" })
+  @ApiResponse({ status: 200, description: '{ date, tasks } - tasks is empty if nothing was recorded for that date' })
+  @ApiResponse({ status: 400, description: 'date is missing or not in YYYY-MM-DD format' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  getTaskHistory(
+    @Req() req: { user: { id: string } },
+    @Query('date') date: string,
+  ) {
+    return this.usersService.getTaskHistory(req.user.id, date);
   }
 
   @Patch('me/profile')

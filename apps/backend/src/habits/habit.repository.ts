@@ -110,6 +110,21 @@ export class HabitRepository {
     return this.toHabitData(saved);
   }
 
+  async markAchieved(id: string): Promise<HabitData | null> {
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) return null;
+    const doc = await this.habitModel.findById(id);
+    if (!doc) return null;
+
+    // Same "first one wins" guard as the automatic path in completeHabit() — a no-op
+    // if implementedAt is already set, so this is safe to call defensively.
+    if (!doc.implementedAt) {
+      doc.implementedAt = new Date();
+      await doc.save();
+    }
+
+    return this.toHabitData(doc);
+  }
+
   private toHabitData(doc: HabitDocument): HabitData {
     return {
       id: doc._id.toString(),

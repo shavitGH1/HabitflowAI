@@ -20,4 +20,5 @@ export class Goal {
 
 export const GoalSchema = SchemaFactory.createForClass(Goal);
 GoalSchema.index({ userId: 1, status: 1 });
+GoalSchema.index({ userId: 1 }, { unique: true, partialFilterExpression: { status: 'active' } });
 export type GoalDocument = HydratedDocument<Goal>;

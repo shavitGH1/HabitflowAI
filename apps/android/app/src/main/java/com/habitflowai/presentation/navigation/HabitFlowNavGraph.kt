@@ -20,8 +20,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.habitflowai.presentation.ui.home.HomeRoute
+import com.habitflowai.presentation.ui.home.TaskDetailRoute
 import com.habitflowai.presentation.ui.habits.HabitDetailRoute
 import com.habitflowai.presentation.ui.habits.HabitsRoute
+import com.habitflowai.presentation.ui.goals.GoalDetailRoute
 import com.habitflowai.presentation.ui.social.SocialRoute
 import com.habitflowai.presentation.ui.social.SuccessJournalRoute
 import com.habitflowai.presentation.ui.onboarding.OnboardingRoute
@@ -177,6 +179,7 @@ fun HabitFlowNavGraph(
                         onGoalChange = onboardingViewModel::onGoalChange,
                         onQuizAnswerChange = onboardingViewModel::onQuizAnswerChange,
                         onGoalSubmitted = onboardingViewModel::fetchOnboardingSuggestions,
+                        onMidpointReached = onboardingViewModel::refreshOnboardingSuggestionsMidpoint,
                         onSubmit = {
                             when {
                                 uiState.isRetakeMode -> onboardingViewModel.reclassifyPersona()
@@ -218,7 +221,18 @@ fun HabitFlowNavGraph(
                         onNavigateToReassessment = {
                             navController.navigate(NavRoute.DriftReassessment.route)
                         },
+                        onTaskClick = { taskId ->
+                            navController.navigate(NavRoute.TaskDetail.createRoute(taskId))
+                        },
                         onToggleChat = { chatViewModel.toggleChat() }
+                    )
+                }
+                composable(NavRoute.TaskDetail.route) { backStackEntry ->
+                    val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
+                    TaskDetailRoute(
+                        taskId = taskId,
+                        personaType = uiState.personaResult?.personaType ?: "Regulator",
+                        onBack = { navController.popBackStack() }
                     )
                 }
                 composable(NavRoute.Habits.route) {
@@ -227,6 +241,9 @@ fun HabitFlowNavGraph(
                         personaType = uiState.personaResult?.personaType ?: "Regulator",
                         onHabitClick = { habitId ->
                             navController.navigate(NavRoute.HabitDetail.createRoute(habitId))
+                        },
+                        onGoalClick = { goalId ->
+                            navController.navigate(NavRoute.GoalDetail.createRoute(goalId))
                         },
                         onToggleChat = { chatViewModel.toggleChat() },
                         onSetGoal = {
@@ -239,6 +256,15 @@ fun HabitFlowNavGraph(
                     val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
                     HabitDetailRoute(
                         habitId = habitId,
+                        viewModel = habitsViewModel,
+                        personaType = uiState.personaResult?.personaType ?: "Regulator",
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                composable(NavRoute.GoalDetail.route) { backStackEntry ->
+                    val goalId = backStackEntry.arguments?.getString("goalId") ?: ""
+                    GoalDetailRoute(
+                        goalId = goalId,
                         viewModel = habitsViewModel,
                         personaType = uiState.personaResult?.personaType ?: "Regulator",
                         onBack = { navController.popBackStack() }
@@ -280,9 +306,6 @@ fun HabitFlowNavGraph(
                 }
                 composable(NavRoute.SuccessJournal.route) {
                     SuccessJournalRoute(
-                        onUserClick = { userId ->
-                            navController.navigate(NavRoute.PublicProfile.createRoute(userId))
-                        },
                         onBack = { navController.popBackStack() }
                     )
                 }

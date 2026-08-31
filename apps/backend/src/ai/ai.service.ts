@@ -18,6 +18,7 @@ import {
   HabitGoalRelevanceInput,
 } from './features/habit-goal-relevance.feature';
 import { TaskVerificationFeature, TaskVerificationInput } from './features/task-verification.feature';
+import { GoalRelevanceFeature, GoalRelevanceInput, GoalRelevanceCheckResult } from './features/goal-relevance.feature';
 import { OnboardingSuggestionsFeature } from './features/onboarding-suggestions.feature';
 import { RagSearchFeature, RagSearchInput, RankedArticle } from './features/rag-search.feature';
 import {
@@ -52,6 +53,7 @@ export class AiService {
     private readonly habitInsights: HabitInsightsFeature,
     private readonly coachPhrasing: CoachPhrasingFeature,
     private readonly habitGoalRelevance: HabitGoalRelevanceFeature,
+    private readonly goalRelevance: GoalRelevanceFeature,
     private readonly taskVerification: TaskVerificationFeature,
     private readonly onboardingSuggestions: OnboardingSuggestionsFeature,
     private readonly ragSearch: RagSearchFeature,
@@ -104,12 +106,16 @@ export class AiService {
     return this.habitGoalRelevance.check(input);
   }
 
+  checkGoalRelevance(input: GoalRelevanceInput): Promise<GoalRelevanceCheckResult> {
+    return this.goalRelevance.check(input);
+  }
+
   checkTaskVerification(input: TaskVerificationInput): Promise<TaskVerificationOutput> {
     return this.taskVerification.check(input);
   }
 
-  getOnboardingSuggestions(goal: string): Promise<OnboardingSuggestionsOutput> {
-    return this.onboardingSuggestions.generate({ goal });
+  getOnboardingSuggestions(goal: string, answeredSoFar?: string[]): Promise<OnboardingSuggestionsOutput> {
+    return this.onboardingSuggestions.generate({ goal, answeredSoFar });
   }
 
   searchArticles(input: RagSearchInput): Promise<RankedArticle[]> {

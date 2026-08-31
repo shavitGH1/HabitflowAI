@@ -73,6 +73,43 @@ describe('GeminiClient fallback chain', () => {
   });
 });
 
+describe('GeminiClient hedge race', () => {
+  beforeEach(() => {
+    mockGenerateContent.mockReset();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('never starts the backup model when the primary succeeds well before the hedge delay', async () => {
+    mockGenerateContent.mockResolvedValueOnce({ text: JSON.stringify({ ok: true }) });
+
+    const client = new GeminiClient(makeConfig());
+
+    await expect(client.generateJson<{ ok: boolean }>('prompt')).resolves.toEqual({ ok: true });
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+    expect(mockGenerateContent.mock.calls[0][0].model).toBe('gemini-3.6-flash');
+  });
+
+  it('starts the backup once the hedge delay elapses with the primary still pending, and the faster one wins', async () => {
+    jest.useFakeTimers();
+    const neverResolves = new Promise(() => {});
+    mockGenerateContent
+      .mockReturnValueOnce(neverResolves)
+      .mockResolvedValueOnce({ text: JSON.stringify({ fromBackup: true }) });
+
+    const client = new GeminiClient(makeConfig());
+    const resultPromise = client.generateJson<{ fromBackup: boolean }>('prompt');
+
+    await jest.advanceTimersByTimeAsync(8_000);
+
+    await expect(resultPromise).resolves.toEqual({ fromBackup: true });
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+    expect(mockGenerateContent.mock.calls[1][0].model).toBe('gemini-2.5-flash');
+  });
+});
+
 describe('GeminiClient.embedContent', () => {
   beforeEach(() => {
     mockEmbedContent.mockReset();

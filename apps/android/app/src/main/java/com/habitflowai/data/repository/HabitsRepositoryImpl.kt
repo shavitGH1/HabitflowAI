@@ -35,7 +35,7 @@ class HabitsRepositoryImpl @Inject constructor(
             for (res in response) {
                 val localByServerId = habitDao.getHabitByServerId(res.id)
                 val localById = habitDao.getHabitById(res.id)
-                
+
                 val entity = HabitEntity(
                     id = localByServerId?.id ?: localById?.id ?: res.id,
                     title = res.title,
@@ -48,10 +48,20 @@ class HabitsRepositoryImpl @Inject constructor(
                     goalId = res.goalId,
                     completionHistory = res.completionHistory ?: emptyList(),
                     relevanceWarning = res.relevanceWarning,
-                    verificationWarning = res.verificationWarning
+                    verificationWarning = res.verificationWarning,
+                    implementedAt = res.implementedAt,
+                    streak = res.streak
                 )
                 habitDao.insert(entity)
             }
+
+            // GET /habits only returns non-archived habits - a synced local habit whose
+            // serverId is missing from this response was archived/deleted server-side.
+            // Prune it, or it lingers locally forever and inflates cap counts.
+            val serverIds = response.map { it.id }.toSet()
+            habitDao.getAllForUser(currentUserId)
+                .filter { it.syncStatus == SyncStatus.SYNCED && it.serverId != null && it.serverId !in serverIds }
+                .forEach { habitDao.delete(it) }
         } catch (e: Exception) {
             // Log error
         }
@@ -69,18 +79,23 @@ class HabitsRepositoryImpl @Inject constructor(
                 completionHistory = response.completionHistory ?: emptyList(),
                 relevanceWarning = response.relevanceWarning,
                 verificationWarning = response.verificationWarning,
+                implementedAt = response.implementedAt,
                 syncStatus = SyncStatus.SYNCED
             )
-            
+
             // Use transaction to atomically remove temporary UUID and insert server record
             habitDao.replaceHabit(habit, entity)
             
             try { refreshHabits() } catch (_: Exception) {}
             Result.success(entity)
         } catch (e: Exception) {
-            habitDao.insert(habit.copy(syncStatus = SyncStatus.PENDING_CREATE))
-            enqueueSync()
-            Result.failure(e)
+            if (e is retrofit2.HttpException && e.code() in 400..499) {
+                Result.failure(e)
+            } else {
+                habitDao.insert(habit.copy(syncStatus = SyncStatus.PENDING_CREATE))
+                enqueueSync()
+                Result.failure(e)
+            }
         }
     }
 
@@ -105,58 +120,33 @@ class HabitsRepositoryImpl @Inject constructor(
             api.deleteHabit(habit.id)
             habitDao.delete(habit)
         } catch (e: Exception) {
+            // A 4xx means the server actually rejected this (e.g. already achieved) -
+            // retrying it later would just fail again, so leave the habit as-is rather
+            // than hiding it locally under a PENDING_DELETE that can never resolve.
+            if (e is retrofit2.HttpException && e.code() in 400..499) return
             habitDao.updateSyncStatus(habit.id, SyncStatus.PENDING_DELETE)
             enqueueSync()
         }
     }
 
-    override suspend fun completeHabit(habit: HabitEntity, note: String?): Boolean {
-        val today = java.time.LocalDate.now().toString()
-        val updatedHistory = (habit.completionHistory + today).distinct()
-        
+    override suspend fun markHabitAchieved(habit: HabitEntity): Boolean {
         return try {
-            val idToComplete = habit.serverId ?: habit.id
-            val params = mutableMapOf("date" to today)
-            note?.let { params["note"] = it }
-            val response = api.completeHabit(idToComplete, params)
-            
+            val idToMark = habit.serverId ?: habit.id
+            val response = api.markHabitAchieved(idToMark)
             if (response.isSuccessful) {
                 val body = response.body()
-                // Update locally immediately with the server-returned data (via refresh)
-                // but also ensure our local state is updated right now.
                 habitDao.update(habit.copy(
-                    completed = true, 
-                    completionHistory = body?.completionHistory ?: updatedHistory,
-                    relevanceWarning = body?.relevanceWarning,
-                    verificationWarning = body?.verificationWarning,
+                    implementedAt = body?.implementedAt ?: habit.implementedAt,
                     syncStatus = SyncStatus.SYNCED
                 ))
-                try { refreshHabits() } catch (_: Exception) {}
                 true
             } else {
-                // Fallback for ANY server error (404, 500, etc.)
-                // This ensures the user isn't blocked by server/sync issues.
-                val entity = habit.copy(
-                    completed = true,
-                    completionHistory = updatedHistory,
-                    syncStatus = SyncStatus.PENDING_UPDATE,
-                    updatedAt = System.currentTimeMillis()
-                )
-                habitDao.update(entity)
-                enqueueSync()
-                true
+                // Server re-validates streak/already-achieved - don't set implementedAt locally
+                // on rejection, unlike completeHabit()'s optimistic fallback.
+                false
             }
         } catch (e: Exception) {
-            // Network error - fallback to local update + background sync
-            val entity = habit.copy(
-                completed = true,
-                completionHistory = updatedHistory,
-                syncStatus = SyncStatus.PENDING_UPDATE,
-                updatedAt = System.currentTimeMillis()
-            )
-            habitDao.update(entity)
-            enqueueSync()
-            true
+            false
         }
     }
 

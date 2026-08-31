@@ -66,7 +66,15 @@ interface HabitFlowApi {
     suspend fun getOnboardingSuggestions(@Body request: OnboardingSuggestionsRequest): OnboardingSuggestionsResponse
 
     @GET("api/v1/users/me/home")
-    suspend fun getHome(@Query("force") force: Boolean? = null): HomeResponse
+    suspend fun getHome(
+        @Query("force") force: Boolean? = null,
+        @Query("date") date: String? = null
+    ): HomeResponse
+
+    @GET("api/v1/users/me/task-history")
+    suspend fun getTaskHistory(
+        @Query("date") date: String
+    ): com.habitflowai.data.model.TaskHistoryResponse
 
     @PATCH("api/v1/users/me/profile")
     suspend fun updateProfilePicture(@Body request: com.habitflowai.data.model.UpdateProfilePictureRequest): com.habitflowai.data.model.UpdateProfileResponse
@@ -83,6 +91,24 @@ interface HabitFlowApi {
 
     @GET("api/v1/goals/active")
     suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse?
+
+    @PATCH("api/v1/goals/{id}/achieve")
+    suspend fun achieveGoal(@Path("id") id: String): Response<Unit>
+
+    @PATCH("api/v1/goals/{id}/forfeit")
+    suspend fun forfeitGoal(@Path("id") id: String): Response<Unit>
+
+    @POST("api/v1/goals/{id}/transition")
+    suspend fun transitionGoal(
+        @Path("id") id: String,
+        @Body request: com.habitflowai.data.model.TransitionGoalRequest
+    ): com.habitflowai.data.model.TransitionGoalResponse
+
+    @POST("api/v1/goals/{id}/resolve-habits")
+    suspend fun resolveHabits(
+        @Path("id") id: String,
+        @Body request: com.habitflowai.data.model.ResolveHabitsRequest
+    ): com.habitflowai.data.model.ResolveHabitsResponse
 
     @POST("api/v1/personas/classify")
     suspend fun classifyPersona(@Body request: ClassifyPersonaRequest): ClassifyPersonaResponse
@@ -102,8 +128,8 @@ interface HabitFlowApi {
     @PUT("api/v1/habits/{id}")
     suspend fun updateHabit(@Path("id") id: String, @Body habit: HabitRequest): HabitResponse
 
-    @PATCH("api/v1/habits/{id}/complete")
-    suspend fun completeHabit(@Path("id") id: String, @Body body: Map<String, String?> = emptyMap()): Response<HabitResponse>
+    @PATCH("api/v1/habits/{id}/mark-achieved")
+    suspend fun markHabitAchieved(@Path("id") id: String): Response<HabitResponse>
 
     @DELETE("api/v1/habits/{id}")
     suspend fun deleteHabit(@Path("id") id: String): Response<Unit>

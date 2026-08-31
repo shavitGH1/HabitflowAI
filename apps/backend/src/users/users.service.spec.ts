@@ -16,6 +16,9 @@ const mockUserRepository = {
   updateProfilePicture: jest.fn(),
   updateName: jest.fn(),
   updatePassword: jest.fn(),
+  updateUserDailyTasks: jest.fn(),
+  updateUserPersona: jest.fn(),
+  archiveTaskHistory: jest.fn(),
 };
 
 const mockHabitRepository = {
@@ -29,6 +32,7 @@ const mockGoalRepository = {
 
 const mockAiService = {
   generateDailyVariations: jest.fn(),
+  generatePortfolio: jest.fn(),
 };
 
 const mockStorage = {
@@ -231,6 +235,142 @@ describe('UsersService', () => {
       const result = await service.getHomePageData(USER_ID);
 
       expect(result.achievements[0].goalTitle).toBe('Goal');
+    });
+
+    describe('client-supplied date', () => {
+      it('skips regeneration when tasksLastGeneratedDate matches the client date, even if it differs from server UTC today', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: '2026-09-01' }));
+        mockHabitRepository.findByUserId.mockResolvedValue([]);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+
+        await service.getHomePageData(USER_ID, false, '2026-09-01');
+
+        expect(mockAiService.generateDailyVariations).not.toHaveBeenCalled();
+      });
+
+      it('regenerates and persists using the client date when it differs from tasksLastGeneratedDate', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: '2026-08-30' }));
+        mockHabitRepository.findByUserId.mockResolvedValue([]);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+        mockAiService.generateDailyVariations.mockResolvedValue([]);
+        mockUserRepository.updateUserDailyTasks.mockResolvedValue(makeUser({ dailyVariations: [] }));
+
+        await service.getHomePageData(USER_ID, false, '2026-08-31');
+
+        expect(mockAiService.generateDailyVariations).toHaveBeenCalled();
+        expect(mockUserRepository.updateUserPersona).toHaveBeenCalledWith(USER_ID, { tasksLastGeneratedDate: '2026-08-31' });
+      });
+
+      it('falls back to server UTC today when the client date is malformed', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: today }));
+        mockHabitRepository.findByUserId.mockResolvedValue([]);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+
+        await service.getHomePageData(USER_ID, false, 'not-a-date');
+
+        expect(mockAiService.generateDailyVariations).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('day-transition archiving', () => {
+      it('archives the outgoing day\'s enriched task list when the day actually changes', async () => {
+        const outgoingCore = [{ id: 'c1', description: 'Pillar', points: 20, completed: true, genre: 'goal' as const }];
+        const outgoingDaily = [{ id: 'd1', description: 'Sub-task', points: 10, completed: false, genre: 'goal' as const }];
+        mockUserRepository.findUserById.mockResolvedValue(
+          makeUser({ tasksLastGeneratedDate: '2026-08-30', coreGoals: outgoingCore, dailyVariations: outgoingDaily }),
+        );
+        mockHabitRepository.findByUserId.mockResolvedValue([]);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+        mockAiService.generateDailyVariations.mockResolvedValue([]);
+        mockUserRepository.updateUserDailyTasks.mockResolvedValue(makeUser({ dailyVariations: [] }));
+
+        await service.getHomePageData(USER_ID, false, '2026-08-31');
+
+        expect(mockUserRepository.archiveTaskHistory).toHaveBeenCalledWith(
+          USER_ID,
+          '2026-08-30',
+          [...outgoingCore, ...outgoingDaily],
+        );
+      });
+
+      it('does not archive on a same-day forceRegenerate', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: today }));
+        mockHabitRepository.findByUserId.mockResolvedValue([]);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+        mockAiService.generatePortfolio.mockResolvedValue({
+          coreGoals: [], summary: '', tips: [], failurePatterns: [],
+        });
+        mockAiService.generateDailyVariations.mockResolvedValue([]);
+        mockUserRepository.updateUserDailyTasks.mockResolvedValue(makeUser({ dailyVariations: [] }));
+
+        await service.getHomePageData(USER_ID, true);
+
+        expect(mockUserRepository.archiveTaskHistory).not.toHaveBeenCalled();
+      });
+
+      it('does not archive on the very first generation (no prior tasksLastGeneratedDate)', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser({ tasksLastGeneratedDate: '' }));
+        mockHabitRepository.findByUserId.mockResolvedValue([]);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+        mockAiService.generateDailyVariations.mockResolvedValue([]);
+        mockUserRepository.updateUserDailyTasks.mockResolvedValue(makeUser({ dailyVariations: [] }));
+
+        await service.getHomePageData(USER_ID);
+
+        expect(mockUserRepository.archiveTaskHistory).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('combined Main Goal task cap', () => {
+      it('caps the combined coreGoals + dailyVariations "goal" genre tasks at 5', async () => {
+        const coreGoals = Array.from({ length: 3 }, (_, i) => ({
+          id: `c${i}`, description: `Core ${i}`, points: 10, completed: false, genre: 'goal' as const,
+        }));
+        const dailyVariations = Array.from({ length: 4 }, (_, i) => ({
+          id: `d${i}`, description: `Daily ${i}`, points: 10, completed: false, genre: 'goal' as const,
+        }));
+        mockUserRepository.findUserById.mockResolvedValue(
+          makeUser({ tasksLastGeneratedDate: today, coreGoals, dailyVariations }),
+        );
+        mockHabitRepository.findByUserId.mockResolvedValue([]);
+        mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+
+        const result = await service.getHomePageData(USER_ID);
+
+        expect(result.coreGoals.length + result.dailyVariations.length).toBe(5);
+      });
+    });
+  });
+
+  describe('getTaskHistory()', () => {
+    it('returns the stored snapshot for a known date', async () => {
+      const tasks = [{ id: 't1', description: 'Old task', points: 10, completed: true, genre: 'goal' as const }];
+      mockUserRepository.findUserById.mockResolvedValue(
+        makeUser({ taskHistory: [{ date: '2026-08-20', tasks }] }),
+      );
+
+      const result = await service.getTaskHistory(USER_ID, '2026-08-20');
+
+      expect(result).toEqual({ date: '2026-08-20', tasks });
+    });
+
+    it('returns an empty task list for a date with no recorded history', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(makeUser({ taskHistory: [] }));
+
+      const result = await service.getTaskHistory(USER_ID, '2026-08-01');
+
+      expect(result).toEqual({ date: '2026-08-01', tasks: [] });
+    });
+
+    it('rejects a malformed date without querying the repository', async () => {
+      await expect(service.getTaskHistory(USER_ID, 'not-a-date')).rejects.toThrow(BadRequestException);
+      expect(mockUserRepository.findUserById).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the user does not exist', async () => {
+      mockUserRepository.findUserById.mockResolvedValue(null);
+
+      await expect(service.getTaskHistory(USER_ID, '2026-08-20')).rejects.toThrow(NotFoundException);
     });
   });
 

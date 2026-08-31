@@ -7,6 +7,7 @@ import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.GoalsRepository
 import com.habitflowai.domain.repository.HabitsRepository
 import com.habitflowai.domain.repository.LocationRepository
+import com.habitflowai.domain.repository.ResolveHabitsOutcome
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -24,6 +25,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -75,8 +77,13 @@ class HabitsViewModelTest {
         every { habitsRepository.getHabits(any()) } returns flowOf(testHabits)
         coEvery { habitsRepository.createHabit(any(), any()) } returns Result.success(testHabits[0])
         coEvery { goalsRepository.getActiveGoal() } returns testActiveGoal
+        coEvery { goalsRepository.achieveGoal(any()) } returns true
+        coEvery { goalsRepository.forfeitGoal(any()) } returns true
+        coEvery { goalsRepository.transitionGoal(any(), any(), any(), any()) } returns "goal-new"
+        coEvery { goalsRepository.resolveHabits(any(), any(), any()) } returns ResolveHabitsOutcome.Resolved
         coEvery { habitsRepository.deleteHabit(any()) } just runs
-        coEvery { habitsRepository.completeHabit(any()) } returns true
+        coEvery { habitsRepository.refreshHabits() } just runs
+        coEvery { habitsRepository.markHabitAchieved(any()) } returns true
         coEvery { locationRepository.captureAndSaveLocation(any(), any(), any()) } just runs
 
         viewModel = HabitsViewModel(habitsRepository, goalsRepository, locationRepository, authManager)
@@ -94,6 +101,23 @@ class HabitsViewModelTest {
         assertEquals("Morning Run", state.habits[0].title)
         assertEquals("Read 30 min", state.habits[1].title)
         assertFalse(state.isLoading)
+    }
+
+    @Test
+    fun `switching the logged-in user switches which user's habits are shown`() {
+        val userIdFlow = MutableStateFlow<String?>("user-a")
+        val userAHabits = listOf(testHabits[0])
+        val userBHabits = listOf(testHabits[1])
+        every { authManager.currentUserId } returns userIdFlow
+        every { habitsRepository.getHabits("user-a") } returns flowOf(userAHabits)
+        every { habitsRepository.getHabits("user-b") } returns flowOf(userBHabits)
+
+        val switchedViewModel = HabitsViewModel(habitsRepository, goalsRepository, locationRepository, authManager)
+        assertEquals(userAHabits, switchedViewModel.uiState.value.habits)
+
+        // Simulates a logout/login as a different user - must not stay stuck on user-a's habits.
+        userIdFlow.value = "user-b"
+        assertEquals(userBHabits, switchedViewModel.uiState.value.habits)
     }
 
     @Test
@@ -160,42 +184,152 @@ class HabitsViewModelTest {
     }
 
     @Test
-    fun `completeHabit success marks habit complete and captures public location`() {
+    fun `markHabitAchieved success sets implementedAt`() {
         var callbackResult: Boolean? = null
-        viewModel.completeHabit("h1", isPublic = true) { callbackResult = it }
+        viewModel.markHabitAchieved("h1") { callbackResult = it }
 
         assertTrue(callbackResult!!)
-        assertTrue(viewModel.uiState.value.habits.find { it.id == "h1" }?.completed == true)
-        coVerify { habitsRepository.completeHabit(match { it.id == "h1" }) }
-        coVerify { locationRepository.captureAndSaveLocation("h1", true, "habit") }
+        assertNotNull(viewModel.uiState.value.habits.find { it.id == "h1" }?.implementedAt)
+        coVerify { habitsRepository.markHabitAchieved(match { it.id == "h1" }) }
     }
 
     @Test
-    fun `completeHabit success captures private location when toggled off`() {
-        viewModel.completeHabit("h1", isPublic = false)
-
-        coVerify { locationRepository.captureAndSaveLocation("h1", false, "habit") }
-    }
-
-    @Test
-    fun `completeHabit failure does not mark complete or capture location`() {
-        coEvery { habitsRepository.completeHabit(any()) } returns false
+    fun `markHabitAchieved failure does not set implementedAt`() {
+        coEvery { habitsRepository.markHabitAchieved(any()) } returns false
 
         var callbackResult: Boolean? = null
-        viewModel.completeHabit("h1", isPublic = true) { callbackResult = it }
+        viewModel.markHabitAchieved("h1") { callbackResult = it }
 
         assertFalse(callbackResult!!)
-        assertTrue(viewModel.uiState.value.habits.find { it.id == "h1" }?.completed == false)
-        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
+        assertEquals(null, viewModel.uiState.value.habits.find { it.id == "h1" }?.implementedAt)
     }
 
     @Test
-    fun `completeHabit with unknown id does nothing`() {
+    fun `markHabitAchieved with unknown id does nothing`() {
         var callbackResult: Boolean? = null
-        viewModel.completeHabit("non-existent", isPublic = true) { callbackResult = it }
+        viewModel.markHabitAchieved("non-existent") { callbackResult = it }
 
         assertFalse(callbackResult!!)
-        coVerify(exactly = 0) { habitsRepository.completeHabit(any()) }
-        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
+        coVerify(exactly = 0) { habitsRepository.markHabitAchieved(any()) }
+    }
+
+    @Test
+    fun `achieveGoal success refreshes the active goal`() {
+        var callbackResult: Boolean? = null
+        viewModel.achieveGoal("goal-1") { callbackResult = it }
+
+        assertTrue(callbackResult!!)
+        coVerify { goalsRepository.achieveGoal("goal-1") }
+    }
+
+    @Test
+    fun `achieveGoal failure surfaces an error`() {
+        coEvery { goalsRepository.achieveGoal(any()) } returns false
+
+        var callbackResult: Boolean? = null
+        viewModel.achieveGoal("goal-1") { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        assertNotNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `forfeitGoal success refreshes the active goal`() {
+        var callbackResult: Boolean? = null
+        viewModel.forfeitGoal("goal-1") { callbackResult = it }
+
+        assertTrue(callbackResult!!)
+        coVerify { goalsRepository.forfeitGoal("goal-1") }
+    }
+
+    @Test
+    fun `forfeitGoal failure surfaces an error`() {
+        coEvery { goalsRepository.forfeitGoal(any()) } returns false
+
+        var callbackResult: Boolean? = null
+        viewModel.forfeitGoal("goal-1") { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        assertNotNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `transitionGoal success refreshes the active goal and habits`() {
+        var callbackResult: Boolean? = null
+        viewModel.transitionGoal("goal-1", "achieve", "Run 20km", "2027-06-30") { callbackResult = it }
+
+        assertTrue(callbackResult!!)
+        coVerify { goalsRepository.transitionGoal("goal-1", "achieve", "Run 20km", "2027-06-30") }
+        coVerify { goalsRepository.resolveHabits("goal-1", "goal-new", null) }
+        assertNull(viewModel.uiState.value.pendingHabitDecision)
+    }
+
+    @Test
+    fun `transitionGoal failure surfaces an error and never calls resolveHabits`() {
+        coEvery { goalsRepository.transitionGoal(any(), any(), any(), any()) } returns null
+
+        var callbackResult: Boolean? = null
+        viewModel.transitionGoal("goal-1", "forfeit", "Learn guitar", "2027-06-30") { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        assertNotNull(viewModel.uiState.value.errorMessage)
+        coVerify(exactly = 0) { goalsRepository.resolveHabits(any(), any(), any()) }
+    }
+
+    @Test
+    fun `AI failure during transition surfaces a pending habit decision instead of an error`() {
+        coEvery { goalsRepository.resolveHabits(any(), any(), null) } returns ResolveHabitsOutcome.NeedsDecision(2)
+
+        var callbackResult: Boolean? = null
+        viewModel.transitionGoal("goal-1", "achieve", "Run 20km", "2027-06-30") { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        assertNull(viewModel.uiState.value.errorMessage)
+        val pending = viewModel.uiState.value.pendingHabitDecision
+        assertNotNull(pending)
+        assertEquals(2, pending!!.pendingHabitCount)
+        assertEquals(1, pending.attemptCount)
+        assertNull(pending.cooldownUntil)
+    }
+
+    @Test
+    fun `retryResolveHabits increments the attempt count and sets a cooldown on the third failure`() {
+        coEvery { goalsRepository.resolveHabits(any(), any(), null) } returns ResolveHabitsOutcome.NeedsDecision(1)
+        viewModel.transitionGoal("goal-1", "achieve", "Run 20km", "2027-06-30") {}
+        viewModel.retryResolveHabits()
+        viewModel.retryResolveHabits()
+
+        coVerify(exactly = 3) { goalsRepository.resolveHabits("goal-1", "goal-new", null) }
+        val pending = viewModel.uiState.value.pendingHabitDecision
+        assertNotNull(pending)
+        assertEquals(3, pending!!.attemptCount)
+        assertNotNull(pending.cooldownUntil)
+        assertTrue(pending.cooldownUntil!! > System.currentTimeMillis())
+    }
+
+    @Test
+    fun `retryResolveHabits is a no-op while in cooldown`() {
+        coEvery { goalsRepository.resolveHabits(any(), any(), null) } returns ResolveHabitsOutcome.NeedsDecision(1)
+        viewModel.transitionGoal("goal-1", "achieve", "Run 20km", "2027-06-30") {}
+        viewModel.retryResolveHabits()
+        viewModel.retryResolveHabits()
+        // Now in cooldown (3rd failure) - a further retry attempt must not call the repository again.
+        viewModel.retryResolveHabits()
+
+        coVerify(exactly = 3) { goalsRepository.resolveHabits("goal-1", "goal-new", null) }
+    }
+
+    @Test
+    fun `decideHabits applies the chosen decision and clears the pending decision on success`() {
+        coEvery { goalsRepository.resolveHabits(any(), any(), null) } returns ResolveHabitsOutcome.NeedsDecision(1)
+        coEvery { goalsRepository.resolveHabits(any(), any(), "link") } returns ResolveHabitsOutcome.Resolved
+        viewModel.transitionGoal("goal-1", "achieve", "Run 20km", "2027-06-30") {}
+
+        var callbackResult: Boolean? = null
+        viewModel.decideHabits("link") { callbackResult = it }
+
+        assertTrue(callbackResult!!)
+        coVerify { goalsRepository.resolveHabits("goal-1", "goal-new", "link") }
+        assertNull(viewModel.uiState.value.pendingHabitDecision)
     }
 }

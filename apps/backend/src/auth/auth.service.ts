@@ -217,8 +217,8 @@ export class AuthService {
     return { available: !existing };
   }
 
-  getOnboardingSuggestions(goal: string) {
-    return this.ai.getOnboardingSuggestions(goal);
+  getOnboardingSuggestions(goal: string, answeredSoFar?: string[]) {
+    return this.ai.getOnboardingSuggestions(goal, answeredSoFar);
   }
 
   async updateFcmToken(userId: string, fcmToken: string) {

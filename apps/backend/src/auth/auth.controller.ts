@@ -34,7 +34,7 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid goal' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   onboardingSuggestions(@Body() dto: OnboardingSuggestionsDto) {
-    return this.authService.getOnboardingSuggestions(dto.goal);
+    return this.authService.getOnboardingSuggestions(dto.goal, dto.answeredSoFar);
   }
 
   @Post('register')

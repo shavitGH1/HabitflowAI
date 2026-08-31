@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, Matches } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 export class CompleteTaskDto {
   @IsOptional()
@@ -10,4 +10,13 @@ export class CompleteTaskDto {
       "auto-completes its linked habit(s). Falls back to the server's UTC date when omitted.",
   })
   date?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  @ApiPropertyOptional({
+    example: 'Ran 5km along the river this morning',
+    description: 'Optional "what did you do?" note - checked for plausibility against the task description.',
+  })
+  note?: string;
 }

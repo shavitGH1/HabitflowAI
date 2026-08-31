@@ -20,6 +20,9 @@ data class OnboardingUiState(
     val isRetakeMode: Boolean = false,
     val suggestionsByQuestionId: Map<Int, List<String>> = emptyMap(),
     val suggestionsForGoal: String? = null,
+    // Guards the one-time midpoint re-fetch (questions 4-6, informed by answers to 1-3)
+    // against firing again if the user navigates back and forth across that step.
+    val midpointSuggestionsFetched: Boolean = false,
     val suggestedHabits: List<com.habitflowai.data.model.HomeGoalTask> = emptyList(),
     val navigateToSuggestions: Boolean = false,
     // Set when Google Sign-In finds no matching account — carries the short-lived

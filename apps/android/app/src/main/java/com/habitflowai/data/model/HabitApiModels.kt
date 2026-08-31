@@ -19,11 +19,36 @@ data class HabitResponse(
     @SerializedName("completionHistory") val completionHistory: List<String>? = emptyList(),
     @SerializedName("goalId") val goalId: String? = null,
     @SerializedName("relevanceWarning") val relevanceWarning: String? = null,
-    @SerializedName("verificationWarning") val verificationWarning: String? = null
+    @SerializedName("verificationWarning") val verificationWarning: String? = null,
+    @SerializedName("implementedAt") val implementedAt: String? = null,
+    @SerializedName("streak") val streak: Int = 0
 ) {
     val completed: Boolean
         get() = completionHistory?.contains(java.time.LocalDate.now().toString()) == true
 }
+
+data class TransitionGoalRequest(
+    @SerializedName("resolution") val resolution: String,
+    @SerializedName("newGoalTitle") val newGoalTitle: String,
+    @SerializedName("newGoalTargetDate") val newGoalTargetDate: String
+)
+
+data class TransitionGoalResponse(
+    @SerializedName("oldGoal") val oldGoal: ActiveGoalResponse,
+    @SerializedName("newGoal") val newGoal: ActiveGoalResponse
+)
+
+data class ResolveHabitsRequest(
+    @SerializedName("newGoalId") val newGoalId: String,
+    @SerializedName("decision") val decision: String? = null
+)
+
+data class ResolveHabitsResponse(
+    @SerializedName("outcome") val outcome: String,
+    @SerializedName("relinkedHabitIds") val relinkedHabitIds: List<String>? = null,
+    @SerializedName("archivedHabitIds") val archivedHabitIds: List<String>? = null,
+    @SerializedName("pendingHabitIds") val pendingHabitIds: List<String>? = null
+)
 
 data class ActiveGoalResponse(
     @SerializedName("id") val id: String,

@@ -1,5 +1,6 @@
 package com.habitflowai.presentation.ui.social
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,11 +22,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import com.habitflowai.data.model.HomeAchievement
-import com.habitflowai.data.model.Post
+import com.habitflowai.presentation.ui.home.ExpandCollapseIcon
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
-import com.habitflowai.presentation.viewmodel.SocialViewModel
 import com.habitflowai.util.parseIsoToMillis
 import java.time.Instant
 import java.time.ZoneId
@@ -34,13 +34,10 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SuccessJournalRoute(
-    viewModel: SocialViewModel = hiltViewModel(),
     habitsViewModel: HabitsViewModel = hiltViewModel(),
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
-    onUserClick: (String) -> Unit = {},
     onBack: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
     val habitsState by habitsViewModel.uiState.collectAsState()
     val onboardingState by onboardingViewModel.uiState.collectAsState()
 
@@ -53,35 +50,65 @@ fun SuccessJournalRoute(
     val personaType = onboardingState.personaResult?.personaType ?: "Regulator"
     val personaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
 
-    var selectedPostForComments by remember { mutableStateOf<Post?>(null) }
     var selectedFilter by remember { mutableStateOf(JournalFilter.ALL) }
-    
-    // Combine personal posts and habit completions into a single "Journal" view
-    val journalItems = remember(uiState.posts, uiState.currentUserId, habitsState.habits, onboardingState.achievements, selectedFilter) {
-        val posts = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.POSTS) {
-            uiState.posts
-                .filter { it.authorId == uiState.currentUserId }
-                .map { JournalItem.SocialPost(it) }
-        } else emptyList()
-        
-        val completions = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.HABITS) {
-            habitsState.habits.flatMap { habit ->
-                habit.completionHistory.map { date ->
-                    JournalItem.HabitCompletion(
-                        habitId = habit.id,
-                        habitName = habit.title,
-                        date = date,
-                        description = habit.description
-                    )
-                }
+
+    val achievedHabitItems = remember(habitsState.habits) {
+        habitsState.habits.mapNotNull { habit ->
+            habit.implementedAt?.let { implementedAt ->
+                JournalItem.HabitAchievement(
+                    habitId = habit.id,
+                    habitName = habit.title,
+                    description = habit.description,
+                    goalId = habit.goalId,
+                    implementedAt = implementedAt
+                )
             }
+        }
+    }
+
+    val journalItems = remember(achievedHabitItems, onboardingState.achievements, selectedFilter) {
+        val achievedHabits = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.HABITS) {
+            achievedHabitItems
         } else emptyList()
 
         val achievements = if (selectedFilter == JournalFilter.ALL || selectedFilter == JournalFilter.GOALS) {
             onboardingState.achievements.map { JournalItem.GoalAchievement(it) }
         } else emptyList()
 
-        (posts + completions + achievements).sortedByDescending { it.timestamp }
+        (achievedHabits + achievements).sortedByDescending { it.timestamp }
+    }
+
+    // Goal title lookup used only by the Goals tab's grouping - built from data already
+    // loaded for this screen, no new fetch. Achieved goals carry their own title; the
+    // current active goal (whether achieved yet or not) is added too. Anything else
+    // (a habit under a goal that's neither, e.g. forfeited without ever being achieved)
+    // has no resolvable title and falls into "General".
+    val goalTitleById = remember(onboardingState.achievements, habitsState.activeGoal) {
+        val fromAchievements = onboardingState.achievements.associate { it.goalId to it.goalTitle }
+        val fromActiveGoal = habitsState.activeGoal?.let { mapOf(it.id to it.title) } ?: emptyMap()
+        fromAchievements + fromActiveGoal
+    }
+
+    val goalGroups = remember(achievedHabitItems, onboardingState.achievements, goalTitleById) {
+        val byGoal = achievedHabitItems.groupBy { it.goalId?.let { id -> goalTitleById[id] } ?: "General" }
+        val goalAchievementsByTitle = onboardingState.achievements.associateBy(
+            keySelector = { it.goalTitle },
+            valueTransform = { JournalItem.GoalAchievement(it) },
+        )
+        val titles = (byGoal.keys + goalAchievementsByTitle.keys).toSet()
+
+        titles.map { title ->
+            JournalGroup(
+                title = title,
+                goalAchievement = goalAchievementsByTitle[title],
+                habitAchievements = byGoal[title].orEmpty().sortedByDescending { it.timestamp }
+            )
+        }.sortedByDescending { group ->
+            maxOf(
+                group.goalAchievement?.timestamp ?: 0L,
+                group.habitAchievements.maxOfOrNull { it.timestamp } ?: 0L
+            )
+        }
     }
 
     Scaffold(
@@ -122,7 +149,6 @@ fun SuccessJournalRoute(
                                 text = when (filter) {
                                     JournalFilter.ALL -> "All"
                                     JournalFilter.HABITS -> "Habits"
-                                    JournalFilter.POSTS -> "Posts"
                                     JournalFilter.GOALS -> "Goals"
                                 },
                                 fontWeight = if (selectedFilter == filter) FontWeight.Bold else FontWeight.Normal
@@ -132,8 +158,10 @@ fun SuccessJournalRoute(
                 }
             }
 
+            val isEmpty = if (selectedFilter == JournalFilter.GOALS) goalGroups.isEmpty() else journalItems.isEmpty()
+
             Box(modifier = Modifier.weight(1f)) {
-                if (journalItems.isEmpty()) {
+                if (isEmpty) {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.Center,
@@ -146,9 +174,8 @@ fun SuccessJournalRoute(
                         )
                         Text(
                             text = when (selectedFilter) {
-                                JournalFilter.ALL -> "Complete habits or share posts to fill your journal!"
-                                JournalFilter.HABITS -> "No completed habits found."
-                                JournalFilter.POSTS -> "You haven't shared any posts yet."
+                                JournalFilter.ALL -> "Stay consistent to earn your first habit or goal achievement!"
+                                JournalFilter.HABITS -> "No habits achieved yet."
                                 JournalFilter.GOALS -> "No goals achieved yet."
                             },
                             style = MaterialTheme.typography.bodyMedium,
@@ -156,6 +183,16 @@ fun SuccessJournalRoute(
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 32.dp)
                         )
+                    }
+                } else if (selectedFilter == JournalFilter.GOALS) {
+                    LazyColumn(
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(goalGroups, key = { it.title }) { group ->
+                            JournalGoalGroup(group = group, personaColor = personaDetails.endColor)
+                        }
                     }
                 } else {
                     LazyColumn(
@@ -165,21 +202,9 @@ fun SuccessJournalRoute(
                     ) {
                         items(journalItems) { item ->
                             when (item) {
-                                is JournalItem.SocialPost -> {
-                                    PostCard(
-                                        post = item.post,
-                                        personaColor = personaDetails.endColor,
-                                        onLikeClick = { viewModel.toggleLike(item.post.id) },
-                                        onUserClick = { onUserClick(item.post.authorId) },
-                                        onClick = {
-                                            selectedPostForComments = item.post
-                                            viewModel.loadComments(item.post.id)
-                                        }
-                                    )
-                                }
-                                is JournalItem.HabitCompletion -> {
-                                    HabitCompletionCard(
-                                        completion = item,
+                                is JournalItem.HabitAchievement -> {
+                                    HabitAchievementCard(
+                                        achievement = item,
                                         personaColor = personaDetails.endColor
                                     )
                                 }
@@ -195,51 +220,78 @@ fun SuccessJournalRoute(
                 }
             }
         }
-
-        if (selectedPostForComments != null) {
-            CommentsBottomSheet(
-                post = selectedPostForComments!!,
-                comments = uiState.comments[selectedPostForComments!!.id] ?: emptyList(),
-                isLoadingComments = uiState.isLoadingComments,
-                onDismiss = { selectedPostForComments = null },
-                onLikeClick = { viewModel.toggleLike(selectedPostForComments!!.id) },
-                onAddComment = { content ->
-                    viewModel.addComment(selectedPostForComments!!.id, content)
-                },
-                onUserClick = { onUserClick(selectedPostForComments!!.authorId) }
-            )
-        }
     }
 }
 
 enum class JournalFilter {
-    ALL, GOALS, HABITS, POSTS
+    ALL, GOALS, HABITS
 }
 
 sealed class JournalItem {
     abstract val timestamp: Long
 
-    data class SocialPost(val post: Post) : JournalItem() {
-        override val timestamp: Long = parseIsoToMillis(post.createdAt)
-    }
-
     data class GoalAchievement(val achievement: HomeAchievement) : JournalItem() {
         override val timestamp: Long = parseIsoToMillis(achievement.awardedAt)
     }
 
-    data class HabitCompletion(
+    data class HabitAchievement(
         val habitId: String,
         val habitName: String,
-        val date: String,
-        val description: String?
+        val description: String?,
+        val goalId: String?,
+        val implementedAt: String
     ) : JournalItem() {
-        override val timestamp: Long = parseIsoToMillis(date)
+        override val timestamp: Long = parseIsoToMillis(implementedAt)
+    }
+}
+
+data class JournalGroup(
+    val title: String,
+    val goalAchievement: JournalItem.GoalAchievement?,
+    val habitAchievements: List<JournalItem.HabitAchievement>
+)
+
+@Composable
+fun JournalGoalGroup(
+    group: JournalGroup,
+    personaColor: Color
+) {
+    var expanded by remember { mutableStateOf(true) }
+    val entryCount = group.habitAchievements.size + if (group.goalAchievement != null) 1 else 0
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${group.title} ($entryCount)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = personaColor,
+                modifier = Modifier.weight(1f)
+            )
+            ExpandCollapseIcon(expanded, personaColor)
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                group.goalAchievement?.let {
+                    GoalAchievementCard(achievement = it, personaColor = personaColor)
+                }
+                group.habitAchievements.forEach { habit ->
+                    HabitAchievementCard(achievement = habit, personaColor = personaColor)
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun HabitCompletionCard(
-    completion: JournalItem.HabitCompletion,
+fun HabitAchievementCard(
+    achievement: JournalItem.HabitAchievement,
     personaColor: Color
 ) {
     Card(
@@ -269,19 +321,19 @@ fun HabitCompletionCard(
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
-                    text = "Completed: ${completion.habitName}",
+                    text = "Habit achieved: ${achievement.habitName}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                if (!completion.description.isNullOrBlank()) {
+                if (!achievement.description.isNullOrBlank()) {
                     Text(
-                        text = completion.description,
+                        text = achievement.description,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Text(
-                    text = formatJournalDate(completion.timestamp),
+                    text = formatJournalDate(achievement.timestamp),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )
@@ -351,5 +403,3 @@ private fun formatJournalDate(timestamp: Long): String {
         ""
     }
 }
-
-

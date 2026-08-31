@@ -8,6 +8,7 @@ import { PersonaDriftDetectorFeature } from './features/persona-drift-detector.f
 import { HabitInsightsFeature } from './features/habit-insights.feature';
 import { CoachPhrasingFeature } from './features/coach-phrasing.feature';
 import { HabitGoalRelevanceFeature } from './features/habit-goal-relevance.feature';
+import { GoalRelevanceFeature } from './features/goal-relevance.feature';
 import { TaskVerificationFeature } from './features/task-verification.feature';
 import { OnboardingSuggestionsFeature } from './features/onboarding-suggestions.feature';
 import { RagSearchFeature } from './features/rag-search.feature';
@@ -27,6 +28,7 @@ import { GeminiClient } from './gemini.client';
     HabitInsightsFeature,
     CoachPhrasingFeature,
     HabitGoalRelevanceFeature,
+    GoalRelevanceFeature,
     TaskVerificationFeature,
     OnboardingSuggestionsFeature,
     RagSearchFeature,
@@ -43,6 +45,7 @@ import { GeminiClient } from './gemini.client';
     HabitInsightsFeature,
     CoachPhrasingFeature,
     HabitGoalRelevanceFeature,
+    GoalRelevanceFeature,
     TaskVerificationFeature,
     OnboardingSuggestionsFeature,
   ],

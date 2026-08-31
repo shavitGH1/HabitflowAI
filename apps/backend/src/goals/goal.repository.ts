@@ -33,6 +33,15 @@ export class GoalRepository {
     }
   }
 
+  async findOrCreateActiveGoal(input: CreateGoalInput): Promise<GoalData> {
+    const doc = await this.goalModel.findOneAndUpdate(
+      { userId: input.userId, status: 'active' },
+      { $setOnInsert: { userId: input.userId, title: input.title, targetDate: input.targetDate, status: 'active' } },
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+    );
+    return this.toGoalData(doc);
+  }
+
   async findActiveByUserId(userId: string): Promise<GoalData | null> {
     const doc = await this.goalModel.findOne({ userId, status: 'active' });
     return doc ? this.toGoalData(doc) : null;

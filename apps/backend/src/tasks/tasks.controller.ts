@@ -18,6 +18,6 @@ export class TasksController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 404, description: 'User or task not found' })
   complete(@Req() req: { user: { id: string } }, @Param('taskId') taskId: string, @Body() dto: CompleteTaskDto) {
-    return this.tasksService.completeTask(req.user.id, taskId, dto.date);
+    return this.tasksService.completeTask(req.user.id, taskId, dto.date, dto.note);
   }
 }

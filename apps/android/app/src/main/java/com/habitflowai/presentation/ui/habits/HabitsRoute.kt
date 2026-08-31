@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.LocalFireDepartment
@@ -57,6 +56,7 @@ fun HabitsRoute(
     viewModel: HabitsViewModel,
     personaType: String,
     onHabitClick: (String) -> Unit,
+    onGoalClick: (String) -> Unit,
     onToggleChat: () -> Unit,
     onSetGoal: () -> Unit
 ) {
@@ -70,10 +70,10 @@ fun HabitsRoute(
             uiState = uiState,
             personaType = personaType,
             onHabitClick = onHabitClick,
+            onGoalClick = onGoalClick,
             onAddHabit = { title, desc, freq, linkToGoal ->
                 viewModel.addHabit(title, desc, freq, linkToGoal)
             },
-            onDeleteHabit = viewModel::deleteHabit,
             onToggleChat = onToggleChat,
             onSetGoal = onSetGoal,
             onClearCongratulation = viewModel::clearCongratulation,
@@ -87,8 +87,8 @@ fun HabitsRoute(
         uiState: HabitsUiState,
         personaType: String,
         onHabitClick: (String) -> Unit,
+        onGoalClick: (String) -> Unit,
         onAddHabit: (String, String, String, Boolean) -> Unit,
-        onDeleteHabit: (String) -> Unit,
         onToggleChat: () -> Unit,
         onSetGoal: () -> Unit,
         onClearCongratulation: () -> Unit = {},
@@ -168,7 +168,8 @@ fun HabitsRoute(
             },
             containerColor = Color.Transparent
         ) { paddingValues ->
-            val habitsToDisplay = remember(uiState.habits) { uiState.habits.filter { !it.completed } }
+            // stays active until achieved, not just "done today"
+            val habitsToDisplay = remember(uiState.habits) { uiState.habits.filter { it.implementedAt == null } }
 
             LazyColumn(
                 modifier = Modifier
@@ -181,7 +182,8 @@ fun HabitsRoute(
                     if (uiState.activeGoal != null) {
                         GoalHighlightCard(
                             goal = uiState.activeGoal,
-                            personaColor = details.endColor
+                            personaColor = details.endColor,
+                            onClick = { onGoalClick(uiState.activeGoal.id) }
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                     } else if (!uiState.onboardingGoal.isNullOrEmpty()) {
@@ -257,7 +259,7 @@ fun HabitsRoute(
                     item {
                         Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                             Text(
-                                text = if (uiState.habits.isEmpty()) "No habits yet. Tap + to start!" else "All habits completed for today! 🎉",
+                                text = if (uiState.habits.isEmpty()) "No habits yet. Tap + to start!" else "All habits achieved! 🎉 Check your Success Journal.",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -272,8 +274,8 @@ fun HabitsRoute(
                         it.goalId == null || (activeGoalId != null && it.goalId != activeGoalId)
                     }
 
-                    val totalGoalHabits = uiState.habits.count { it.goalId != null && (activeGoalId == null || it.goalId == activeGoalId) }
-                    val totalStandaloneHabits = uiState.habits.count { it.goalId == null || (activeGoalId != null && it.goalId != activeGoalId) }
+                    val totalGoalHabits = habitsToDisplay.count { it.goalId != null && (activeGoalId == null || it.goalId == activeGoalId) }
+                    val totalStandaloneHabits = habitsToDisplay.count { it.goalId == null || (activeGoalId != null && it.goalId != activeGoalId) }
 
                     if (goalHabits.isNotEmpty()) {
                         item {
@@ -293,7 +295,6 @@ fun HabitsRoute(
                             HabitItem(
                                 habit = habit,
                                 personaColor = details.endColor,
-                                onDelete = { onDeleteHabit(habit.id) },
                                 onClick = { onHabitClick(habit.id) }
                             )
                         }
@@ -317,7 +318,6 @@ fun HabitsRoute(
                             HabitItem(
                                 habit = habit,
                                 personaColor = details.endColor,
-                                onDelete = { onDeleteHabit(habit.id) },
                                 onClick = { onHabitClick(habit.id) }
                             )
                         }
@@ -347,8 +347,11 @@ fun HabitsRoute(
             if (showCreateSheet) {
                 val activeGoalId = uiState.activeGoal?.id
                 val hasGoal = activeGoalId != null || !uiState.onboardingGoal.isNullOrEmpty()
-                val goalHabitCount = uiState.habits.count { it.goalId != null }
-                val standaloneHabitCount = uiState.habits.count { it.goalId == null }
+                val activeHabits = uiState.habits.filter { it.implementedAt == null }
+                val goalHabitCount = activeHabits.count {
+                    it.goalId != null && (activeGoalId == null || it.goalId == activeGoalId)
+                }
+                val standaloneHabitCount = activeHabits.count { it.goalId == null }
 
                 HabitCreateBottomSheet(
                     personaColor = details.endColor,
@@ -582,10 +585,11 @@ fun ConsistencyCalendar(
 @Composable
 fun GoalHighlightCard(
     goal: ActiveGoalResponse,
-    personaColor: Color
+    personaColor: Color,
+    onClick: () -> Unit = {}
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = personaColor.copy(alpha = 0.1f),
@@ -728,7 +732,6 @@ fun EmptyGoalCard(
 fun HabitItem(
     habit: HabitEntity,
     personaColor: Color,
-    onDelete: () -> Unit,
     onClick: () -> Unit
 ) {
     Card(
@@ -741,31 +744,18 @@ fun HabitItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
+            Column {
+                Text(
+                    text = habit.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = personaColor
+                )
+                if (!habit.description.isNullOrEmpty()) {
                     Text(
-                        text = habit.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = personaColor
-                    )
-                    if (!habit.description.isNullOrEmpty()) {
-                        Text(
-                            text = habit.description!!,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Rounded.Delete,
-                        contentDescription = "Delete Habit",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        text = habit.description!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -878,7 +868,29 @@ fun HabitCreateBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
-            
+
+            Column {
+                Text(
+                    text = "Frequency",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("daily" to "Daily", "weekly" to "Weekly").forEach { (value, label) ->
+                        FilterChip(
+                            selected = frequency == value,
+                            onClick = { frequency = value },
+                            label = { Text(label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = personaColor.copy(alpha = 0.2f),
+                                selectedLabelColor = personaColor
+                            )
+                        )
+                    }
+                }
+            }
+
             if (hasActiveGoal) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),

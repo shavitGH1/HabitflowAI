@@ -1,3 +1,8 @@
+export const MIN_STREAK_FOR_MANUAL_ACHIEVEMENT = 21;
+
+export const canManuallyAchieve = (streak: number): boolean =>
+  streak >= MIN_STREAK_FOR_MANUAL_ACHIEVEMENT;
+
 export const calculateStreak = (
   history: string[],
   today = new Date().toISOString().split('T')[0],

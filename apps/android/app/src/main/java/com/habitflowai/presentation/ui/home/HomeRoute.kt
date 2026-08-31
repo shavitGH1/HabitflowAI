@@ -1,5 +1,6 @@
 package com.habitflowai.presentation.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -32,6 +33,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import java.time.LocalDate
 import java.time.DayOfWeek
 import java.time.format.DateTimeFormatter
@@ -64,6 +67,7 @@ fun HomeRoute(
     userId: String,
     profilePicture: String? = null,
     onNavigateToReassessment: () -> Unit,
+    onTaskClick: (String) -> Unit,
     onToggleChat: () -> Unit
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
@@ -89,12 +93,13 @@ fun HomeRoute(
         uiState = uiState,
         personaResult = personaResult,
         profilePicture = profilePicture,
-        onCompleteTask = { viewModel.completeTask(it) },
+        onTaskClick = onTaskClick,
         onDateSelected = { viewModel.onDateSelected(it) },
         onDismissDriftBanner = { viewModel.dismissDriftBanner() },
         onStartReassessment = onNavigateToReassessment,
         onToggleChat = onToggleChat,
-        onRefreshPlan = { viewModel.refreshHomeData() }
+        onRefreshPlan = { viewModel.refreshHomeData() },
+        onToggleSection = { viewModel.toggleSection(it) }
     )
 }
 
@@ -104,12 +109,13 @@ fun HomeScreen(
     uiState: HomeUiState,
     personaResult: ClassifyPersonaResponse?,
     profilePicture: String? = null,
-    onCompleteTask: (String) -> Unit,
+    onTaskClick: (String) -> Unit,
     onDateSelected: (LocalDate) -> Unit,
     onDismissDriftBanner: () -> Unit,
     onStartReassessment: () -> Unit,
     onToggleChat: () -> Unit,
-    onRefreshPlan: () -> Unit
+    onRefreshPlan: () -> Unit,
+    onToggleSection: (String) -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     val today = remember { LocalDate.now() }
@@ -289,7 +295,9 @@ fun HomeScreen(
                     PersonaDashboard(
                         personaType = actualPersonaType,
                         homeData = homeData,
-                        personaColor = endColor
+                        personaColor = endColor,
+                        collapsedSections = uiState.collapsedSections,
+                        onToggleSection = onToggleSection
                     )
                 }
 
@@ -312,10 +320,12 @@ fun HomeScreen(
                             today = today,
                             onTaskToggled = { taskId, isChecked ->
                                 if (isChecked && !isViewingHistory) {
-                                    onCompleteTask(taskId)
+                                    onTaskClick(taskId)
                                 }
                             },
-                            personaType = actualPersonaType
+                            personaType = actualPersonaType,
+                            collapsedSections = uiState.collapsedSections,
+                            onToggleSection = onToggleSection
                         )
                     } else {
                         Column(
@@ -346,11 +356,21 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    ProgressPhaseSection(actualPersonaType, homeData?.confidenceScore ?: 0.0)
+                    ProgressPhaseSection(
+                        personaType = actualPersonaType,
+                        confidenceScore = homeData?.confidenceScore ?: 0.0,
+                        expanded = "progress" !in uiState.collapsedSections,
+                        onToggleExpanded = { onToggleSection("progress") }
+                    )
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    PlanExplanationSection(actualPersonaType, homeData?.portfolioSummary)
+                    PlanExplanationSection(
+                        personaType = actualPersonaType,
+                        portfolioSummary = homeData?.portfolioSummary,
+                        expanded = "plan" !in uiState.collapsedSections,
+                        onToggleExpanded = { onToggleSection("plan") }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -385,12 +405,57 @@ fun Modifier.shimmerEffect(): Modifier = this.then(
 )
 
 @Composable
+fun ExpandCollapseIcon(expanded: Boolean, tint: Color) {
+    Icon(
+        imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+        contentDescription = if (expanded) "Collapse" else "Expand",
+        tint = tint
+    )
+}
+
+@Composable
+fun CollapsibleSection(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    titleColor: Color = MaterialTheme.colorScheme.onSurface,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onToggle() },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = titleColor,
+                modifier = Modifier.weight(1f)
+            )
+            ExpandCollapseIcon(expanded, titleColor)
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                content()
+            }
+        }
+    }
+}
+
+@Composable
 fun GoalPlanSection(
     tasks: List<DailyTaskEntity>,
     selectedDate: LocalDate,
     today: LocalDate,
     onTaskToggled: (String, Boolean) -> Unit,
-    personaType: String
+    personaType: String,
+    collapsedSections: Set<String> = emptySet(),
+    onToggleSection: (String) -> Unit = {}
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy") }
     val dateText = if (selectedDate == today) "Today's Checklist" else "Checklist for ${selectedDate.format(formatter)}"
@@ -421,17 +486,22 @@ fun GoalPlanSection(
         }
 
         groupedTasks.forEach { (habitTitle, habitTasks) ->
-            val subtitle = if (habitTitle == "Main Goal") "Strategic Goal Progress" else "Targeted Habit Actions"
-            val accentColor = if (habitTitle == "Main Goal") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+            key(habitTitle) {
+                val subtitle = if (habitTitle == "Main Goal") "Strategic Goal Progress" else "Targeted Habit Actions"
+                val accentColor = if (habitTitle == "Main Goal") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
 
-            HabitGroup(
-                title = habitTitle,
-                subtitle = subtitle,
-                accentColor = accentColor,
-                tasks = habitTasks,
-                onTaskToggled = onTaskToggled,
-                isPastDate = selectedDate < today
-            )
+                val sectionKey = "habit:$habitTitle"
+                HabitGroup(
+                    title = habitTitle,
+                    subtitle = subtitle,
+                    accentColor = accentColor,
+                    tasks = habitTasks,
+                    onTaskToggled = onTaskToggled,
+                    isPastDate = selectedDate < today,
+                    expanded = sectionKey !in collapsedSections,
+                    onToggleExpanded = { onToggleSection(sectionKey) }
+                )
+            }
         }
     }
 }
@@ -443,37 +513,59 @@ fun HabitGroup(
     accentColor: Color,
     tasks: List<DailyTaskEntity>,
     onTaskToggled: (String, Boolean) -> Unit,
-    isPastDate: Boolean
+    isPastDate: Boolean,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(accentColor)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    val completedCount = tasks.count { it.isCompleted }
 
-        tasks.forEach { task ->
-            InteractiveGoalItem(
-                goalText = task.description,
-                isChecked = task.isCompleted,
-                onCheckedChange = { onTaskToggled(task.id, it) },
-                enabled = !isPastDate && !task.isCompleted
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onToggleExpanded() },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(accentColor)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "$title ($completedCount/${tasks.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            ExpandCollapseIcon(expanded, MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                tasks.forEach { task ->
+                    InteractiveGoalItem(
+                        goalText = task.description,
+                        isChecked = task.isCompleted,
+                        onCheckedChange = { onTaskToggled(task.id, it) },
+                        enabled = !isPastDate && !task.isCompleted
+                    )
+                }
+            }
         }
     }
 }
@@ -569,7 +661,12 @@ fun HistoryCalendarSection(
 }
 
 @Composable
-fun ProgressPhaseSection(personaType: String, confidenceScore: Double) {
+fun ProgressPhaseSection(
+    personaType: String,
+    confidenceScore: Double,
+    expanded: Boolean = true,
+    onToggleExpanded: () -> Unit = {}
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -579,37 +676,57 @@ fun ProgressPhaseSection(personaType: String, confidenceScore: Double) {
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(8.dp))
-                val scorePercent = (confidenceScore * 100).toInt()
-                Text(
-                    text = "Consistency Score: $scorePercent%",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { onToggleExpanded() },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    val scorePercent = (confidenceScore * 100).toInt()
+                    Text(
+                        text = "Consistency Score: $scorePercent%",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                ExpandCollapseIcon(expanded, MaterialTheme.colorScheme.onSecondaryContainer)
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Your plan updates automatically every 7 days to ensure you keep making progress. Next week, we'll intensify the $personaType routine.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { confidenceScore.toFloat() },
-                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-            )
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Your plan updates automatically every 7 days to ensure you keep making progress. Next week, we'll intensify the $personaType routine.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        progress = { confidenceScore.toFloat() },
+                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun PlanExplanationSection(personaType: String, portfolioSummary: String?) {
+fun PlanExplanationSection(
+    personaType: String,
+    portfolioSummary: String?,
+    expanded: Boolean = true,
+    onToggleExpanded: () -> Unit = {}
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -617,24 +734,39 @@ fun PlanExplanationSection(personaType: String, portfolioSummary: String?) {
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Your $personaType Master Plan",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { onToggleExpanded() },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Your $personaType Master Plan",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                ExpandCollapseIcon(expanded, MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-            if (!portfolioSummary.isNullOrBlank()) {
-                Text(text = "Strategic Overview", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                Text(text = portfolioSummary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                Text(text = "Daily Strategy", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                Text(text = "Your daily focus is consistency. Complete your scheduled core habits. Failure is okay; the goal is to show up.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (!portfolioSummary.isNullOrBlank()) {
+                        Text(text = "Strategic Overview", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Text(text = portfolioSummary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Text(text = "Daily Strategy", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Text(text = "Your daily focus is consistency. Complete your scheduled core habits. Failure is okay; the goal is to show up.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
     }
@@ -701,47 +833,50 @@ fun InteractiveGoalItem(
 fun PersonaDashboard(
     personaType: String,
     homeData: HomeResponse,
-    personaColor: Color
+    personaColor: Color,
+    collapsedSections: Set<String> = emptySet(),
+    onToggleSection: (String) -> Unit = {}
 ) {
     Column(
         modifier = Modifier.padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (!homeData.tips.isNullOrEmpty()) {
-            Text(
-                text = "Personalized Tips",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = personaColor
-            )
-            homeData.tips.forEach { tip ->
-                Row(verticalAlignment = Alignment.Top) {
-                    Icon(
-                        Icons.Rounded.Star,
-                        contentDescription = null,
-                        tint = personaColor,
-                        modifier = Modifier.size(16.dp).padding(top = 4.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(text = tip, style = MaterialTheme.typography.bodyMedium)
+            CollapsibleSection(
+                title = "Personalized Tips",
+                expanded = "tips" !in collapsedSections,
+                onToggle = { onToggleSection("tips") },
+                titleColor = personaColor
+            ) {
+                homeData.tips.forEach { tip ->
+                    Row(verticalAlignment = Alignment.Top) {
+                        Icon(
+                            Icons.Rounded.Star,
+                            contentDescription = null,
+                            tint = personaColor,
+                            modifier = Modifier.size(16.dp).padding(top = 4.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(text = tip, style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
         }
 
         if (!homeData.failurePatterns.isNullOrEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Pattern Insights",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.error
-            )
-            homeData.failurePatterns.forEach { pattern ->
-                Text(
-                    text = "• $pattern",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            CollapsibleSection(
+                title = "Pattern Insights",
+                expanded = "patterns" !in collapsedSections,
+                onToggle = { onToggleSection("patterns") },
+                titleColor = MaterialTheme.colorScheme.error
+            ) {
+                homeData.failurePatterns.forEach { pattern ->
+                    Text(
+                        text = "• $pattern",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -901,7 +1036,7 @@ fun HomeWithChatPreview() {
             HomeScreen(
                 uiState = uiState,
                 personaResult = null,
-                onCompleteTask = {},
+                onTaskClick = {},
                 onDateSelected = {},
                 onDismissDriftBanner = {},
                 onStartReassessment = {},
@@ -947,7 +1082,7 @@ fun HomePersonaPreview(personaType: String) {
         HomeScreen(
             uiState = uiState,
             personaResult = samplePersona,
-            onCompleteTask = {},
+            onTaskClick = {},
             onDateSelected = {},
             onDismissDriftBanner = {},
             onStartReassessment = {},
