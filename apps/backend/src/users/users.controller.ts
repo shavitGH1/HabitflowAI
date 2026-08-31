@@ -53,6 +53,19 @@ export class UsersController {
     return this.usersService.getHomePageData(req.user.id, force === 'true', date);
   }
 
+  @Get('me/task-history')
+  @ApiOperation({ summary: "Get the authenticated user's task list as it stood on a past date" })
+  @ApiResponse({ status: 200, description: '{ date, tasks } - tasks is empty if nothing was recorded for that date' })
+  @ApiResponse({ status: 400, description: 'date is missing or not in YYYY-MM-DD format' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  getTaskHistory(
+    @Req() req: { user: { id: string } },
+    @Query('date') date: string,
+  ) {
+    return this.usersService.getTaskHistory(req.user.id, date);
+  }
+
   @Patch('me/profile')
   @ApiOperation({ summary: 'Update the authenticated user profile picture (preset key or uploaded URL)' })
   @ApiResponse({ status: 200, description: '{ profilePicture, success }' })

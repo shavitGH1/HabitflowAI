@@ -24,4 +24,5 @@ interface GoalsRepository {
     suspend fun syncDailyTasks(date: String, force: Boolean = false): Result<HomeResponse>
     suspend fun updateTaskCompletion(userId: String, taskId: String, isCompleted: Boolean, note: String? = null): Boolean
     fun getDatesWithCompletions(userId: String): Flow<List<String>>
+    suspend fun ensureHistoryLoaded(userId: String, date: String)
 }

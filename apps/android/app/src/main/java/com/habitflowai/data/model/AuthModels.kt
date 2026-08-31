@@ -110,6 +110,11 @@ data class HomeGoalTask(
     @SerializedName("habitId") val habitId: String? = null
 )
 
+data class TaskHistoryResponse(
+    @SerializedName("date") val date: String,
+    @SerializedName("tasks") val tasks: List<HomeGoalTask>
+)
+
 data class HomeAchievement(
     @SerializedName("goalId") val goalId: String,
     @SerializedName("goalTitle") val goalTitle: String,

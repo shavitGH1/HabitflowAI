@@ -24,7 +24,7 @@ export interface ToolTurn {
 const EMBEDDING_MODEL = 'gemini-embedding-001';
 // Without this, a single slow/hanging model attempt blocks the whole fallback chain
 // indefinitely - observed live at 70+ seconds for one call with no timeout set.
-const REQUEST_TIMEOUT_MS = 10_000;
+const REQUEST_TIMEOUT_MS = 15_000;
 
 @Injectable()
 export class GeminiClient {

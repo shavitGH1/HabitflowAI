@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.LocalFireDepartment
@@ -75,7 +74,6 @@ fun HabitsRoute(
             onAddHabit = { title, desc, freq, linkToGoal ->
                 viewModel.addHabit(title, desc, freq, linkToGoal)
             },
-            onDeleteHabit = viewModel::deleteHabit,
             onToggleChat = onToggleChat,
             onSetGoal = onSetGoal,
             onClearCongratulation = viewModel::clearCongratulation,
@@ -91,7 +89,6 @@ fun HabitsRoute(
         onHabitClick: (String) -> Unit,
         onGoalClick: (String) -> Unit,
         onAddHabit: (String, String, String, Boolean) -> Unit,
-        onDeleteHabit: (String) -> Unit,
         onToggleChat: () -> Unit,
         onSetGoal: () -> Unit,
         onClearCongratulation: () -> Unit = {},
@@ -298,7 +295,6 @@ fun HabitsRoute(
                             HabitItem(
                                 habit = habit,
                                 personaColor = details.endColor,
-                                onDelete = { onDeleteHabit(habit.id) },
                                 onClick = { onHabitClick(habit.id) }
                             )
                         }
@@ -322,7 +318,6 @@ fun HabitsRoute(
                             HabitItem(
                                 habit = habit,
                                 personaColor = details.endColor,
-                                onDelete = { onDeleteHabit(habit.id) },
                                 onClick = { onHabitClick(habit.id) }
                             )
                         }
@@ -737,7 +732,6 @@ fun EmptyGoalCard(
 fun HabitItem(
     habit: HabitEntity,
     personaColor: Color,
-    onDelete: () -> Unit,
     onClick: () -> Unit
 ) {
     Card(
@@ -750,31 +744,18 @@ fun HabitItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
+            Column {
+                Text(
+                    text = habit.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = personaColor
+                )
+                if (!habit.description.isNullOrEmpty()) {
                     Text(
-                        text = habit.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = personaColor
-                    )
-                    if (!habit.description.isNullOrEmpty()) {
-                        Text(
-                            text = habit.description!!,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Rounded.Delete,
-                        contentDescription = "Delete Habit",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        text = habit.description!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

@@ -71,6 +71,11 @@ interface HabitFlowApi {
         @Query("date") date: String? = null
     ): HomeResponse
 
+    @GET("api/v1/users/me/task-history")
+    suspend fun getTaskHistory(
+        @Query("date") date: String
+    ): com.habitflowai.data.model.TaskHistoryResponse
+
     @PATCH("api/v1/users/me/profile")
     suspend fun updateProfilePicture(@Body request: com.habitflowai.data.model.UpdateProfilePictureRequest): com.habitflowai.data.model.UpdateProfileResponse
 

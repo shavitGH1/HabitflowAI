@@ -35,6 +35,7 @@ export interface UserData {
   confidenceScore?: number;
   fcmToken?: string;
   achievements?: Achievement[];
+  taskHistory?: { date: string; tasks: GoalTask[] }[];
 }
 
 @Injectable()
@@ -158,6 +159,14 @@ export class UserRepository {
     return doc ? this.toUserData(doc) : null;
   }
 
+  async archiveTaskHistory(userId: string, date: string, tasks: GoalTask[]): Promise<void> {
+    await this.userModel.updateOne({ _id: userId }, { $pull: { taskHistory: { date } } });
+    await this.userModel.updateOne(
+      { _id: userId },
+      { $push: { taskHistory: { $each: [{ date, tasks }], $slice: -28 } } },
+    );
+  }
+
   async completeTask(userId: string, taskId: string): Promise<boolean> {
     const inCore = await this.userModel.findOneAndUpdate(
       { _id: userId, 'coreGoals.id': taskId },
@@ -197,6 +206,10 @@ export class UserRepository {
       confidenceScore: doc.confidenceScore,
       fcmToken: doc.fcmToken,
       achievements: (doc.achievements ?? []).map(a => ({ goalId: a.goalId, medal: a.medal, awardedAt: a.awardedAt.toISOString() })),
+      taskHistory: (doc.taskHistory ?? []).map(h => ({
+        date: h.date,
+        tasks: h.tasks.map(g => ({ id: g.id, description: g.description, points: g.points, completed: g.completed, genre: g.genre, habitId: g.habitId })),
+      })),
     };
   }
 }

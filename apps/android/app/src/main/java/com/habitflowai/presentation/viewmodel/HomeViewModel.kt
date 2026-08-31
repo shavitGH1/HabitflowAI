@@ -28,7 +28,8 @@ data class HomeUiState(
     val isDriftBannerDismissed: Boolean = false,
     val selectedDate: LocalDate = LocalDate.now(),
     val dailyTasks: List<DailyTaskEntity> = emptyList(),
-    val datesWithCompletions: List<String> = emptyList()
+    val datesWithCompletions: List<String> = emptyList(),
+    val collapsedSections: Set<String> = emptySet()
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -36,7 +37,8 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     private val goalsRepository: GoalsRepository,
     private val locationRepository: LocationRepository,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
+    private val collapseState: HomeSectionCollapseState
 ) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
@@ -66,7 +68,8 @@ class HomeViewModel @Inject constructor(
         _errorMessage,
         _homeData,
         _datesWithCompletions,
-        _dailyTasks
+        _dailyTasks,
+        collapseState.collapsedKeys
     ) { args: Array<Any?> ->
         val selectedDate = args[0] as LocalDate
         val driftDismissed = args[1] as Boolean
@@ -76,6 +79,7 @@ class HomeViewModel @Inject constructor(
         val home = args[5] as? HomeResponse
         val completions = args[6] as List<String>
         val tasks = args[7] as List<DailyTaskEntity>
+        val collapsedSections = args[8] as Set<String>
 
         HomeUiState(
             homeData = home,
@@ -91,7 +95,8 @@ class HomeViewModel @Inject constructor(
             isDriftBannerDismissed = driftDismissed,
             selectedDate = selectedDate,
             dailyTasks = tasks,
-            datesWithCompletions = completions
+            datesWithCompletions = completions,
+            collapsedSections = collapsedSections
         )
     }.stateIn(
         scope = viewModelScope,
@@ -107,6 +112,15 @@ class HomeViewModel @Inject constructor(
         _selectedDate.value = date
         if (date == LocalDate.now()) {
             syncTasksIfEmpty()
+        } else {
+            loadHistoryIfNeeded(date)
+        }
+    }
+
+    private fun loadHistoryIfNeeded(date: LocalDate) {
+        val userId = authManager.currentUserId.value ?: return
+        viewModelScope.launch {
+            goalsRepository.ensureHistoryLoaded(userId, date.toString())
         }
     }
 
@@ -175,5 +189,9 @@ class HomeViewModel @Inject constructor(
 
     fun dismissDriftBanner() {
         _isDriftBannerDismissed.value = true
+    }
+
+    fun toggleSection(key: String) {
+        collapseState.toggle(key)
     }
 }

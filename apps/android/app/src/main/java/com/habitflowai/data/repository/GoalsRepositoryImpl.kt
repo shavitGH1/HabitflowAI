@@ -134,37 +134,11 @@ class GoalsRepositoryImpl @Inject constructor(
             }
 
             val homeData = getHomeData(force)
-            val userHabits = habitDao.getAllForUser(userId)
-            val habitMap = userHabits.associateBy { it.id }
-            val habitMapByTitle = userHabits.associateBy { it.title.lowercase().trim() }
 
             // Clear old tasks for this date before inserting new ones to avoid stale data/hallucinations
             dailyTaskDao.deleteTasksForDate(userId, date)
 
-            val dailyTasks = (homeData.coreGoals + homeData.dailyVariations).map { task ->
-                val habitById = if (!task.habitId.isNullOrBlank()) habitMap[task.habitId] else null
-                
-                // Flexible matching: Try ID first, then try matching description to a habit title
-                val habit = habitById ?: habitMapByTitle[task.description.lowercase().trim()]
-                
-                val resolvedHabitTitle = when {
-                    habit != null -> habit.title
-                    task.genre == "goal" -> "Main Goal"
-                    else -> "Goal Task" // Final fallback
-                }
-
-                DailyTaskEntity(
-                    id = task.id,
-                    userId = userId,
-                    habitId = habit?.id ?: task.habitId ?: "",
-                    habitTitle = resolvedHabitTitle,
-                    date = date,
-                    description = task.description,
-                    isCompleted = task.completed,
-                    genre = task.genre
-                )
-            }
-            
+            val dailyTasks = mapToDailyTaskEntities(homeData.coreGoals + homeData.dailyVariations, userId, date)
             dailyTaskDao.insertTasks(dailyTasks)
             
             // Prune older than 28 days for this user
@@ -190,5 +164,53 @@ class GoalsRepositoryImpl @Inject constructor(
 
     override fun getDatesWithCompletions(userId: String): Flow<List<String>> {
         return dailyTaskDao.getDatesWithCompletions(userId)
+    }
+
+    override suspend fun ensureHistoryLoaded(userId: String, date: String) {
+        val existing = dailyTaskDao.getTasksForDateSync(userId, date)
+        if (existing.isNotEmpty()) return
+
+        try {
+            val response = api.getTaskHistory(date)
+            if (response.tasks.isEmpty()) return
+            val entities = mapToDailyTaskEntities(response.tasks, userId, date)
+            dailyTaskDao.insertTasks(entities)
+        } catch (e: Exception) {
+            // Nothing recorded for this date, or the request failed - leave it empty either way.
+        }
+    }
+
+    private suspend fun mapToDailyTaskEntities(
+        tasks: List<com.habitflowai.data.model.HomeGoalTask>,
+        userId: String,
+        date: String
+    ): List<DailyTaskEntity> {
+        val userHabits = habitDao.getAllForUser(userId)
+        val habitMap = userHabits.associateBy { it.id }
+        val habitMapByTitle = userHabits.associateBy { it.title.lowercase().trim() }
+
+        return tasks.map { task ->
+            val habitById = if (!task.habitId.isNullOrBlank()) habitMap[task.habitId] else null
+
+            // Flexible matching: Try ID first, then try matching description to a habit title
+            val habit = habitById ?: habitMapByTitle[task.description.lowercase().trim()]
+
+            val resolvedHabitTitle = when {
+                habit != null -> habit.title
+                task.genre == "goal" -> "Main Goal"
+                else -> "Goal Task" // Final fallback
+            }
+
+            DailyTaskEntity(
+                id = task.id,
+                userId = userId,
+                habitId = habit?.id ?: task.habitId ?: "",
+                habitTitle = resolvedHabitTitle,
+                date = date,
+                description = task.description,
+                isCompleted = task.completed,
+                genre = task.genre
+            )
+        }
     }
 }

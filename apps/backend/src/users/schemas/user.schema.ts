@@ -25,6 +25,17 @@ class GoalTask {
 const GoalTaskSchema = SchemaFactory.createForClass(GoalTask);
 
 @Schema({ _id: false })
+class DailyTaskLog {
+  @Prop({ required: true })
+  date: string;
+
+  @Prop({ type: [GoalTaskSchema], default: [] })
+  tasks: GoalTask[];
+}
+
+const DailyTaskLogSchema = SchemaFactory.createForClass(DailyTaskLog);
+
+@Schema({ _id: false })
 class Achievement {
   @Prop({ required: true })
   goalId: string;
@@ -107,6 +118,9 @@ export class User {
 
   @Prop({ type: [AchievementSchema], default: [] })
   achievements: Achievement[];
+
+  @Prop({ type: [DailyTaskLogSchema], default: [] })
+  taskHistory: DailyTaskLog[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

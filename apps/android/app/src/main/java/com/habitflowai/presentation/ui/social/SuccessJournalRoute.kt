@@ -1,6 +1,8 @@
 package com.habitflowai.presentation.ui.social
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import com.habitflowai.data.model.HomeAchievement
+import com.habitflowai.presentation.ui.home.ExpandCollapseIcon
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
 import com.habitflowai.presentation.viewmodel.OnboardingViewModel
@@ -187,21 +190,8 @@ fun SuccessJournalRoute(
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(goalGroups) { group ->
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(
-                                    text = group.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = personaDetails.endColor
-                                )
-                                group.goalAchievement?.let {
-                                    GoalAchievementCard(achievement = it, personaColor = personaDetails.endColor)
-                                }
-                                group.habitAchievements.forEach { habit ->
-                                    HabitAchievementCard(achievement = habit, personaColor = personaDetails.endColor)
-                                }
-                            }
+                        items(goalGroups, key = { it.title }) { group ->
+                            JournalGoalGroup(group = group, personaColor = personaDetails.endColor)
                         }
                     }
                 } else {
@@ -260,6 +250,44 @@ data class JournalGroup(
     val goalAchievement: JournalItem.GoalAchievement?,
     val habitAchievements: List<JournalItem.HabitAchievement>
 )
+
+@Composable
+fun JournalGoalGroup(
+    group: JournalGroup,
+    personaColor: Color
+) {
+    var expanded by remember { mutableStateOf(true) }
+    val entryCount = group.habitAchievements.size + if (group.goalAchievement != null) 1 else 0
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${group.title} ($entryCount)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = personaColor,
+                modifier = Modifier.weight(1f)
+            )
+            ExpandCollapseIcon(expanded, personaColor)
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                group.goalAchievement?.let {
+                    GoalAchievementCard(achievement = it, personaColor = personaColor)
+                }
+                group.habitAchievements.forEach { habit ->
+                    HabitAchievementCard(achievement = habit, personaColor = personaColor)
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun HabitAchievementCard(
