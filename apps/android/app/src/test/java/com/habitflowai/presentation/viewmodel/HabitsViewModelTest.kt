@@ -104,6 +104,23 @@ class HabitsViewModelTest {
     }
 
     @Test
+    fun `switching the logged-in user switches which user's habits are shown`() {
+        val userIdFlow = MutableStateFlow<String?>("user-a")
+        val userAHabits = listOf(testHabits[0])
+        val userBHabits = listOf(testHabits[1])
+        every { authManager.currentUserId } returns userIdFlow
+        every { habitsRepository.getHabits("user-a") } returns flowOf(userAHabits)
+        every { habitsRepository.getHabits("user-b") } returns flowOf(userBHabits)
+
+        val switchedViewModel = HabitsViewModel(habitsRepository, goalsRepository, locationRepository, authManager)
+        assertEquals(userAHabits, switchedViewModel.uiState.value.habits)
+
+        // Simulates a logout/login as a different user - must not stay stuck on user-a's habits.
+        userIdFlow.value = "user-b"
+        assertEquals(userBHabits, switchedViewModel.uiState.value.habits)
+    }
+
+    @Test
     fun `addHabit creates entity and calls repository`() {
         viewModel.addHabit("New Habit", "Description", "WEEKLY")
 

@@ -12,10 +12,13 @@ import com.habitflowai.domain.repository.LocationRepository
 import com.habitflowai.domain.repository.ResolveHabitsOutcome
 import com.habitflowai.di.AuthManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -43,6 +46,7 @@ data class HabitsUiState(
     )
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
     private val habitsRepository: HabitsRepository,
@@ -71,18 +75,21 @@ class HabitsViewModel @Inject constructor(
             habitsRepository.refreshHabits()
         }
         viewModelScope.launch {
-            authManager.currentUserId.collect { id ->
-                id?.let {
-                    habitsRepository.getHabits(it)
-                        .catch { e ->
+            authManager.currentUserId
+                .flatMapLatest { id ->
+                    if (id == null) {
+                        flowOf(emptyList())
+                    } else {
+                        habitsRepository.getHabits(id).catch { e ->
                             _uiState.update { it.copy(errorMessage = e.message, isLoading = false) }
+                            emit(emptyList())
                         }
-                        .collect { entities ->
-                            _uiState.update { it.copy(habits = entities, isLoading = false) }
-                            applySuggestionFilter()
-                        }
+                    }
                 }
-            }
+                .collect { entities ->
+                    _uiState.update { it.copy(habits = entities, isLoading = false) }
+                    applySuggestionFilter()
+                }
         }
     }
 
