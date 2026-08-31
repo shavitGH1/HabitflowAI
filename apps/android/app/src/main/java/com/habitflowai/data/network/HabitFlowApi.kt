@@ -105,6 +105,9 @@ interface HabitFlowApi {
     @PATCH("api/v1/habits/{id}/complete")
     suspend fun completeHabit(@Path("id") id: String, @Body body: Map<String, String?> = emptyMap()): Response<HabitResponse>
 
+    @PATCH("api/v1/habits/{id}/mark-achieved")
+    suspend fun markHabitAchieved(@Path("id") id: String): Response<HabitResponse>
+
     @DELETE("api/v1/habits/{id}")
     suspend fun deleteHabit(@Path("id") id: String): Response<Unit>
 

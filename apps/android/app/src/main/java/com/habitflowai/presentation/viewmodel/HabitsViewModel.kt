@@ -186,6 +186,34 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
+    fun markHabitAchieved(habitId: String, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val habit = _uiState.value.habits.find { it.id == habitId }
+            if (habit == null) {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Habit not found locally") }
+                onResult(false)
+                return@launch
+            }
+
+            val success = habitsRepository.markHabitAchieved(habit)
+            if (success) {
+                _uiState.update { state ->
+                    state.copy(
+                        habits = state.habits.map {
+                            if (it.id == habitId) it.copy(implementedAt = java.time.Instant.now().toString()) else it
+                        },
+                        isLoading = false
+                    )
+                }
+                onResult(true)
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
+                onResult(false)
+            }
+        }
+    }
+
     fun clearCongratulation() {
         _uiState.update { it.copy(congratulationMessage = null) }
     }

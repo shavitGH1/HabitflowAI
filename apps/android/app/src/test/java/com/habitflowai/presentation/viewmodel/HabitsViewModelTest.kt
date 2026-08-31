@@ -77,6 +77,7 @@ class HabitsViewModelTest {
         coEvery { goalsRepository.getActiveGoal() } returns testActiveGoal
         coEvery { habitsRepository.deleteHabit(any()) } just runs
         coEvery { habitsRepository.completeHabit(any()) } returns true
+        coEvery { habitsRepository.markHabitAchieved(any()) } returns true
         coEvery { locationRepository.captureAndSaveLocation(any(), any(), any()) } just runs
 
         viewModel = HabitsViewModel(habitsRepository, goalsRepository, locationRepository, authManager)
@@ -197,5 +198,35 @@ class HabitsViewModelTest {
         assertFalse(callbackResult!!)
         coVerify(exactly = 0) { habitsRepository.completeHabit(any()) }
         coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
+    }
+
+    @Test
+    fun `markHabitAchieved success sets implementedAt`() {
+        var callbackResult: Boolean? = null
+        viewModel.markHabitAchieved("h1") { callbackResult = it }
+
+        assertTrue(callbackResult!!)
+        assertNotNull(viewModel.uiState.value.habits.find { it.id == "h1" }?.implementedAt)
+        coVerify { habitsRepository.markHabitAchieved(match { it.id == "h1" }) }
+    }
+
+    @Test
+    fun `markHabitAchieved failure does not set implementedAt`() {
+        coEvery { habitsRepository.markHabitAchieved(any()) } returns false
+
+        var callbackResult: Boolean? = null
+        viewModel.markHabitAchieved("h1") { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        assertEquals(null, viewModel.uiState.value.habits.find { it.id == "h1" }?.implementedAt)
+    }
+
+    @Test
+    fun `markHabitAchieved with unknown id does nothing`() {
+        var callbackResult: Boolean? = null
+        viewModel.markHabitAchieved("non-existent") { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        coVerify(exactly = 0) { habitsRepository.markHabitAchieved(any()) }
     }
 }

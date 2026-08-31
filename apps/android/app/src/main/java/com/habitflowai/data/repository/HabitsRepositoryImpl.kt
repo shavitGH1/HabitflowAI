@@ -35,7 +35,7 @@ class HabitsRepositoryImpl @Inject constructor(
             for (res in response) {
                 val localByServerId = habitDao.getHabitByServerId(res.id)
                 val localById = habitDao.getHabitById(res.id)
-                
+
                 val entity = HabitEntity(
                     id = localByServerId?.id ?: localById?.id ?: res.id,
                     title = res.title,
@@ -49,10 +49,19 @@ class HabitsRepositoryImpl @Inject constructor(
                     completionHistory = res.completionHistory ?: emptyList(),
                     relevanceWarning = res.relevanceWarning,
                     verificationWarning = res.verificationWarning,
-                    implementedAt = res.implementedAt
+                    implementedAt = res.implementedAt,
+                    streak = res.streak
                 )
                 habitDao.insert(entity)
             }
+
+            // GET /habits only returns non-archived habits - a synced local habit whose
+            // serverId is missing from this response was archived/deleted server-side.
+            // Prune it, or it lingers locally forever and inflates cap counts.
+            val serverIds = response.map { it.id }.toSet()
+            habitDao.getAllForUser(currentUserId)
+                .filter { it.syncStatus == SyncStatus.SYNCED && it.serverId != null && it.serverId !in serverIds }
+                .forEach { habitDao.delete(it) }
         } catch (e: Exception) {
             // Log error
         }
@@ -164,6 +173,27 @@ class HabitsRepositoryImpl @Inject constructor(
             habitDao.update(entity)
             enqueueSync()
             true
+        }
+    }
+
+    override suspend fun markHabitAchieved(habit: HabitEntity): Boolean {
+        return try {
+            val idToMark = habit.serverId ?: habit.id
+            val response = api.markHabitAchieved(idToMark)
+            if (response.isSuccessful) {
+                val body = response.body()
+                habitDao.update(habit.copy(
+                    implementedAt = body?.implementedAt ?: habit.implementedAt,
+                    syncStatus = SyncStatus.SYNCED
+                ))
+                true
+            } else {
+                // Server re-validates streak/already-achieved - don't set implementedAt locally
+                // on rejection, unlike completeHabit()'s optimistic fallback.
+                false
+            }
+        } catch (e: Exception) {
+            false
         }
     }
 

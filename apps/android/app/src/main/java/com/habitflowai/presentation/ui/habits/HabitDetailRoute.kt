@@ -40,6 +40,8 @@ import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.theme.HabitFlowTheme
 import com.habitflowai.presentation.viewmodel.HabitsViewModel
 
+private const val MIN_STREAK_FOR_MANUAL_ACHIEVEMENT = 21
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitDetailRoute(
@@ -74,7 +76,8 @@ fun HabitDetailRoute(
         onAbandon = {
             viewModel.deleteHabit(habitId)
             onBack()
-        }
+        },
+        onMarkAchieved = { viewModel.markHabitAchieved(habitId) }
     )
 }
 
@@ -89,7 +92,8 @@ fun HabitDetailContent(
     errorMessage: String? = null,
     onBack: () -> Unit,
     onComplete: (String?, Boolean) -> Unit = { _, _ -> },
-    onAbandon: () -> Unit = {}
+    onAbandon: () -> Unit = {},
+    onMarkAchieved: () -> Unit = {}
 ) {
     val details: PersonaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -185,13 +189,13 @@ fun HabitDetailContent(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Status",
+                            text = "Today's Status",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (habit.completed) "Completed" else "In Progress",
+                            text = if (habit.completed) "Completed today" else "Not done yet today",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = if (habit.completed) Color(0xFF2E7D32) else Color(0xFFF57F17)
@@ -300,6 +304,49 @@ fun HabitDetailContent(
                                     )
                                 } else {
                                     Text("Mark Complete", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (habit.implementedAt == null && habit.streak >= MIN_STREAK_FOR_MANUAL_ACHIEVEMENT) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "Complete Habit",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "You've kept a ${habit.streak}-day streak — mark this habit as achieved now instead of waiting.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Button(
+                                onClick = onMarkAchieved,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = details.endColor),
+                                enabled = !isLoading
+                            ) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text("Complete Habit", fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

@@ -168,7 +168,8 @@ fun HabitsRoute(
             },
             containerColor = Color.Transparent
         ) { paddingValues ->
-            val habitsToDisplay = remember(uiState.habits) { uiState.habits.filter { !it.completed } }
+            // stays active until achieved, not just "done today"
+            val habitsToDisplay = remember(uiState.habits) { uiState.habits.filter { it.implementedAt == null } }
 
             LazyColumn(
                 modifier = Modifier
@@ -257,7 +258,7 @@ fun HabitsRoute(
                     item {
                         Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                             Text(
-                                text = if (uiState.habits.isEmpty()) "No habits yet. Tap + to start!" else "All habits completed for today! 🎉",
+                                text = if (uiState.habits.isEmpty()) "No habits yet. Tap + to start!" else "All habits achieved! 🎉 Check your Success Journal.",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -272,8 +273,8 @@ fun HabitsRoute(
                         it.goalId == null || (activeGoalId != null && it.goalId != activeGoalId)
                     }
 
-                    val totalGoalHabits = uiState.habits.count { it.goalId != null && (activeGoalId == null || it.goalId == activeGoalId) }
-                    val totalStandaloneHabits = uiState.habits.count { it.goalId == null || (activeGoalId != null && it.goalId != activeGoalId) }
+                    val totalGoalHabits = habitsToDisplay.count { it.goalId != null && (activeGoalId == null || it.goalId == activeGoalId) }
+                    val totalStandaloneHabits = habitsToDisplay.count { it.goalId == null || (activeGoalId != null && it.goalId != activeGoalId) }
 
                     if (goalHabits.isNotEmpty()) {
                         item {
@@ -347,10 +348,11 @@ fun HabitsRoute(
             if (showCreateSheet) {
                 val activeGoalId = uiState.activeGoal?.id
                 val hasGoal = activeGoalId != null || !uiState.onboardingGoal.isNullOrEmpty()
-                val goalHabitCount = uiState.habits.count {
+                val activeHabits = uiState.habits.filter { it.implementedAt == null }
+                val goalHabitCount = activeHabits.count {
                     it.goalId != null && (activeGoalId == null || it.goalId == activeGoalId)
                 }
-                val standaloneHabitCount = uiState.habits.count { it.goalId == null }
+                val standaloneHabitCount = activeHabits.count { it.goalId == null }
 
                 HabitCreateBottomSheet(
                     personaColor = details.endColor,

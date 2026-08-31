@@ -29,7 +29,7 @@ import com.habitflowai.data.local.entity.UserEntity
         MessageEntity::class,
         DailyTaskEntity::class
     ],
-    version = 15
+    version = 16
 )
 @TypeConverters(Converters::class)
 abstract class HabitFlowDatabase : RoomDatabase() {
@@ -41,6 +41,11 @@ abstract class HabitFlowDatabase : RoomDatabase() {
     abstract fun dailyTaskDao(): DailyTaskDao
 
     companion object {
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `habits` ADD COLUMN `streak` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
         // Version collision: fix/habits-page and fix/homescreen_tasks (merged to master) both
         // independently used 12->13 for unrelated changes. Renumbered on merge so both survive:
         // 12->13 stays this branch's habits.implementedAt column; the daily_tasks migrations

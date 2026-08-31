@@ -6,6 +6,7 @@ import { LeaderboardService } from '../leaderboard/leaderboard.service';
 import { CreateHabitDto } from './dto/create-habit.dto';
 import { UpdateHabitDto } from './dto/update-habit.dto';
 import { daysBetween } from './utils/consistency.utils';
+import { MIN_STREAK_FOR_MANUAL_ACHIEVEMENT, canManuallyAchieve } from './utils/streak.utils';
 
 export const MAX_HABITS_PER_GOAL = 3;
 export const MAX_STANDALONE_HABITS = 2;
@@ -130,6 +131,23 @@ export class HabitsService {
     return verification.isPlausible ? completed : { ...completed, verificationWarning: verification.reason };
   }
 
+  async markHabitAchieved(userId: string, id: string): Promise<HabitData> {
+    const habit = await this.habitRepository.findById(id);
+    if (!habit) throw new NotFoundException('Habit not found');
+    if (habit.userId !== userId) throw new ForbiddenException('You do not own this habit');
+
+    if (habit.implementedAt) {
+      throw new BadRequestException('Habit is already marked as achieved');
+    }
+    if (!canManuallyAchieve(habit.streak)) {
+      throw new BadRequestException(
+        `Streak must be at least ${MIN_STREAK_FOR_MANUAL_ACHIEVEMENT} days to mark this habit as achieved`,
+      );
+    }
+
+    return (await this.habitRepository.markAchieved(id))!;
+  }
+
   async getStats(userId: string, id: string): Promise<HabitStats> {
     const habit = await this.habitRepository.findById(id);
     if (!habit) throw new NotFoundException('Habit not found');
@@ -167,7 +185,9 @@ export class HabitsService {
     }
 
     const existingHabits = await this.habitRepository.findByUserId(userId);
-    const linkedCount = existingHabits.filter(h => h.id !== excludeHabitId && h.goalId === goalId).length;
+    const linkedCount = existingHabits.filter(
+      h => h.id !== excludeHabitId && h.goalId === goalId && !h.implementedAt,
+    ).length;
     if (linkedCount >= MAX_HABITS_PER_GOAL) {
       throw new BadRequestException(`A goal can have at most ${MAX_HABITS_PER_GOAL} linked habits`);
     }
@@ -177,7 +197,9 @@ export class HabitsService {
 
   private async assertCanGoStandalone(userId: string, excludeHabitId?: string): Promise<void> {
     const existingHabits = await this.habitRepository.findByUserId(userId);
-    const standaloneCount = existingHabits.filter(h => h.id !== excludeHabitId && !h.goalId).length;
+    const standaloneCount = existingHabits.filter(
+      h => h.id !== excludeHabitId && !h.goalId && !h.implementedAt,
+    ).length;
     if (standaloneCount >= MAX_STANDALONE_HABITS) {
       throw new BadRequestException(`You can have at most ${MAX_STANDALONE_HABITS} standalone habits`);
     }

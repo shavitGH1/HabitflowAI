@@ -88,6 +88,24 @@ export class HabitsController {
     return this.habitsService.completeHabit(req.user.id, id, dto.note, dto.date);
   }
 
+  @Patch(':id/mark-achieved')
+  @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
+  @ApiOperation({
+    summary: 'Manually mark a habit as achieved once its streak has reached the threshold',
+    description:
+      'Independent of the automatic consistency-score-based achievement — re-validates the ' +
+      'streak server-side and is a no-op if the habit is already marked achieved.',
+  })
+  @ApiResponse({ status: 200, description: 'Habit marked as achieved' })
+  @ApiResponse({ status: 400, description: 'Streak below the required threshold, or already achieved' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'Habit belongs to a different user' })
+  @ApiResponse({ status: 404, description: 'Habit not found' })
+  markAchieved(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.habitsService.markHabitAchieved(req.user.id, id);
+  }
+
   @Get(':id/stats')
   @ApiOperation({ summary: 'Completion stats for a habit, derived from its completion history' })
   @ApiResponse({ status: 200, description: 'Aggregate completion stats' })

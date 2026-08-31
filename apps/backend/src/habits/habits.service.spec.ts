@@ -14,6 +14,7 @@ const mockHabitRepository = {
   updateHabit: jest.fn(),
   deleteHabit: jest.fn(),
   completeHabit: jest.fn(),
+  markAchieved: jest.fn(),
 };
 
 const mockGoalRepository = {
@@ -108,6 +109,18 @@ describe('HabitsService', () => {
       expect(mockHabitRepository.createHabit).not.toHaveBeenCalled();
     });
 
+    it('does not count an achieved standalone habit toward the standalone cap', async () => {
+      mockHabitRepository.findByUserId.mockResolvedValue([
+        makeHabit({ id: 'h1' }),
+        makeHabit({ id: 'h2', implementedAt: new Date().toISOString() }),
+      ]);
+      mockHabitRepository.createHabit.mockResolvedValue(makeHabit({ id: 'h3' }));
+
+      await expect(
+        service.createHabit(USER_ID, { title: 'Read', frequency: 'daily' }),
+      ).resolves.toBeDefined();
+    });
+
     it('treats pre-existing habits with no goalId as standalone when counting the cap', async () => {
       mockHabitRepository.findByUserId.mockResolvedValue([
         makeHabit({ id: 'h1', goalId: undefined }),
@@ -159,6 +172,20 @@ describe('HabitsService', () => {
         service.createHabit(USER_ID, { title: 'Long run', frequency: 'weekly', goalId: GOAL_ID }),
       ).rejects.toThrow(BadRequestException);
       expect(mockHabitRepository.createHabit).not.toHaveBeenCalled();
+    });
+
+    it('does not count an achieved habit toward the linked-goal cap', async () => {
+      mockGoalRepository.findById.mockResolvedValue(makeGoal());
+      mockHabitRepository.findByUserId.mockResolvedValue([
+        makeHabit({ id: 'h1', goalId: GOAL_ID }),
+        makeHabit({ id: 'h2', goalId: GOAL_ID }),
+        makeHabit({ id: 'h3', goalId: GOAL_ID, implementedAt: new Date().toISOString() }),
+      ]);
+      mockHabitRepository.createHabit.mockResolvedValue(makeHabit({ id: 'h4', goalId: GOAL_ID }));
+
+      await expect(
+        service.createHabit(USER_ID, { title: 'Long run', frequency: 'weekly', goalId: GOAL_ID }),
+      ).resolves.toBeDefined();
     });
 
     it('allows linking to a freshly created goal, independent of a prior (no longer active) goal\'s habit count', async () => {
@@ -508,6 +535,47 @@ describe('HabitsService', () => {
       const result = await service.getStats(USER_ID, HABIT_ID);
 
       expect(result.implementedAt).toBe(implementedAt);
+    });
+  });
+
+  describe('markHabitAchieved()', () => {
+    it('rejects when the streak is below the 21-day threshold', async () => {
+      mockHabitRepository.findById.mockResolvedValue(makeHabit({ streak: 20 }));
+
+      await expect(service.markHabitAchieved(USER_ID, HABIT_ID)).rejects.toThrow(BadRequestException);
+      expect(mockHabitRepository.markAchieved).not.toHaveBeenCalled();
+    });
+
+    it('succeeds when the streak has reached 21 days', async () => {
+      mockHabitRepository.findById.mockResolvedValue(makeHabit({ streak: 21 }));
+      const expected = makeHabit({ streak: 21, implementedAt: new Date().toISOString() });
+      mockHabitRepository.markAchieved.mockResolvedValue(expected);
+
+      const result = await service.markHabitAchieved(USER_ID, HABIT_ID);
+
+      expect(mockHabitRepository.markAchieved).toHaveBeenCalledWith(HABIT_ID);
+      expect(result).toEqual(expected);
+    });
+
+    it('rejects when the habit is already marked as achieved', async () => {
+      mockHabitRepository.findById.mockResolvedValue(
+        makeHabit({ streak: 30, implementedAt: new Date().toISOString() }),
+      );
+
+      await expect(service.markHabitAchieved(USER_ID, HABIT_ID)).rejects.toThrow(BadRequestException);
+      expect(mockHabitRepository.markAchieved).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the habit does not exist', async () => {
+      mockHabitRepository.findById.mockResolvedValue(null);
+
+      await expect(service.markHabitAchieved(USER_ID, HABIT_ID)).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ForbiddenException when the caller does not own the habit', async () => {
+      mockHabitRepository.findById.mockResolvedValue(makeHabit({ userId: OTHER_USER_ID, streak: 25 }));
+
+      await expect(service.markHabitAchieved(USER_ID, HABIT_ID)).rejects.toThrow(ForbiddenException);
     });
   });
 });
