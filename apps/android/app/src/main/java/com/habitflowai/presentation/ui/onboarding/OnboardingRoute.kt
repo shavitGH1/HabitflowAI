@@ -84,6 +84,7 @@ fun OnboardingRoute(
     onGoalChange: (String) -> Unit,
     onQuizAnswerChange: (Int, String) -> Unit,
     onGoalSubmitted: () -> Unit = {},
+    onMidpointReached: () -> Unit = {},
     onSubmit: () -> Unit,
     onPersonaClassified: () -> Unit,
     onNavigationHandled: () -> Unit
@@ -97,6 +98,7 @@ fun OnboardingRoute(
         onGoalChange = onGoalChange,
         onQuizAnswerChange = onQuizAnswerChange,
         onGoalSubmitted = onGoalSubmitted,
+        onMidpointReached = onMidpointReached,
         onSubmit = onSubmit,
         onPersonaClassified = onPersonaClassified,
         onNavigationHandled = onNavigationHandled
@@ -112,6 +114,7 @@ fun OnboardingScreen(
     onGoalChange: (String) -> Unit,
     onQuizAnswerChange: (Int, String) -> Unit,
     onGoalSubmitted: () -> Unit = {},
+    onMidpointReached: () -> Unit = {},
     onSubmit: () -> Unit,
     onPersonaClassified: () -> Unit,
     onNavigationHandled: () -> Unit
@@ -308,6 +311,7 @@ fun OnboardingScreen(
                                         keyboardController?.hide()
                                         focusManager.clearFocus()
                                         if (step == 0) onGoalSubmitted()
+                                        if (step == 3) onMidpointReached()
                                         if (currentStep < totalSteps - 1) onStepChange(currentStep + 1) else onSubmit()
                                     },
                                     enabled = value.isNotBlank(),

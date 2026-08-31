@@ -9,6 +9,9 @@ import com.habitflowai.data.local.HabitFlowDatabase
 import com.habitflowai.data.local.dao.RegistrationDraftDao
 import com.habitflowai.data.local.entity.RegistrationDraftEntity
 import com.habitflowai.data.model.CheckEmailResponse
+import com.habitflowai.data.model.OnboardingSuggestionItem
+import com.habitflowai.data.model.OnboardingSuggestionsRequest
+import com.habitflowai.data.model.OnboardingSuggestionsResponse
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.AuthRepository
@@ -196,5 +199,49 @@ class OnboardingViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("", state.goal)
         assertTrue(state.proceedToOnboarding)
+    }
+
+    @Test
+    fun `refreshOnboardingSuggestionsMidpoint sends answers so far and merges the result in`() {
+        coEvery { api.getOnboardingSuggestions(any()) } returns OnboardingSuggestionsResponse(
+            suggestions = listOf(
+                OnboardingSuggestionItem(questionId = 4, options = listOf("d1", "d2", "d3")),
+                OnboardingSuggestionItem(questionId = 5, options = listOf("e1", "e2", "e3")),
+                OnboardingSuggestionItem(questionId = 6, options = listOf("f1", "f2", "f3"))
+            )
+        )
+
+        viewModel.onGoalChange("Run a marathon")
+        viewModel.onQuizAnswerChange(0, "I set a goal to run a marathon")
+        viewModel.onQuizAnswerChange(1, "I've been learning Italian every day")
+        viewModel.onQuizAnswerChange(2, "I started cooking dinner every night")
+
+        viewModel.refreshOnboardingSuggestionsMidpoint()
+
+        coVerify {
+            api.getOnboardingSuggestions(match<OnboardingSuggestionsRequest> {
+                it.goal == "Run a marathon" &&
+                    it.answeredSoFar == listOf(
+                        "I set a goal to run a marathon",
+                        "I've been learning Italian every day",
+                        "I started cooking dinner every night",
+                        "", "", ""
+                    )
+            })
+        }
+        assertEquals(listOf("d1", "d2", "d3"), viewModel.uiState.value.suggestionsByQuestionId[4])
+        assertEquals(listOf("e1", "e2", "e3"), viewModel.uiState.value.suggestionsByQuestionId[5])
+        assertEquals(listOf("f1", "f2", "f3"), viewModel.uiState.value.suggestionsByQuestionId[6])
+    }
+
+    @Test
+    fun `refreshOnboardingSuggestionsMidpoint only fires once`() {
+        coEvery { api.getOnboardingSuggestions(any()) } returns OnboardingSuggestionsResponse(suggestions = emptyList())
+
+        viewModel.onGoalChange("Run a marathon")
+        viewModel.refreshOnboardingSuggestionsMidpoint()
+        viewModel.refreshOnboardingSuggestionsMidpoint()
+
+        coVerify(exactly = 1) { api.getOnboardingSuggestions(any()) }
     }
 }

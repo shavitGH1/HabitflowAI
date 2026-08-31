@@ -94,6 +94,29 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
+    /** Re-fetches suggestions for the remaining questions once, informed by answers 1-3, so
+     *  later questions can reflect things the user already told us (e.g. a mentioned habit)
+     *  instead of only ever knowing the stated goal. */
+    fun refreshOnboardingSuggestionsMidpoint() {
+        val currentState = _uiState.value
+        if (currentState.midpointSuggestionsFetched || currentState.goal.isBlank()) return
+        _uiState.value = currentState.copy(midpointSuggestionsFetched = true)
+
+        viewModelScope.launch {
+            try {
+                val response = api.getOnboardingSuggestions(
+                    OnboardingSuggestionsRequest(currentState.goal, answeredSoFar = currentState.quizAnswers)
+                )
+                val refreshed = response.suggestions.associate { it.questionId to it.options }
+                _uiState.value = _uiState.value.copy(
+                    suggestionsByQuestionId = _uiState.value.suggestionsByQuestionId + refreshed
+                )
+            } catch (_: Exception) {
+                // Best-effort only — the goal-only suggestions from the initial fetch still work.
+            }
+        }
+    }
+
     fun onHomeNavigated() {
         _uiState.value = _uiState.value.copy(navigateToHome = false)
     }

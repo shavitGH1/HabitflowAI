@@ -114,8 +114,8 @@ export class AiService {
     return this.taskVerification.check(input);
   }
 
-  getOnboardingSuggestions(goal: string): Promise<OnboardingSuggestionsOutput> {
-    return this.onboardingSuggestions.generate({ goal });
+  getOnboardingSuggestions(goal: string, answeredSoFar?: string[]): Promise<OnboardingSuggestionsOutput> {
+    return this.onboardingSuggestions.generate({ goal, answeredSoFar });
   }
 
   searchArticles(input: RagSearchInput): Promise<RankedArticle[]> {
