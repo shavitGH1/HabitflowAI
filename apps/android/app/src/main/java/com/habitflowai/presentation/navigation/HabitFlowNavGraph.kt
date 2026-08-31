@@ -20,6 +20,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.habitflowai.presentation.ui.home.HomeRoute
+import com.habitflowai.presentation.ui.home.TaskDetailRoute
 import com.habitflowai.presentation.ui.habits.HabitDetailRoute
 import com.habitflowai.presentation.ui.habits.HabitsRoute
 import com.habitflowai.presentation.ui.goals.GoalDetailRoute
@@ -219,7 +220,18 @@ fun HabitFlowNavGraph(
                         onNavigateToReassessment = {
                             navController.navigate(NavRoute.DriftReassessment.route)
                         },
+                        onTaskClick = { taskId ->
+                            navController.navigate(NavRoute.TaskDetail.createRoute(taskId))
+                        },
                         onToggleChat = { chatViewModel.toggleChat() }
+                    )
+                }
+                composable(NavRoute.TaskDetail.route) { backStackEntry ->
+                    val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
+                    TaskDetailRoute(
+                        taskId = taskId,
+                        personaType = uiState.personaResult?.personaType ?: "Regulator",
+                        onBack = { navController.popBackStack() }
                     )
                 }
                 composable(NavRoute.Habits.route) {

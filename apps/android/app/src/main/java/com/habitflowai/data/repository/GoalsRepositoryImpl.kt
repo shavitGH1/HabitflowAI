@@ -162,9 +162,11 @@ class GoalsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateTaskCompletion(userId: String, taskId: String, isCompleted: Boolean): Boolean {
+    override suspend fun updateTaskCompletion(userId: String, taskId: String, isCompleted: Boolean, note: String?): Boolean {
         val today = LocalDate.now().toString()
-        val response = api.completeTask(taskId, mapOf("date" to today))
+        val body = mutableMapOf("date" to today)
+        note?.let { body["note"] = it }
+        val response = api.completeTask(taskId, body)
         if (response.isSuccessful) {
             dailyTaskDao.updateTaskCompletion(userId, taskId, isCompleted)
         }

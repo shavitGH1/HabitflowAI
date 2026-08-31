@@ -3,6 +3,7 @@ import { UserRepository } from '../users/user.repository';
 import { LeaderboardService } from '../leaderboard/leaderboard.service';
 import { HabitRepository } from '../habits/habit.repository';
 import { GoalRepository } from '../goals/goal.repository';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class TasksService {
@@ -11,9 +12,10 @@ export class TasksService {
     private readonly habitRepository: HabitRepository,
     private readonly goalRepository: GoalRepository,
     private readonly leaderboardService: LeaderboardService,
+    private readonly ai: AiService,
   ) {}
 
-  async completeTask(userId: string, taskId: string, date?: string) {
+  async completeTask(userId: string, taskId: string, date?: string, note?: string) {
     const user = await this.userRepository.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
 
@@ -40,6 +42,13 @@ export class TasksService {
       }
     }
 
-    return { message: 'Task marked as complete', success: true };
+    if (!note) {
+      return { message: 'Task marked as complete', success: true };
+    }
+
+    const verification = await this.ai.checkTaskVerification({ habitTitle: task.description, note });
+    return verification.isPlausible
+      ? { message: 'Task marked as complete', success: true }
+      : { message: 'Task marked as complete', success: true, verificationWarning: verification.reason };
   }
 }

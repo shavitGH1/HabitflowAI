@@ -125,57 +125,6 @@ class HabitsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun completeHabit(habit: HabitEntity, note: String?): Boolean {
-        val today = java.time.LocalDate.now().toString()
-        val updatedHistory = (habit.completionHistory + today).distinct()
-        
-        return try {
-            val idToComplete = habit.serverId ?: habit.id
-            val params = mutableMapOf("date" to today)
-            note?.let { params["note"] = it }
-            val response = api.completeHabit(idToComplete, params)
-            
-            if (response.isSuccessful) {
-                val body = response.body()
-                // Update locally immediately with the server-returned data (via refresh)
-                // but also ensure our local state is updated right now.
-                habitDao.update(habit.copy(
-                    completed = true, 
-                    completionHistory = body?.completionHistory ?: updatedHistory,
-                    relevanceWarning = body?.relevanceWarning,
-                    verificationWarning = body?.verificationWarning,
-                    implementedAt = body?.implementedAt ?: habit.implementedAt,
-                    syncStatus = SyncStatus.SYNCED
-                ))
-                try { refreshHabits() } catch (_: Exception) {}
-                true
-            } else {
-                // Fallback for ANY server error (404, 500, etc.)
-                // This ensures the user isn't blocked by server/sync issues.
-                val entity = habit.copy(
-                    completed = true,
-                    completionHistory = updatedHistory,
-                    syncStatus = SyncStatus.PENDING_UPDATE,
-                    updatedAt = System.currentTimeMillis()
-                )
-                habitDao.update(entity)
-                enqueueSync()
-                true
-            }
-        } catch (e: Exception) {
-            // Network error - fallback to local update + background sync
-            val entity = habit.copy(
-                completed = true,
-                completionHistory = updatedHistory,
-                syncStatus = SyncStatus.PENDING_UPDATE,
-                updatedAt = System.currentTimeMillis()
-            )
-            habitDao.update(entity)
-            enqueueSync()
-            true
-        }
-    }
-
     override suspend fun markHabitAchieved(habit: HabitEntity): Boolean {
         return try {
             val idToMark = habit.serverId ?: habit.id

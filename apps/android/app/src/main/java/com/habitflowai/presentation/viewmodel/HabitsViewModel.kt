@@ -146,46 +146,6 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
-    fun completeHabit(habitId: String, note: String? = null, isPublic: Boolean = true, onResult: (Boolean) -> Unit = {}) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            val habit = _uiState.value.habits.find { it.id == habitId }
-            if (habit == null) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Habit not found locally") }
-                onResult(false)
-                return@launch
-            }
-            
-            val success = habitsRepository.completeHabit(habit, note)
-            if (success) {
-                val congrats = listOf(
-                    "Amazing job! One step closer to your goals! 🚀",
-                    "Habit crushed! Keep that momentum going! 💪",
-                    "Fantastic! You're becoming the best version of yourself! ✨",
-                    "Victory! Another day of consistency in the books! 🏆"
-                ).random()
-                
-                _uiState.update { state ->
-                    state.copy(
-                        habits = state.habits.map {
-                            if (it.id == habitId) it.copy(
-                                completed = true,
-                                completionHistory = (it.completionHistory + java.time.LocalDate.now().toString()).distinct()
-                            ) else it
-                        },
-                        isLoading = false,
-                        congratulationMessage = congrats
-                    )
-                }
-                locationRepository.captureAndSaveLocation(habit.id, isPublic, "habit")
-                onResult(true)
-            } else {
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
-                onResult(false)
-            }
-        }
-    }
-
     fun markHabitAchieved(habitId: String, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }

@@ -68,11 +68,6 @@ fun HabitDetailRoute(
         isLoading = uiState.isLoading,
         errorMessage = uiState.errorMessage,
         onBack = onBack,
-        onComplete = { note, isPublic ->
-            viewModel.completeHabit(habitId, note, isPublic) { success ->
-                if (success) onBack()
-            }
-        },
         onAbandon = {
             viewModel.deleteHabit(habitId)
             onBack()
@@ -91,7 +86,6 @@ fun HabitDetailContent(
     isLoading: Boolean = false,
     errorMessage: String? = null,
     onBack: () -> Unit,
-    onComplete: (String?, Boolean) -> Unit = { _, _ -> },
     onAbandon: () -> Unit = {},
     onMarkAchieved: () -> Unit = {}
 ) {
@@ -123,8 +117,6 @@ fun HabitDetailContent(
                 Text("Habit not found")
             }
         } else {
-            var shareOnPublicMap by remember { mutableStateOf(true) }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -184,129 +176,22 @@ fun HabitDetailContent(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (habit.completed) Color(0xFFC8E6C9) else Color(0xFFFFF9C4)
+                        containerColor = if (habit.implementedAt != null) Color(0xFFC8E6C9) else Color(0xFFFFF9C4)
                     )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Today's Status",
+                            text = "Status",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (habit.completed) "Completed today" else "Not done yet today",
+                            text = if (habit.implementedAt != null) "Achieved" else "${habit.streak}-day streak",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
-                            color = if (habit.completed) Color(0xFF2E7D32) else Color(0xFFF57F17)
+                            color = if (habit.implementedAt != null) Color(0xFF2E7D32) else Color(0xFFF57F17)
                         )
-                    }
-                }
-
-                if (!habit.completed) {
-                    var completionNote by remember { mutableStateOf("") }
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                text = "Mark as Complete",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            OutlinedTextField(
-                                value = completionNote,
-                                onValueChange = { completionNote = it },
-                                label = { Text("What did you do? (Note)") },
-                                placeholder = { Text("AI will check for plausibility") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-
-                            Text(
-                                text = "Record this completion and save your location on the map.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Share location on public map",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = "Off = private, only visible to you",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Switch(
-                                    checked = shareOnPublicMap,
-                                    onCheckedChange = { shareOnPublicMap = it },
-                                    colors = SwitchDefaults.colors(
-                                        checkedTrackColor = details.endColor,
-                                        checkedThumbColor = Color.White
-                                    )
-                                )
-                            }
-                            
-                            if (!habit.verificationWarning.isNullOrEmpty()) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Rounded.SmartToy,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Text(
-                                            text = habit.verificationWarning,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onErrorContainer
-                                        )
-                                    }
-                                }
-                            }
-
-                            Button(
-                                onClick = { onComplete(completionNote.trim().ifBlank { null }, shareOnPublicMap) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(52.dp),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = details.endColor),
-                                enabled = !isLoading
-                            ) {
-                                if (isLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        color = Color.White,
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Text("Mark Complete", fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
                     }
                 }
 
@@ -632,7 +517,6 @@ fun HabitDetailAchieverPreview() {
             ),
             stats = mapOf("consistency" to "85%", "total completions" to 12),
             personaType = "Achiever",
-            onComplete = { _, _ -> },
             onBack = {}
         )
     }
@@ -659,7 +543,6 @@ fun HabitDetailGrowerPreview() {
             ),
             stats = mapOf("streak" to 5),
             personaType = "Grower",
-            onComplete = { _, _ -> },
             onBack = {}
         )
     }
@@ -687,7 +570,6 @@ fun HabitDetailRegulatorPreview() {
             ),
             stats = mapOf("on time" to "90%"),
             personaType = "Regulator",
-            onComplete = { _, _ -> },
             onBack = {}
         )
     }

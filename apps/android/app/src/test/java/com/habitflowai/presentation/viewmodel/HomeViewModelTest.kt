@@ -158,6 +158,18 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `completeTask threads the note through to the repository and respects the location toggle`() {
+        coEvery { goalsRepository.syncDailyTasks(any(), any()) } returns Result.success(sampleHomeData)
+        viewModel.fetchHomeData()
+        coEvery { goalsRepository.updateTaskCompletion(any(), "task-1", true, "Ran 5km this morning") } returns true
+
+        viewModel.completeTask("task-1", note = "Ran 5km this morning", isPublic = false)
+
+        coVerify { goalsRepository.updateTaskCompletion(any(), "task-1", true, "Ran 5km this morning") }
+        coVerify { locationRepository.captureAndSaveLocation("task-1", false, "task") }
+    }
+
+    @Test
     fun `completeTask failure does not update state`() {
         coEvery { goalsRepository.syncDailyTasks(any(), any()) } returns Result.success(sampleHomeData)
         viewModel.fetchHomeData()

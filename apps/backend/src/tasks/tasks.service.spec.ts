@@ -4,6 +4,7 @@ import { UserRepository } from '../users/user.repository';
 import { HabitRepository } from '../habits/habit.repository';
 import { GoalRepository } from '../goals/goal.repository';
 import { LeaderboardService } from '../leaderboard/leaderboard.service';
+import { AiService } from '../ai/ai.service';
 import { TasksService } from './tasks.service';
 
 const mockUserRepository = {
@@ -22,6 +23,10 @@ const mockGoalRepository = {
 
 const mockLeaderboardService = {
   recordCompletion: jest.fn(),
+};
+
+const mockAiService = {
+  checkTaskVerification: jest.fn(),
 };
 
 const USER_ID = 'user-123';
@@ -46,12 +51,14 @@ describe('TasksService', () => {
         { provide: HabitRepository, useValue: mockHabitRepository },
         { provide: GoalRepository, useValue: mockGoalRepository },
         { provide: LeaderboardService, useValue: mockLeaderboardService },
+        { provide: AiService, useValue: mockAiService },
       ],
     }).compile();
 
     service = module.get<TasksService>(TasksService);
     jest.clearAllMocks();
     mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+    mockAiService.checkTaskVerification.mockResolvedValue({ isPlausible: true, reason: '' });
   });
 
   describe('completeTask()', () => {
@@ -256,6 +263,47 @@ describe('TasksService', () => {
         await service.completeTask(USER_ID, TASK_ID);
 
         expect(mockHabitRepository.completeHabit).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('optional note verification', () => {
+      it('does not call the AI check when no note is given', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser());
+        mockUserRepository.completeTask.mockResolvedValue(true);
+
+        const result = await service.completeTask(USER_ID, TASK_ID);
+
+        expect(mockAiService.checkTaskVerification).not.toHaveBeenCalled();
+        expect(result).toEqual({ message: 'Task marked as complete', success: true });
+      });
+
+      it('checks a given note against the task description', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser());
+        mockUserRepository.completeTask.mockResolvedValue(true);
+
+        await service.completeTask(USER_ID, TASK_ID, undefined, 'Ran 5km this morning');
+
+        expect(mockAiService.checkTaskVerification).toHaveBeenCalledWith({
+          habitTitle: 'Morning run',
+          note: 'Ran 5km this morning',
+        });
+      });
+
+      it('surfaces a verificationWarning when the note is implausible', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(makeUser());
+        mockUserRepository.completeTask.mockResolvedValue(true);
+        mockAiService.checkTaskVerification.mockResolvedValue({
+          isPlausible: false,
+          reason: "Doesn't sound like a real morning run.",
+        });
+
+        const result = await service.completeTask(USER_ID, TASK_ID, undefined, 'I imagined running');
+
+        expect(result).toEqual({
+          message: 'Task marked as complete',
+          success: true,
+          verificationWarning: "Doesn't sound like a real morning run.",
+        });
       });
     });
   });

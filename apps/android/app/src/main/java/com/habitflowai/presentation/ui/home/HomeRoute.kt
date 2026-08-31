@@ -64,6 +64,7 @@ fun HomeRoute(
     userId: String,
     profilePicture: String? = null,
     onNavigateToReassessment: () -> Unit,
+    onTaskClick: (String) -> Unit,
     onToggleChat: () -> Unit
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
@@ -89,7 +90,7 @@ fun HomeRoute(
         uiState = uiState,
         personaResult = personaResult,
         profilePicture = profilePicture,
-        onCompleteTask = { viewModel.completeTask(it) },
+        onTaskClick = onTaskClick,
         onDateSelected = { viewModel.onDateSelected(it) },
         onDismissDriftBanner = { viewModel.dismissDriftBanner() },
         onStartReassessment = onNavigateToReassessment,
@@ -104,7 +105,7 @@ fun HomeScreen(
     uiState: HomeUiState,
     personaResult: ClassifyPersonaResponse?,
     profilePicture: String? = null,
-    onCompleteTask: (String) -> Unit,
+    onTaskClick: (String) -> Unit,
     onDateSelected: (LocalDate) -> Unit,
     onDismissDriftBanner: () -> Unit,
     onStartReassessment: () -> Unit,
@@ -312,7 +313,7 @@ fun HomeScreen(
                             today = today,
                             onTaskToggled = { taskId, isChecked ->
                                 if (isChecked && !isViewingHistory) {
-                                    onCompleteTask(taskId)
+                                    onTaskClick(taskId)
                                 }
                             },
                             personaType = actualPersonaType
@@ -901,7 +902,7 @@ fun HomeWithChatPreview() {
             HomeScreen(
                 uiState = uiState,
                 personaResult = null,
-                onCompleteTask = {},
+                onTaskClick = {},
                 onDateSelected = {},
                 onDismissDriftBanner = {},
                 onStartReassessment = {},
@@ -947,7 +948,7 @@ fun HomePersonaPreview(personaType: String) {
         HomeScreen(
             uiState = uiState,
             personaResult = samplePersona,
-            onCompleteTask = {},
+            onTaskClick = {},
             onDateSelected = {},
             onDismissDriftBanner = {},
             onStartReassessment = {},

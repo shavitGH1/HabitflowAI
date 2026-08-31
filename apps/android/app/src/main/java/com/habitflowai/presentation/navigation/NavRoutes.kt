@@ -25,4 +25,7 @@ sealed class NavRoute(val route: String) {
     data object GoalDetail : NavRoute("goal_detail/{goalId}") {
         fun createRoute(goalId: String) = "goal_detail/$goalId"
     }
+    data object TaskDetail : NavRoute("task_detail/{taskId}") {
+        fun createRoute(taskId: String) = "task_detail/$taskId"
+    }
 }

@@ -15,6 +15,6 @@ interface GoalsRepository {
 
     fun getTasksForDate(userId: String, date: String): Flow<List<DailyTaskEntity>>
     suspend fun syncDailyTasks(date: String, force: Boolean = false): Result<HomeResponse>
-    suspend fun updateTaskCompletion(userId: String, taskId: String, isCompleted: Boolean): Boolean
+    suspend fun updateTaskCompletion(userId: String, taskId: String, isCompleted: Boolean, note: String? = null): Boolean
     fun getDatesWithCompletions(userId: String): Flow<List<String>>
 }

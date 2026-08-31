@@ -80,7 +80,6 @@ class HabitsViewModelTest {
         coEvery { goalsRepository.transitionGoal(any(), any(), any(), any()) } returns true
         coEvery { habitsRepository.deleteHabit(any()) } just runs
         coEvery { habitsRepository.refreshHabits() } just runs
-        coEvery { habitsRepository.completeHabit(any()) } returns true
         coEvery { habitsRepository.markHabitAchieved(any()) } returns true
         coEvery { locationRepository.captureAndSaveLocation(any(), any(), any()) } just runs
 
@@ -162,46 +161,6 @@ class HabitsViewModelTest {
 
         val errorViewModel = HabitsViewModel(errorRepo, goalsRepository, locationRepository, authManager)
         assertEquals(0, errorViewModel.uiState.value.habits.size)
-    }
-
-    @Test
-    fun `completeHabit success marks habit complete and captures public location`() {
-        var callbackResult: Boolean? = null
-        viewModel.completeHabit("h1", isPublic = true) { callbackResult = it }
-
-        assertTrue(callbackResult!!)
-        assertTrue(viewModel.uiState.value.habits.find { it.id == "h1" }?.completed == true)
-        coVerify { habitsRepository.completeHabit(match { it.id == "h1" }) }
-        coVerify { locationRepository.captureAndSaveLocation("h1", true, "habit") }
-    }
-
-    @Test
-    fun `completeHabit success captures private location when toggled off`() {
-        viewModel.completeHabit("h1", isPublic = false)
-
-        coVerify { locationRepository.captureAndSaveLocation("h1", false, "habit") }
-    }
-
-    @Test
-    fun `completeHabit failure does not mark complete or capture location`() {
-        coEvery { habitsRepository.completeHabit(any()) } returns false
-
-        var callbackResult: Boolean? = null
-        viewModel.completeHabit("h1", isPublic = true) { callbackResult = it }
-
-        assertFalse(callbackResult!!)
-        assertTrue(viewModel.uiState.value.habits.find { it.id == "h1" }?.completed == false)
-        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
-    }
-
-    @Test
-    fun `completeHabit with unknown id does nothing`() {
-        var callbackResult: Boolean? = null
-        viewModel.completeHabit("non-existent", isPublic = true) { callbackResult = it }
-
-        assertFalse(callbackResult!!)
-        coVerify(exactly = 0) { habitsRepository.completeHabit(any()) }
-        coVerify(exactly = 0) { locationRepository.captureAndSaveLocation(any(), any(), any()) }
     }
 
     @Test

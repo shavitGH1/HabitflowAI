@@ -117,13 +117,19 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun completeTask(taskId: String, isCompleted: Boolean = true, onResult: (Boolean) -> Unit = {}) {
+    fun completeTask(
+        taskId: String,
+        isCompleted: Boolean = true,
+        note: String? = null,
+        isPublic: Boolean = true,
+        onResult: (Boolean) -> Unit = {}
+    ) {
         viewModelScope.launch {
             val userId = authManager.currentUserId.value ?: return@launch onResult(false)
             try {
-                val success = goalsRepository.updateTaskCompletion(userId, taskId, isCompleted)
+                val success = goalsRepository.updateTaskCompletion(userId, taskId, isCompleted, note)
                 if (success) {
-                    locationRepository.captureAndSaveLocation(taskId)
+                    locationRepository.captureAndSaveLocation(taskId, isPublic)
                     fetchHomeData()
                     onResult(true)
                 } else {
