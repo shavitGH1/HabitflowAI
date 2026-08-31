@@ -84,6 +84,18 @@ interface HabitFlowApi {
     @GET("api/v1/goals/active")
     suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse?
 
+    @PATCH("api/v1/goals/{id}/achieve")
+    suspend fun achieveGoal(@Path("id") id: String): Response<Unit>
+
+    @PATCH("api/v1/goals/{id}/forfeit")
+    suspend fun forfeitGoal(@Path("id") id: String): Response<Unit>
+
+    @POST("api/v1/goals/{id}/transition")
+    suspend fun transitionGoal(
+        @Path("id") id: String,
+        @Body request: com.habitflowai.data.model.TransitionGoalRequest
+    ): Response<Unit>
+
     @POST("api/v1/personas/classify")
     suspend fun classifyPersona(@Body request: ClassifyPersonaRequest): ClassifyPersonaResponse
 

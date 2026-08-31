@@ -75,7 +75,11 @@ class HabitsViewModelTest {
         every { habitsRepository.getHabits(any()) } returns flowOf(testHabits)
         coEvery { habitsRepository.createHabit(any(), any()) } returns Result.success(testHabits[0])
         coEvery { goalsRepository.getActiveGoal() } returns testActiveGoal
+        coEvery { goalsRepository.achieveGoal(any()) } returns true
+        coEvery { goalsRepository.forfeitGoal(any()) } returns true
+        coEvery { goalsRepository.transitionGoal(any(), any(), any(), any()) } returns true
         coEvery { habitsRepository.deleteHabit(any()) } just runs
+        coEvery { habitsRepository.refreshHabits() } just runs
         coEvery { habitsRepository.completeHabit(any()) } returns true
         coEvery { habitsRepository.markHabitAchieved(any()) } returns true
         coEvery { locationRepository.captureAndSaveLocation(any(), any(), any()) } just runs
@@ -228,5 +232,65 @@ class HabitsViewModelTest {
 
         assertFalse(callbackResult!!)
         coVerify(exactly = 0) { habitsRepository.markHabitAchieved(any()) }
+    }
+
+    @Test
+    fun `achieveGoal success refreshes the active goal`() {
+        var callbackResult: Boolean? = null
+        viewModel.achieveGoal("goal-1") { callbackResult = it }
+
+        assertTrue(callbackResult!!)
+        coVerify { goalsRepository.achieveGoal("goal-1") }
+    }
+
+    @Test
+    fun `achieveGoal failure surfaces an error`() {
+        coEvery { goalsRepository.achieveGoal(any()) } returns false
+
+        var callbackResult: Boolean? = null
+        viewModel.achieveGoal("goal-1") { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        assertNotNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `forfeitGoal success refreshes the active goal`() {
+        var callbackResult: Boolean? = null
+        viewModel.forfeitGoal("goal-1") { callbackResult = it }
+
+        assertTrue(callbackResult!!)
+        coVerify { goalsRepository.forfeitGoal("goal-1") }
+    }
+
+    @Test
+    fun `forfeitGoal failure surfaces an error`() {
+        coEvery { goalsRepository.forfeitGoal(any()) } returns false
+
+        var callbackResult: Boolean? = null
+        viewModel.forfeitGoal("goal-1") { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        assertNotNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `transitionGoal success refreshes the active goal and habits`() {
+        var callbackResult: Boolean? = null
+        viewModel.transitionGoal("goal-1", "achieve", "Run 20km", "2027-06-30") { callbackResult = it }
+
+        assertTrue(callbackResult!!)
+        coVerify { goalsRepository.transitionGoal("goal-1", "achieve", "Run 20km", "2027-06-30") }
+    }
+
+    @Test
+    fun `transitionGoal failure surfaces an error`() {
+        coEvery { goalsRepository.transitionGoal(any(), any(), any(), any()) } returns false
+
+        var callbackResult: Boolean? = null
+        viewModel.transitionGoal("goal-1", "forfeit", "Learn guitar", "2027-06-30") { callbackResult = it }
+
+        assertFalse(callbackResult!!)
+        assertNotNull(viewModel.uiState.value.errorMessage)
     }
 }

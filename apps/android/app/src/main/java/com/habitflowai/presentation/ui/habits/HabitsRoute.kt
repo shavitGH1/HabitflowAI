@@ -57,6 +57,7 @@ fun HabitsRoute(
     viewModel: HabitsViewModel,
     personaType: String,
     onHabitClick: (String) -> Unit,
+    onGoalClick: (String) -> Unit,
     onToggleChat: () -> Unit,
     onSetGoal: () -> Unit
 ) {
@@ -70,6 +71,7 @@ fun HabitsRoute(
             uiState = uiState,
             personaType = personaType,
             onHabitClick = onHabitClick,
+            onGoalClick = onGoalClick,
             onAddHabit = { title, desc, freq, linkToGoal ->
                 viewModel.addHabit(title, desc, freq, linkToGoal)
             },
@@ -87,6 +89,7 @@ fun HabitsRoute(
         uiState: HabitsUiState,
         personaType: String,
         onHabitClick: (String) -> Unit,
+        onGoalClick: (String) -> Unit,
         onAddHabit: (String, String, String, Boolean) -> Unit,
         onDeleteHabit: (String) -> Unit,
         onToggleChat: () -> Unit,
@@ -182,7 +185,8 @@ fun HabitsRoute(
                     if (uiState.activeGoal != null) {
                         GoalHighlightCard(
                             goal = uiState.activeGoal,
-                            personaColor = details.endColor
+                            personaColor = details.endColor,
+                            onClick = { onGoalClick(uiState.activeGoal.id) }
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                     } else if (!uiState.onboardingGoal.isNullOrEmpty()) {
@@ -586,10 +590,11 @@ fun ConsistencyCalendar(
 @Composable
 fun GoalHighlightCard(
     goal: ActiveGoalResponse,
-    personaColor: Color
+    personaColor: Color,
+    onClick: () -> Unit = {}
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = personaColor.copy(alpha = 0.1f),

@@ -206,5 +206,57 @@ describe('TasksService', () => {
         expect(mockHabitRepository.completeHabit).not.toHaveBeenCalled();
       });
     });
+
+    describe('habit-genre tasks: linking to the specific habit', () => {
+      it('completes only the habit the task is tagged with, via habitId', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(
+          makeUser({
+            coreGoals: [],
+            dailyVariations: [
+              { id: TASK_ID, description: 'Stretch 10 min', points: 5, completed: false, genre: 'habit', habitId: 'habit-1' },
+            ],
+          }),
+        );
+        mockUserRepository.completeTask.mockResolvedValue(true);
+
+        await service.completeTask(USER_ID, TASK_ID);
+
+        expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith('habit-1', undefined, undefined);
+        expect(mockHabitRepository.completeHabit).toHaveBeenCalledTimes(1);
+        expect(mockGoalRepository.findActiveByUserId).not.toHaveBeenCalled();
+      });
+
+      it('passes the client-supplied date through', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(
+          makeUser({
+            coreGoals: [],
+            dailyVariations: [
+              { id: TASK_ID, description: 'Stretch 10 min', points: 5, completed: false, genre: 'habit', habitId: 'habit-1' },
+            ],
+          }),
+        );
+        mockUserRepository.completeTask.mockResolvedValue(true);
+
+        await service.completeTask(USER_ID, TASK_ID, '2026-08-27');
+
+        expect(mockHabitRepository.completeHabit).toHaveBeenCalledWith('habit-1', undefined, '2026-08-27');
+      });
+
+      it('does nothing habit-related when a habit-genre task has no habitId', async () => {
+        mockUserRepository.findUserById.mockResolvedValue(
+          makeUser({
+            coreGoals: [],
+            dailyVariations: [
+              { id: TASK_ID, description: 'Stretch 10 min', points: 5, completed: false, genre: 'habit', habitId: undefined },
+            ],
+          }),
+        );
+        mockUserRepository.completeTask.mockResolvedValue(true);
+
+        await service.completeTask(USER_ID, TASK_ID);
+
+        expect(mockHabitRepository.completeHabit).not.toHaveBeenCalled();
+      });
+    });
   });
 });

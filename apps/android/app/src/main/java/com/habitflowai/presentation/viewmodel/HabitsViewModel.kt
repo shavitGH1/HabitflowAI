@@ -266,6 +266,55 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
+    fun achieveGoal(goalId: String, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val success = goalsRepository.achieveGoal(goalId)
+            if (success) {
+                fetchActiveGoal()
+                _uiState.update { it.copy(isLoading = false) }
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
+            }
+            onResult(success)
+        }
+    }
+
+    fun forfeitGoal(goalId: String, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val success = goalsRepository.forfeitGoal(goalId)
+            if (success) {
+                fetchActiveGoal()
+                _uiState.update { it.copy(isLoading = false) }
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
+            }
+            onResult(success)
+        }
+    }
+
+    fun transitionGoal(
+        goalId: String,
+        resolution: String,
+        newGoalTitle: String,
+        newGoalTargetDate: String,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val success = goalsRepository.transitionGoal(goalId, resolution, newGoalTitle, newGoalTargetDate)
+            if (success) {
+                fetchActiveGoal()
+                habitsRepository.refreshHabits()
+                _uiState.update { it.copy(isLoading = false) }
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Server error. Please try again.") }
+            }
+            onResult(success)
+        }
+    }
+
     private fun refreshSuggestionsIfNeeded() {
         val currentGoalId = _uiState.value.activeGoal?.id
         if (currentGoalId == suggestionSourceGoalId) {

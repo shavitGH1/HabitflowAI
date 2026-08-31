@@ -27,6 +27,12 @@ data class HabitResponse(
         get() = completionHistory?.contains(java.time.LocalDate.now().toString()) == true
 }
 
+data class TransitionGoalRequest(
+    @SerializedName("resolution") val resolution: String,
+    @SerializedName("newGoalTitle") val newGoalTitle: String,
+    @SerializedName("newGoalTargetDate") val newGoalTargetDate: String
+)
+
 data class ActiveGoalResponse(
     @SerializedName("id") val id: String,
     @SerializedName("title") val title: String,

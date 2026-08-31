@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.habitflowai.presentation.ui.home.HomeRoute
 import com.habitflowai.presentation.ui.habits.HabitDetailRoute
 import com.habitflowai.presentation.ui.habits.HabitsRoute
+import com.habitflowai.presentation.ui.goals.GoalDetailRoute
 import com.habitflowai.presentation.ui.social.SocialRoute
 import com.habitflowai.presentation.ui.social.SuccessJournalRoute
 import com.habitflowai.presentation.ui.onboarding.OnboardingRoute
@@ -228,6 +229,9 @@ fun HabitFlowNavGraph(
                         onHabitClick = { habitId ->
                             navController.navigate(NavRoute.HabitDetail.createRoute(habitId))
                         },
+                        onGoalClick = { goalId ->
+                            navController.navigate(NavRoute.GoalDetail.createRoute(goalId))
+                        },
                         onToggleChat = { chatViewModel.toggleChat() },
                         onSetGoal = {
                             onboardingViewModel.startRetake()
@@ -239,6 +243,15 @@ fun HabitFlowNavGraph(
                     val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
                     HabitDetailRoute(
                         habitId = habitId,
+                        viewModel = habitsViewModel,
+                        personaType = uiState.personaResult?.personaType ?: "Regulator",
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                composable(NavRoute.GoalDetail.route) { backStackEntry ->
+                    val goalId = backStackEntry.arguments?.getString("goalId") ?: ""
+                    GoalDetailRoute(
+                        goalId = goalId,
                         viewModel = habitsViewModel,
                         personaType = uiState.personaResult?.personaType ?: "Regulator",
                         onBack = { navController.popBackStack() }

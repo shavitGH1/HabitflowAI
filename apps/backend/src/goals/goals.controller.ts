@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nest
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateGoalDto } from './dto/create-goal.dto';
+import { TransitionGoalDto } from './dto/transition-goal.dto';
 import { GoalsService } from './goals.service';
 
 @ApiTags('goals')
@@ -48,5 +49,26 @@ export class GoalsController {
   @ApiResponse({ status: 404, description: 'Goal not found' })
   achieve(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.goalsService.achieveGoal(req.user.id, id);
+  }
+
+  @Post(':id/transition')
+  @ApiOperation({
+    summary: 'Resolve a goal (achieve/forfeit) and start a new one in one step',
+    description:
+      'Resolves the given goal, creates a new goal, and an AI relevance check decides whether ' +
+      "the old goal's still-active habits carry over to the new goal (relinked) or are archived " +
+      'alongside it. Already-achieved habits under the old goal are left untouched either way.',
+  })
+  @ApiResponse({ status: 201, description: 'Goal transitioned; returns the old goal, new goal, and which habits moved' })
+  @ApiResponse({ status: 400, description: 'Goal is not active, or invalid input' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'Goal belongs to a different user' })
+  @ApiResponse({ status: 404, description: 'Goal not found' })
+  transition(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() dto: TransitionGoalDto,
+  ) {
+    return this.goalsService.transitionGoal(req.user.id, id, dto);
   }
 }

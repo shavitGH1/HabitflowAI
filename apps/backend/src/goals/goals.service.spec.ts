@@ -2,6 +2,8 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { Test, TestingModule } from '@nestjs/testing';
 import { GoalData, GoalRepository } from './goal.repository';
 import { UserRepository } from '../users/user.repository';
+import { HabitRepository } from '../habits/habit.repository';
+import { AiService } from '../ai/ai.service';
 import { GoalsService, GOAL_ACHIEVEMENT_MEDAL } from './goals.service';
 
 const mockGoalRepository = {
@@ -15,6 +17,16 @@ const mockGoalRepository = {
 const mockUserRepository = {
   addAchievement: jest.fn(),
   findUserById: jest.fn(),
+};
+
+const mockHabitRepository = {
+  findByUserId: jest.fn(),
+  updateHabit: jest.fn(),
+  deleteHabit: jest.fn(),
+};
+
+const mockAiService = {
+  checkGoalRelevance: jest.fn(),
 };
 
 const USER_ID = 'user-123';
@@ -40,6 +52,8 @@ describe('GoalsService', () => {
         GoalsService,
         { provide: GoalRepository, useValue: mockGoalRepository },
         { provide: UserRepository, useValue: mockUserRepository },
+        { provide: HabitRepository, useValue: mockHabitRepository },
+        { provide: AiService, useValue: mockAiService },
       ],
     }).compile();
 
@@ -212,6 +226,75 @@ describe('GoalsService', () => {
       mockGoalRepository.findById.mockResolvedValue(makeGoal({ status: 'achieved' }));
 
       await expect(service.achieveGoal(USER_ID, GOAL_ID)).rejects.toThrow(BadRequestException);
+      expect(mockUserRepository.addAchievement).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('transitionGoal()', () => {
+    const NEW_GOAL_ID = 'goal-new';
+    const dto = { resolution: 'achieve' as const, newGoalTitle: 'Run 20km', newGoalTargetDate: '2027-06-30' };
+
+    const makeHabit = (overrides: Record<string, unknown> = {}) => ({
+      id: 'habit-1',
+      userId: USER_ID,
+      goalId: GOAL_ID,
+      title: 'Evening jog',
+      implementedAt: undefined,
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      mockGoalRepository.findById.mockResolvedValue(makeGoal());
+      mockGoalRepository.updateStatus.mockResolvedValue(makeGoal({ status: 'achieved' }));
+      mockGoalRepository.findActiveByUserId.mockResolvedValue(null);
+      mockGoalRepository.createGoal.mockResolvedValue(makeGoal({ id: NEW_GOAL_ID, title: dto.newGoalTitle }));
+      mockUserRepository.addAchievement.mockResolvedValue(undefined);
+      mockHabitRepository.findByUserId.mockResolvedValue([]);
+    });
+
+    it('relinks active goal-linked habits to the new goal when related', async () => {
+      mockAiService.checkGoalRelevance.mockResolvedValue({ isRelated: true, reason: 'Same pursuit.' });
+      mockHabitRepository.findByUserId.mockResolvedValue([makeHabit()]);
+
+      const result = await service.transitionGoal(USER_ID, GOAL_ID, dto);
+
+      expect(mockHabitRepository.updateHabit).toHaveBeenCalledWith('habit-1', { goalId: NEW_GOAL_ID });
+      expect(mockHabitRepository.deleteHabit).not.toHaveBeenCalled();
+      expect(result.relinkedHabitIds).toEqual(['habit-1']);
+      expect(result.archivedHabitIds).toEqual([]);
+    });
+
+    it('archives active goal-linked habits instead when unrelated', async () => {
+      mockAiService.checkGoalRelevance.mockResolvedValue({ isRelated: false, reason: 'Different pursuit.' });
+      mockHabitRepository.findByUserId.mockResolvedValue([makeHabit()]);
+
+      const result = await service.transitionGoal(USER_ID, GOAL_ID, dto);
+
+      expect(mockHabitRepository.deleteHabit).toHaveBeenCalledWith('habit-1');
+      expect(mockHabitRepository.updateHabit).not.toHaveBeenCalled();
+      expect(result.archivedHabitIds).toEqual(['habit-1']);
+    });
+
+    it('leaves already-achieved habits under the old goal untouched either way', async () => {
+      mockAiService.checkGoalRelevance.mockResolvedValue({ isRelated: true, reason: '' });
+      mockHabitRepository.findByUserId.mockResolvedValue([
+        makeHabit({ implementedAt: new Date().toISOString() }),
+      ]);
+
+      const result = await service.transitionGoal(USER_ID, GOAL_ID, dto);
+
+      expect(mockHabitRepository.updateHabit).not.toHaveBeenCalled();
+      expect(mockHabitRepository.deleteHabit).not.toHaveBeenCalled();
+      expect(result.relinkedHabitIds).toEqual([]);
+      expect(result.archivedHabitIds).toEqual([]);
+    });
+
+    it('forfeits the old goal instead of achieving it when resolution is forfeit', async () => {
+      mockAiService.checkGoalRelevance.mockResolvedValue({ isRelated: true, reason: '' });
+
+      await service.transitionGoal(USER_ID, GOAL_ID, { ...dto, resolution: 'forfeit' });
+
+      expect(mockGoalRepository.updateStatus).toHaveBeenCalledWith(GOAL_ID, 'forfeited');
       expect(mockUserRepository.addAchievement).not.toHaveBeenCalled();
     });
   });

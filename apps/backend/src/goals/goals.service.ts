@@ -1,15 +1,27 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { GoalData, GoalRepository } from './goal.repository';
 import { UserRepository } from '../users/user.repository';
+import { HabitRepository } from '../habits/habit.repository';
+import { AiService } from '../ai/ai.service';
 import { CreateGoalDto } from './dto/create-goal.dto';
+import { TransitionGoalDto } from './dto/transition-goal.dto';
 
 export const GOAL_ACHIEVEMENT_MEDAL = 'goal-achiever';
+
+export interface TransitionGoalResult {
+  oldGoal: GoalData;
+  newGoal: GoalData;
+  relinkedHabitIds: string[];
+  archivedHabitIds: string[];
+}
 
 @Injectable()
 export class GoalsService {
   constructor(
     private readonly goalRepository: GoalRepository,
     private readonly userRepository: UserRepository,
+    private readonly habitRepository: HabitRepository,
+    private readonly ai: AiService,
   ) {}
 
   async createGoal(userId: string, dto: CreateGoalDto): Promise<GoalData> {
@@ -81,5 +93,41 @@ export class GoalsService {
     });
 
     return achieved;
+  }
+
+  async transitionGoal(userId: string, id: string, dto: TransitionGoalDto): Promise<TransitionGoalResult> {
+    const oldGoal = dto.resolution === 'achieve'
+      ? await this.achieveGoal(userId, id)
+      : await this.forfeitGoal(userId, id);
+
+    const newGoal = await this.createGoal(userId, {
+      title: dto.newGoalTitle,
+      targetDate: dto.newGoalTargetDate,
+    });
+
+    const { isRelated } = await this.ai.checkGoalRelevance({
+      oldGoalTitle: oldGoal.title,
+      newGoalTitle: newGoal.title,
+    });
+
+    // Only active (not-yet-achieved) habits under the old goal move - already-achieved
+    // ones stay put, still visible under the old goal's history either way.
+    const habits = await this.habitRepository.findByUserId(userId);
+    const carryoverHabits = habits.filter(h => h.goalId === id && !h.implementedAt);
+
+    const relinkedHabitIds: string[] = [];
+    const archivedHabitIds: string[] = [];
+
+    for (const habit of carryoverHabits) {
+      if (isRelated) {
+        await this.habitRepository.updateHabit(habit.id, { goalId: newGoal.id });
+        relinkedHabitIds.push(habit.id);
+      } else {
+        await this.habitRepository.deleteHabit(habit.id);
+        archivedHabitIds.push(habit.id);
+      }
+    }
+
+    return { oldGoal, newGoal, relinkedHabitIds, archivedHabitIds };
   }
 }

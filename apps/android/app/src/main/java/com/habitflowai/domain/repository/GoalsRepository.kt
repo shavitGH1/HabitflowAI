@@ -9,7 +9,10 @@ interface GoalsRepository {
     suspend fun getHomeData(force: Boolean = false): HomeResponse
     suspend fun completeTask(taskId: String): Boolean
     suspend fun getActiveGoal(): com.habitflowai.data.model.ActiveGoalResponse?
-    
+    suspend fun achieveGoal(goalId: String): Boolean
+    suspend fun forfeitGoal(goalId: String): Boolean
+    suspend fun transitionGoal(goalId: String, resolution: String, newGoalTitle: String, newGoalTargetDate: String): Boolean
+
     fun getTasksForDate(userId: String, date: String): Flow<List<DailyTaskEntity>>
     suspend fun syncDailyTasks(date: String, force: Boolean = false): Result<HomeResponse>
     suspend fun updateTaskCompletion(userId: String, taskId: String, isCompleted: Boolean): Boolean

@@ -59,6 +59,36 @@ class GoalsRepositoryImpl @Inject constructor(
         return api.getActiveGoal()
     }
 
+    override suspend fun achieveGoal(goalId: String): Boolean {
+        return try {
+            api.achieveGoal(goalId).isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun forfeitGoal(goalId: String): Boolean {
+        return try {
+            api.forfeitGoal(goalId).isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun transitionGoal(
+        goalId: String,
+        resolution: String,
+        newGoalTitle: String,
+        newGoalTargetDate: String
+    ): Boolean {
+        return try {
+            val request = com.habitflowai.data.model.TransitionGoalRequest(resolution, newGoalTitle, newGoalTargetDate)
+            api.transitionGoal(goalId, request).isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     override fun getTasksForDate(userId: String, date: String): Flow<List<DailyTaskEntity>> {
         return dailyTaskDao.getTasksForDate(userId, date)
     }

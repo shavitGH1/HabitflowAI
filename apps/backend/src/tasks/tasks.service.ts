@@ -35,6 +35,8 @@ export class TasksService {
           const goalHabits = habits.filter((h) => h.goalId === activeGoal.id);
           await Promise.all(goalHabits.map((h) => this.habitRepository.completeHabit(h.id, undefined, date)));
         }
+      } else if (task.genre === 'habit' && task.habitId) {
+        await this.habitRepository.completeHabit(task.habitId, undefined, date);
       }
     }
 
