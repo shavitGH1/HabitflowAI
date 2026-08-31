@@ -6,6 +6,9 @@ import com.habitflowai.data.model.LoginResponse
 import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.model.RegisterResponse
 import com.habitflowai.data.local.HabitFlowDatabase
+import com.habitflowai.data.local.dao.RegistrationDraftDao
+import com.habitflowai.data.local.entity.RegistrationDraftEntity
+import com.habitflowai.data.model.CheckEmailResponse
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.AuthRepository
@@ -40,6 +43,7 @@ class OnboardingViewModelTest {
     private val api: HabitFlowApi = mockk()
     private val authManager: AuthManager = mockk()
     private val database: HabitFlowDatabase = mockk()
+    private val registrationDraftDao: RegistrationDraftDao = mockk()
 
     private lateinit var viewModel: OnboardingViewModel
 
@@ -49,13 +53,17 @@ class OnboardingViewModelTest {
         every { authManager.updateTokens(any(), any()) } just runs
         every { authManager.clearTokens() } just runs
         every { database.clearAllTables() } just runs
+        coEvery { registrationDraftDao.save(any()) } just runs
+        coEvery { registrationDraftDao.delete(any()) } just runs
+        coEvery { registrationDraftDao.getByEmail(any()) } returns null
         viewModel = OnboardingViewModel(
             repository = personaRepository,
             authRepository = authRepository,
             userRepository = userRepository,
             api = api,
             authManager = authManager,
-            database = database
+            database = database,
+            registrationDraftDao = registrationDraftDao
         )
     }
 
@@ -113,6 +121,13 @@ class OnboardingViewModelTest {
         coVerify { authRepository.register(any<RegisterRequest>()) }
         coVerify { api.login(LoginRequest("test@example.com", "password123")) }
         verify { authManager.updateTokens("access-token-123", "refresh-token-456") }
+
+        coVerify {
+            registrationDraftDao.save(match {
+                it.email == "test@example.com" && it.goal == "Run a marathon"
+            })
+        }
+        coVerify { registrationDraftDao.delete("test@example.com") }
     }
 
     @Test
@@ -128,5 +143,58 @@ class OnboardingViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("Please answer at least 4 questions before continuing.", state.errorMessage)
         assertEquals(false, state.navigateToHome)
+    }
+
+    @Test
+    fun `registerUser saves a draft before submitting and keeps it when registration fails`() {
+        coEvery { authRepository.register(any<RegisterRequest>()) } throws RuntimeException("AI Service is currently overloaded.")
+
+        viewModel.onEmailChange("test@example.com")
+        viewModel.onPasswordChange("password123")
+        viewModel.onGoalChange("Run a marathon")
+        viewModel.onQuizAnswerChange(0, "I want to push my limits")
+        viewModel.onQuizAnswerChange(1, "Daily streaks kept me going")
+        viewModel.onQuizAnswerChange(2, "My friend and I worked out together")
+        viewModel.onQuizAnswerChange(3, "I change my playlist to stay fresh")
+
+        viewModel.registerUser()
+
+        coVerify { registrationDraftDao.save(match { it.email == "test@example.com" }) }
+        coVerify(exactly = 0) { registrationDraftDao.delete(any()) }
+        assertNotNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `checkEmail restores a saved draft's goal and quiz answers when one exists for that email`() {
+        val savedDraft = RegistrationDraftEntity(
+            email = "test@example.com",
+            firstName = "",
+            lastName = "",
+            goal = "Run a marathon",
+            quizAnswers = listOf("a", "b", "c", "d", "e", "f")
+        )
+        coEvery { registrationDraftDao.getByEmail("test@example.com") } returns savedDraft
+        coEvery { api.checkEmail(any()) } returns CheckEmailResponse(available = true)
+
+        viewModel.onEmailChange("test@example.com")
+        viewModel.checkEmail()
+
+        val state = viewModel.uiState.value
+        assertEquals("Run a marathon", state.goal)
+        assertEquals(listOf("a", "b", "c", "d", "e", "f"), state.quizAnswers)
+        assertTrue(state.proceedToOnboarding)
+    }
+
+    @Test
+    fun `checkEmail leaves state untouched when no draft exists for that email`() {
+        coEvery { registrationDraftDao.getByEmail("fresh@example.com") } returns null
+        coEvery { api.checkEmail(any()) } returns CheckEmailResponse(available = true)
+
+        viewModel.onEmailChange("fresh@example.com")
+        viewModel.checkEmail()
+
+        val state = viewModel.uiState.value
+        assertEquals("", state.goal)
+        assertTrue(state.proceedToOnboarding)
     }
 }

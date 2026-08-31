@@ -10,6 +10,7 @@ import com.habitflowai.data.local.dao.DailyTaskDao
 import com.habitflowai.data.local.dao.DriftCheckDao
 import com.habitflowai.data.local.dao.HabitDao
 import com.habitflowai.data.local.dao.LocationDao
+import com.habitflowai.data.local.dao.RegistrationDraftDao
 import com.habitflowai.data.local.dao.UserDao
 import com.habitflowai.data.local.entity.ChatEntity
 import com.habitflowai.data.local.entity.DailyTaskEntity
@@ -17,19 +18,21 @@ import com.habitflowai.data.local.entity.DriftCheckEntity
 import com.habitflowai.data.local.entity.HabitEntity
 import com.habitflowai.data.local.entity.LocationEntity
 import com.habitflowai.data.local.entity.MessageEntity
+import com.habitflowai.data.local.entity.RegistrationDraftEntity
 import com.habitflowai.data.local.entity.UserEntity
 
 @Database(
     entities = [
-        UserEntity::class, 
-        HabitEntity::class, 
-        LocationEntity::class, 
+        UserEntity::class,
+        HabitEntity::class,
+        LocationEntity::class,
         DriftCheckEntity::class,
         ChatEntity::class,
         MessageEntity::class,
-        DailyTaskEntity::class
+        DailyTaskEntity::class,
+        RegistrationDraftEntity::class
     ],
-    version = 16
+    version = 17
 )
 @TypeConverters(Converters::class)
 abstract class HabitFlowDatabase : RoomDatabase() {
@@ -39,8 +42,26 @@ abstract class HabitFlowDatabase : RoomDatabase() {
     abstract fun driftCheckDao(): DriftCheckDao
     abstract fun chatDao(): ChatDao
     abstract fun dailyTaskDao(): DailyTaskDao
+    abstract fun registrationDraftDao(): RegistrationDraftDao
 
     companion object {
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `registration_drafts` (
+                        `email` TEXT NOT NULL,
+                        `firstName` TEXT NOT NULL,
+                        `lastName` TEXT NOT NULL,
+                        `goal` TEXT NOT NULL,
+                        `quizAnswers` TEXT NOT NULL,
+                        `savedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`email`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
         val MIGRATION_15_16 = object : Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `habits` ADD COLUMN `streak` INTEGER NOT NULL DEFAULT 0")

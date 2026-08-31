@@ -24,7 +24,9 @@ export interface ToolTurn {
 const EMBEDDING_MODEL = 'gemini-embedding-001';
 // Without this, a single slow/hanging model attempt blocks the whole fallback chain
 // indefinitely - observed live at 70+ seconds for one call with no timeout set.
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 30_000;
+// How long the primary model runs alone before a backup model also joins the race.
+const HEDGE_DELAY_MS = 8_000;
 
 @Injectable()
 export class GeminiClient {
@@ -137,21 +139,65 @@ export class GeminiClient {
   }
 
   private async withModelFallback<T>(run: (model: string) => Promise<T>): Promise<T> {
-    for (let i = 0; i < this.models.length; i++) {
-      const model = this.models[i];
-      try {
-        return await run(model);
-      } catch (error) {
+    const attempt = (model: string): Promise<T> =>
+      run(model).catch((error) => {
         const msg = error instanceof Error ? error.message : String(error);
         this.logger.warn(`Model ${model} failed: ${msg}`);
-        if (i === this.models.length - 1) {
-          throw new InternalServerErrorException(
-            'AI Service is currently overloaded. Please try again in a few seconds.',
-          );
-        }
+        throw error;
+      });
+
+    const [primary, backup, ...rest] = this.models;
+
+    if (primary) {
+      try {
+        return backup ? await this.hedge(() => attempt(primary), () => attempt(backup)) : await attempt(primary);
+      } catch {
+        // both hedge candidates failed (or there was only one model) - fall through to the tail
       }
     }
-    throw new InternalServerErrorException('AI Service unavailable.');
+
+    for (const model of rest) {
+      try {
+        return await attempt(model);
+      } catch {
+        // already logged inside attempt(); try the next one
+      }
+    }
+
+    throw new InternalServerErrorException(
+      'AI Service is currently overloaded. Please try again in a few seconds.',
+    );
+  }
+
+  // Races `primary` against `backup` - `backup` only actually starts once, either after
+  // HEDGE_DELAY_MS with `primary` still pending, or immediately if `primary` rejects first,
+  // whichever happens sooner. First success wins.
+  private hedge<T>(primary: () => Promise<T>, backup: () => Promise<T>): Promise<T> {
+    const primaryPromise = primary();
+
+    let backupPromise: Promise<T> | null = null;
+    const startBackup = (): Promise<T> => {
+      if (!backupPromise) backupPromise = backup();
+      return backupPromise;
+    };
+
+    const backupTrigger = new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => startBackup().then(resolve, reject), HEDGE_DELAY_MS);
+      // A successful primary just needs the timer cancelled - Promise.any already has its
+      // winner. A failed primary needs the backup started right away instead of waiting
+      // out the rest of the delay.
+      primaryPromise.then(
+        () => clearTimeout(timer),
+        () => {
+          clearTimeout(timer);
+          startBackup().then(resolve, reject);
+        },
+      );
+    });
+
+    return Promise.any([primaryPromise, backupTrigger]).catch((aggregate: AggregateError) => {
+      throw aggregate.errors[aggregate.errors.length - 1];
+    });
   }
 
   private parseJson(raw: string): unknown {

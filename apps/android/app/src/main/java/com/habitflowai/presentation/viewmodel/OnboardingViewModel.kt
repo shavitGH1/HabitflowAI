@@ -15,6 +15,8 @@ import com.habitflowai.data.model.ReclassifyRequest
 import com.habitflowai.data.model.RegisterRequest
 import com.habitflowai.data.network.HabitFlowApi
 import com.habitflowai.data.local.HabitFlowDatabase
+import com.habitflowai.data.local.dao.RegistrationDraftDao
+import com.habitflowai.data.local.entity.RegistrationDraftEntity
 import com.habitflowai.di.AuthManager
 import com.habitflowai.domain.repository.AuthRepository
 import com.habitflowai.domain.repository.PersonaRepository
@@ -41,7 +43,8 @@ class OnboardingViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val api: HabitFlowApi,
     private val authManager: AuthManager,
-    private val database: HabitFlowDatabase
+    private val database: HabitFlowDatabase,
+    private val registrationDraftDao: RegistrationDraftDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
@@ -118,7 +121,16 @@ class OnboardingViewModel @Inject constructor(
             try {
                 val result = api.checkEmail(CheckEmailRequest(email))
                 if (result.available) {
-                    _uiState.value = _uiState.value.copy(isLoading = false, proceedToOnboarding = true)
+                    // A previous attempt with this email may have gotten this far and then
+                    // failed after submitting (e.g. an AI timeout) - restore what they'd
+                    // already filled in rather than making them redo the whole quiz.
+                    val draft = registrationDraftDao.getByEmail(email)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        proceedToOnboarding = true,
+                        goal = draft?.goal ?: _uiState.value.goal,
+                        quizAnswers = draft?.quizAnswers ?: _uiState.value.quizAnswers
+                    )
                 } else {
                     _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "This email is already in use. Try logging in instead.")
                 }
@@ -359,6 +371,20 @@ class OnboardingViewModel @Inject constructor(
                     FirebaseMessaging.getInstance().token.await()
                 } catch (_: Exception) { null }
 
+                // Saved before submitting, not after failing - the AI pipeline this triggers
+                // can take a while (see GeminiClient's hedged model race) and nothing is saved
+                // server-side until it fully succeeds, so this is the last safe point to
+                // capture the user's progress before a timeout could lose it.
+                registrationDraftDao.save(
+                    RegistrationDraftEntity(
+                        email = currentState.email,
+                        firstName = currentState.firstName,
+                        lastName = currentState.lastName,
+                        goal = currentState.goal,
+                        quizAnswers = currentState.quizAnswers
+                    )
+                )
+
                 val request = RegisterRequest(
                     email = currentState.email,
                     password = currentState.password,
@@ -371,6 +397,7 @@ class OnboardingViewModel @Inject constructor(
                 val response = authRepository.register(request)
 
                 if (response.success) {
+                    registrationDraftDao.delete(currentState.email)
                     val loginRes = api.login(LoginRequest(currentState.email, currentState.password))
                     authManager.updateTokens(loginRes.accessToken, loginRes.refreshToken)
 

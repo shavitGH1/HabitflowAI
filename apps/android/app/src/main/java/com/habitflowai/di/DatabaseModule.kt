@@ -9,6 +9,7 @@ import com.habitflowai.data.local.dao.DailyTaskDao
 import com.habitflowai.data.local.dao.DriftCheckDao
 import com.habitflowai.data.local.dao.HabitDao
 import com.habitflowai.data.local.dao.LocationDao
+import com.habitflowai.data.local.dao.RegistrationDraftDao
 import com.habitflowai.data.local.dao.UserDao
 import dagger.Module
 import dagger.Provides
@@ -43,7 +44,8 @@ object DatabaseModule {
             HabitFlowDatabase.MIGRATION_12_13,
             HabitFlowDatabase.MIGRATION_13_14,
             HabitFlowDatabase.MIGRATION_14_15,
-            HabitFlowDatabase.MIGRATION_15_16
+            HabitFlowDatabase.MIGRATION_15_16,
+            HabitFlowDatabase.MIGRATION_16_17
         )
         .fallbackToDestructiveMigration()
         .build()
@@ -66,6 +68,9 @@ object DatabaseModule {
 
     @Provides
     fun provideDailyTaskDao(database: HabitFlowDatabase): DailyTaskDao = database.dailyTaskDao()
+
+    @Provides
+    fun provideRegistrationDraftDao(database: HabitFlowDatabase): RegistrationDraftDao = database.registrationDraftDao()
 
     @Provides
     @Singleton
