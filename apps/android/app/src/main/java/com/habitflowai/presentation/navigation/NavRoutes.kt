@@ -16,6 +16,7 @@ sealed class NavRoute(val route: String) {
     data object DriftCheck : NavRoute("drift_check")
     data object DriftReassessment : NavRoute("drift_reassessment")
     data object SuccessJournal : NavRoute("success_journal")
+    data object Following : NavRoute("following")
     data object Login : NavRoute("login")
     data object RegisterCredentials : NavRoute("register_credentials")
     data object NameEntry : NavRoute("name_entry")

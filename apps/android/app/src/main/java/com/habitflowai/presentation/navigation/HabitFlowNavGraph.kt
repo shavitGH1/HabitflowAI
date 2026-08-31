@@ -26,6 +26,7 @@ import com.habitflowai.presentation.ui.habits.HabitsRoute
 import com.habitflowai.presentation.ui.goals.GoalDetailRoute
 import com.habitflowai.presentation.ui.social.SocialRoute
 import com.habitflowai.presentation.ui.social.SuccessJournalRoute
+import com.habitflowai.presentation.ui.social.FollowingRoute
 import com.habitflowai.presentation.ui.onboarding.OnboardingRoute
 import com.habitflowai.presentation.ui.auth.LoginRoute
 import com.habitflowai.presentation.ui.auth.RegisterCredentialsRoute
@@ -309,6 +310,14 @@ fun HabitFlowNavGraph(
                         onBack = { navController.popBackStack() }
                     )
                 }
+                composable(NavRoute.Following.route) {
+                    FollowingRoute(
+                        onBack = { navController.popBackStack() },
+                        onUserClick = { userId ->
+                            navController.navigate(NavRoute.PublicProfile.createRoute(userId))
+                        }
+                    )
+                }
                 composable(NavRoute.Profile.route) {
                     ProfileRoute(
                         viewModel = onboardingViewModel,
@@ -318,6 +327,9 @@ fun HabitFlowNavGraph(
                         },
                         onNavigateToSuccessJournal = {
                             navController.navigate(NavRoute.SuccessJournal.route)
+                        },
+                        onNavigateToFollowing = {
+                            navController.navigate(NavRoute.Following.route)
                         },
                         onLogout = {
                             onboardingViewModel.logout()

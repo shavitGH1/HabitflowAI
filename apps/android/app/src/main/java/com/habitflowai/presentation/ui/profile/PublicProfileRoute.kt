@@ -26,21 +26,18 @@ import coil.compose.AsyncImage
 import com.habitflowai.data.model.resolveProfilePicture
 import com.habitflowai.presentation.ui.persona.PersonaUiData
 import com.habitflowai.presentation.ui.social.PostCard
-import com.habitflowai.presentation.viewmodel.OnboardingViewModel
 import com.habitflowai.presentation.viewmodel.PublicProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PublicProfileRoute(
     viewModel: PublicProfileViewModel = hiltViewModel(),
-    onboardingViewModel: OnboardingViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
     onSendMessage: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val onboardingState by onboardingViewModel.uiState.collectAsState()
 
-    val personaType = onboardingState.personaResult?.personaType ?: "Regulator"
+    val personaType = uiState.personaType ?: "Regulator"
     val personaDetails = remember(personaType) { PersonaUiData.getDetails(personaType) }
     val personaColor = personaDetails.endColor
 
@@ -233,6 +230,7 @@ fun ProfileHeader(
                         } else {
                             ButtonDefaults.buttonColors(containerColor = personaColor)
                         },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                         enabled = !isFollowLoading
                     ) {
                         if (isFollowLoading) {
@@ -257,6 +255,7 @@ fun ProfileHeader(
                     modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = personaColor),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                     enabled = !isLoading
                 ) {
                     if (isLoading) {

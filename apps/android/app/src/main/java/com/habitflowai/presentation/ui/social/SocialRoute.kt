@@ -40,6 +40,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -244,7 +245,7 @@ fun SocialRoute(
                                 if (searchQuery.isEmpty()) isSearchActive = false
                             }
                         },
-                        placeholder = { Text("Search friends, groups, messages...") },
+                        placeholder = { Text("Search friends and groups", color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = personaDetails.endColor) },
                         trailingIcon = {
                             IconButton(onClick = { 
@@ -259,13 +260,19 @@ fun SocialRoute(
                             }
                         },
                         modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp)
                             .widthIn(max = 500.dp)
                             .align(Alignment.TopCenter)
                             .focusRequester(focusRequester),
                         shape = RoundedCornerShape(24.dp),
                         colors = SearchBarDefaults.colors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            inputFieldColors = TextFieldDefaults.colors(
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
                         )
                     ) {
                         Column(
