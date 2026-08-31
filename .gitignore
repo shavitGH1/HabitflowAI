@@ -13,6 +13,8 @@ apps/backend/tsconfig.tsbuildinfo
 apps/backend/firebase-service-account.json
 apps/backend/uploads/*
 !apps/backend/uploads/demo/
+apps/backend/public/downloads/*.apk
+apps/backend/public/downloads/qr.png
 
 # pnpm & Turbo
 node_modules/

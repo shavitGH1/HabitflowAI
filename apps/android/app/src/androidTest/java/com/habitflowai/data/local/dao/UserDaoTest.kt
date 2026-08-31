@@ -111,6 +111,6 @@ class UserDaoTest {
         assertEquals("Portfolio summary text", retrieved.portfolioSummary)
         assertEquals("tip-a,tip-b,tip-c", retrieved.tips)
         assertEquals("fp1,fp2", retrieved.failurePatterns)
-        assertEquals(0.92, retrieved.confidenceScore, 0.001)
+        assertEquals(0.92, retrieved.confidenceScore ?: 0.0, 0.001)
     }
 }
