@@ -4,6 +4,15 @@ HabitFlow AI is a smart Android habit coaching app that identifies a user's moti
 persona (Achiever, Grower, Socializer, Explorer, Altruist, Architect) using Gemini AI and
 adapts the experience — goals, daily tasks, and motivation messages — to that persona.
 
+## Try the App
+
+Download the debug build (or scan the QR code) at:
+
+**[https://habitflow-ai.cs.colman.ac.il/downloads/](https://habitflow-ai.cs.colman.ac.il/downloads/)**
+
+This is a debug build for testing, not a signed release — Android will ask you to allow
+installs from your browser the first time.
+
 ## Stack
 
 - **Monorepo:** pnpm workspaces + Turbo
